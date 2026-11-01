@@ -4,9 +4,9 @@
 //   收斂為一份結果,同時餵給管線(deadlineMs／鎖／開工標記)、外部監控(判界)與 info()(揭露)。
 // 【值有效性】數值鍵一律「有限且大於 0」,數字字串轉數;給了卻無效者視同未給並指名警告
 //   (否則字串 '60' 會使門檻成 '6060'、給 0 會被當成有效值)。
-// 【鎖之陳舊期限須涵蓋整輪】陳舊期限由持鎖者宣告(執行殼之 acquireLock),他實例以它判定是否可接管,故須 ≥ 本輪最長可能耗時:
+// 【鎖之陳舊期限須涵蓋整輪】陳舊期限由持鎖者宣告(core/runnerPackage 之 acquireLock),他實例以它判定是否可接管,故須 ≥ 本輪最長可能耗時:
 //   排程上限＋5 分,或時間預算＋安全邊際＋5 分,兩者取大;只給 deadlineMs 時若仍取 60 分,長時執行 60 分後即被接管。
-// 【截止公式取執行殼】「上限 → 截止」之換算與其安全邊際、下限(deadlineMsOf、DEADLINE_MARGIN_MS)只有一份,在執行殼;邊際留給截止後之
+// 【截止公式取執行秩序件】「上限 → 截止」之換算與其安全邊際、下限(deadlineMsOf、DEADLINE_MARGIN_MS)只有一份,在 core/runnerPackage 所取之來源;邊際留給截止後之
 //   非 AI 工作與程序樹終止(各段 AI 呼叫之每次嘗試皆以剩餘時間封頂:budgetOf;dispatchAiFallback 以剩餘預算壓每次嘗試之逾時)。
 // 【本輪宣告之上限(limitMin)】開工標記(run.start.json)之 limitMin 只有一種語意:排程上限;只明給時間預算者由預算推回(預算＋安全邊際,
 //   無條件進位至分);皆無為 null(外部監控用其預設)。外部監控據以分辨「進行中 vs 被砍」與「耗時逼近上限」。
@@ -96,7 +96,7 @@ export function runtimeCfgOf(cfg) {
  * 解析執行期生效值(純函數;各總組裝之管線、開工標記與 info() 一律取用其結果;總組裝以 runtimeCfgOf 交 cfg 之值)
  *
  * 排程上限:cfg.scheduleLimitMin。
- * 時間預算:cfg.deadlineMs 明給者優先,否則由排程上限推導(執行殼之 deadlineMsOf:上限−6 分,下限 10 分),再無則套件預設 50 分。
+ * 時間預算:cfg.deadlineMs 明給者優先,否則由排程上限推導(core/runnerPackage 之 deadlineMsOf:上限−6 分,下限 10 分),再無則套件預設 50 分。
  * 鎖陳舊期限:cfg.lockStaleMs 明給者優先(小於時間預算＋安全邊際即警告),否則取「上限＋5 分」與「明給之預算＋6 分＋5 分」之大者,皆無則 60 分。
  * 本輪宣告之上限(limitMin):排程上限;只明給時間預算者由預算推回(limitMinOfDeadline);皆無為 null(檔頭)
  *

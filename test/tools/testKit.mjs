@@ -5,7 +5,7 @@
 //
 // 【為何一份】四套件之測試各帶一份同名件時,語意即悄悄分歧(靜音日誌之欄位、記錄型日誌之欄位、取子階段 report 之參數序、拋錯之訊息於未拋時
 //   回 null 或空字串)。抓取套件之測試直接取本檔;摘要、關聯、提煉之測試與專案之測試經各自之 test/tools/captureForTest.mjs 取用(依賴方向
-//   只許上層取下層;test/unit-core-copies 守「只定義於本檔」)。
+//   只許上層取下層)。
 // 【綁套件位置者以工廠】套件根(pkgRootOf)與暫存根(tmpRootsOf)依呼叫端之套件給出——各套件之測試共用層各實例化一次,不各寫一份。
 
 import fs from 'node:fs'
@@ -64,7 +64,7 @@ export function tmpRootsOf(pkgRoot) {
     }
 }
 
-/** 靜音日誌(結構同執行殼之 createLogger 之產物;凍結——各測試共用同一實體) */
+/** 靜音日誌(結構同 core/runnerPackage 之 createLogger 之產物;凍結——各測試共用同一實體) */
 export const silentLog = Object.freeze({ info: () => {}, warn: () => {}, error: () => {}, debug: () => {}, file: '', now: '', elapsed: () => '0.0', cliFail: () => '' })
 
 /**
@@ -107,7 +107,7 @@ export function logsOf() {
 }
 
 /**
- * 落檔之真日誌工廠(執行殼之 createLogger;不同步輸出 stdout):日誌檔與開工標記、執行摘要同一時間戳
+ * 落檔之真日誌工廠(core/runnerPackage 之 createLogger;不同步輸出 stdout):日誌檔與開工標記、執行摘要同一時間戳
  *
  * @param {Function} flowOf 輸入 () => flow(建構後才取得之總組裝;取其 info().dirs.log 與時鐘)
  * @returns {Function} 回傳 () => logger

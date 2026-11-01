@@ -1,0 +1,53 @@
+# 規則帳本 — 套件邊界與契約 CAPX-*
+
+> 本檔記本套件作為獨立套件之邊界與契約:依賴邊界、領域中立、設定與資料之形狀、CLI 不隔離、提示詞與輸出契約、評分判準、時區、偵測器注入等。抓取管線自身之行為規則見 `rulebook_capture.md`(CAP-*);現況見 `../state/state.md`。
+> 盤點指令皆在套件根執行,以 `git grep`(只搜 git 追蹤檔);測試檔皆在 `test/`(自套件根以 `npm test` 或 mocha 單檔執行)。編號之「X」字樣沿用,表示本套件獨有之規則。
+
+## 套件邊界與契約 CAPX-01～CAPX-12
+
+- **CAPX-01 邊界**:只 import 套件內之檔案與 `package.json` 所列套件(＋node 內建);不得引用使用端(宿主專案)之程式、測試與資料,亦不得引用下游套件。**執行秩序件只經單一匯入點 `src/core/runnerPackage.mjs`**:取自 w-data-pipeline `src/{lock,budget,log}/`、`src/util/oneline.mjs`、w-dispatch-ai `src/resolveCatalogue.mjs`、wsemi `src/{genClockTZ,execCliJsonFile,execCliFailDetail}.mjs` 之深層路徑;匯入點明列所取之名、並由主入口原名轉出(下游經本套件之埠取用);其他檔不得直接引用該等路徑。`src/core/` 只引 `src/core/`(分層)。
+  - 為何:套件須能整份移植,不依賴使用端任何既有程式;執行秩序件(執行鎖之行程內登記表為模組級)只能有一份實作,自帶副本會與來源互判殘留。
+  - 盤點:`git grep -nE "w-data-pipeline/src/(lock|budget|log|util)|w-dispatch-ai/src/resolveCatalogue|wsemi/src/(execCliJsonFile|execCliFailDetail|genClockTZ)" -- src` 應只命中 `src/core/runnerPackage.mjs`(實跑 9 行/1 檔)。邊界與依賴對帳以測試為準:`test/unit-package.test.mjs` ①(相對 import 不出套件根;深層路徑只許匯入點引用、匯入點之指定詞皆為該等路徑且所列之名與來源模組之件同一實體;含掃描器自檢)與 ⑤(`src/` 之 import 套件＝`dependencies`〔wsemi 自帶者除外〕、所列者皆有使用、依賴為 semver 範圍不指向本機路徑、來源三套件之安裝版合於所列最低版)。
+  - 測試:`test/unit-package.test.mjs` ①⑤、`test/unit-core-layers.test.mjs`(`src/core/` 只引 `src/core/`;匯入點無相對 import)。
+- **CAPX-02 預設領域中立**:預設設定、詞彙、標題預篩、站台 adapter、健全閘樣式、檢定標準表、預設提示詞、預設題組與原始碼(含註解)不含特定領域詞彙;領域過濾鍵(`capture.areas.openAlexFields`／`capture.areas.arxivCategories`／`capture.expand.arxivCategories`)預設不限。本套件 sgud 同守此則:不列領域詞(連「禁用詞」範例亦不列),盤點用詞表一律指向 `test/tools/domainTerms.mjs`(單一份,下游套件之測試經各自之 `captureForTest` 取用)。
+  - 盤點:`test/unit-package.test.mjs` ②(範圍:非測試之 `.mjs`〔含 `src/bench/`、套件根 `g.mjs`、`toolg/`〕、`package.json`、`README.md`、預設題組 `src/bench/cases/*.json`)與 `test/unit-settings.test.mjs`(同一詞表,檢預設值與定義預設之原始碼)、`test/unit-domain-terms.test.mjs`(詞表自檢:新詞被抓、識別字／檔名／條目 id 之片段不誤判)。原文改寫解誤報(如把含詞表片段之一般詞改寫),不加白名單。
+  - 舊名與沿革字樣(`test/unit-package.test.mjs` ⑥,判準取 `test/tools/historyMarks.mjs`,下游共用同一份):非測試原始碼(含註解)、`package.json`、`README.md`、題組檔之說明文字不得有舊套件名與沿革指標(暫存路徑、帶日期之沿革、帳本與審查代號、「此前」敘事)、使用端之指令名、他工作(下游)之名;面向使用者之字樣(原始碼之字串字面、README)不得含帳本代號;發布內容(README、`*.csv`、非測試 `.mjs`)不得含磁碟機絕對路徑與使用者目錄(⑤)。判準自檢同案(範例資料之日期、工作目錄下之 tmp、工作流之棒名、下游套件之現名不誤判)。
+  - 站點:`src/core/settingsDefault.mjs`、`src/core/vocab/vocabDefault.mjs`、`src/domain/areaDomain.mjs`、`src/fetchers/siteAdapters.mjs`、`src/stores/contentGate.mjs`、`src/standards/registry.mjs`、`src/bench/cases/area-generic.json`、全部非測試原始碼——已套。**刻意不套**:測試檔之一般文字樣本(改之會動到字數門檻之斷言)。
+  - 測試:`test/unit-package.test.mjs` ②⑥、`test/unit-settings.test.mjs`(預設值)、`test/unit-bench.test.mjs`(通用題組中立)、`test/unit-domain-terms.test.mjs`。
+- **CAPX-03 設定與資料錯誤一律建構期拋錯**(承 GEN-03):cfg 頂層鍵只認 `CFG_KEYS`(`src/createKnowledgeCapture.mjs`,29 鍵;未知鍵拋錯並列可用鍵);設定段只有 `ai`(`AI_SCHEMA` 八鍵:`timeoutMs`、`maxRetries`、`cooldownMs`、`providerTimeouts`、`extraProviders`,與機制鍵 `pools`、`healthStreak`、`providerLimits`——後三者預設關)與 `capture`(`src/core/settingsDefault.mjs` 之 `CAPTURE_SCHEMA`,依要點分組:sources／articles／browser／network／areas／expand／discover／services／standards;逐組遞迴合併,席位 `capture.discover.ai` 為席位物件或 `null`〔型別 `seatOrNull`;null＝不做領域發現,零件庫用法之刻意 opt-out,README 已載〕、預設免費家);無相容層——舊鍵、扁平鍵與舊頂層段(如 `sourcePolicy`／`standards`)一律拋錯;`cfg.data` 只收 `CAPTURE_DATA_KEYS`(seedSources、gridTopics、vocab),**含 `seedSources`／`gridTopics` 之逐項形狀**(`checkSeedSources`／`checkGridTopics`;建構期、`expandSeeds`、`syncSeedAreas` 共用同一判準,見 CAP-14)。
+  - 為何:形狀未驗時,錯值於執行期才以失真形式出現(如網格主題給字串而建出名為首字之領域並對外查詢第二字,且把既有種子領域退役;種子缺 kind／url 則以失真 id 入庫、整段輪抓失敗),成因遠離錯誤輸入。
+  - 盤點:`git grep -nE "checkGridTopics|checkSeedSources" -- src`(應命中 endpoints 定義與 `expandSeeds`、`captureRuntime.resolveCaptureData`〔建構期〕、`areaPolicy.syncSeedAreas`;實跑 19 行/3 檔,三站點皆在)。cfg 與設定之逐鍵嚴格性以測試逐鍵驗(`CFG_KEYS` 全部鍵 × 錯值／寬容／有效值;schema、預設與程式讀取三者一致)。
+  - 刻意不套:`fetchers`／`dedup` 給 false／0、`envFile`／`aiWorkspace` 給空字串視同未給(結果即預設,無害;與 `siteAdapters`／`aiAdapter`／`lmdb` 給同值即拋者寬嚴不一,屬風格)。
+  - 測試:`test/unit-package.test.mjs` ④、`test/unit-assembly.test.mjs`(`CFG_KEYS` 逐鍵與子鍵)、`test/unit-settings.test.mjs`、`test/unit-capture-fetch-checks.test.mjs`(`expandSeeds` 兩判準)、`test/unit-capture-areas.test.mjs`(`syncSeedAreas` 形狀錯先於寫入拋錯、既有種子不退役)。
+- **CAPX-04 CLI 讀取哪些檔由 CLI 決定,調度層不干預(使用者裁示「管線不要做 CLI 隔離」)**:內建調度層不注入任何環境變數、不改 CLI 之讀取行為;條目自帶之 `env`(安裝方以 `ai.extraProviders` 同 id 覆寫)原樣傳給 CLI。本套件之內建調度層不做隔離。
+  - 為何:CLI 型條目本即開放讀寫(工作目錄只隔離寫入),「cli 會讀取哪些基本上就開給 cli,由 cli 決定」(使用者原話)。曾加過 `OPENCODE_DISABLE_*` 類旗標之注入(因評分時 opencode 讀入所在專案之指示檔),依裁示移除。
+  - 後果(記錄備查,非缺陷):在某專案目錄下執行之評分與領域發現,CLI 會讀入該目錄樹之指示檔,模型帶著其規則作答;要量不受其影響之能力,`aiWorkspace`／評分 `--out` 放在無指示檔之目錄樹,或用 REST 條目(README)。
+  - 盤點:`git grep -nE "OPENCODE_DISABLE|CLI_ISOLATION" -- src` 應為空(實跑:空);測試檔 `test/unit-ai-adapter.test.mjs` 以該名驗「不注入」,屬預期。
+  - 測試:`test/unit-ai-adapter.test.mjs`〔CLI 子行程之環境:本層不干預〕(node 假 opencode:不注入、條目 env 原樣傳)。
+- **CAPX-05 提示詞可覆寫、輸出契約固定**:`cfg.prompts.area(candidates, areas, { kbLabel, domain, contract, defaultPrompt })` 只換「怎麼問」;驗證恆依凍結之 `AREA_CONTRACT`(`src/domain/areaDomain.mjs`);取用順序 子階段 `opt.domain` ＞ `deps.domains.area` ＞ 依 `data.vocab` 建立。
+  - 盤點:`git grep -nE "AREA_CONTRACT|prompts\.area" -- src`。
+  - 測試:`test/unit-capture-areas.test.mjs`〔areaDomain:提示詞可覆寫、取用順序、契約凍結〕、`test/unit-flow-areas.test.mjs` AR9、`test/unit-assembly.test.mjs`(prompts 鍵)、`test/unit-package.test.mjs` ③(prompts.area 覆寫)。
+- **CAPX-06 筆記可缺**(`cfg.notes` 預設 false):未開時領域發現只取線索、原文回溯對象為全部無原文之 noted 文件、CS10 存量處置之留存者只依 notedAt／id;開啟時與正式管線同口徑。**讀下游筆記之欄位只經宣告模組 `src/core/stores/noteFields.mjs`**(`NOTE_FIELDS`:docId、createdAt、title、concepts、extractedAt 與其取值函數;主標籤規則 `noteConceptsOf`／`notePrimaryConceptOf`——依序、以 `normalizeConcept` 之鍵去重、空鍵略過、第一個為主標籤;下游套件讀筆記欄位亦經此檔取用,不各寫一份)——下游改欄位名時只改此檔。`notedAt` 不屬之:它是文件(docs)之欄,屬抓取之文件生命週期(抓取寫略過之判定時刻、下游寫成筆記時刻)。
+  - 盤點:`git grep -n "stores.notes" -- src`(實跑 11 行/3 檔;程式判定 3 處 `isfun(stores.notes?.select)`:`src/stages/areaStage.mjs`、`src/ops/refetchSources.mjs`、`src/standards/cs10Fix.mjs`,餘為註解);筆記欄位之屬性存取 → 只 `src/core/stores/noteFields.mjs`(`test/unit-package.test.mjs` ⑦ 自動驗;消費者 `areaPolicy`、`cs10Fix`、`docStockFix`、`refetchSources` 經之)。
+  - 測試:`test/unit-capture-areas.test.mjs`(筆記可缺案)、`test/unit-capture-refetch.test.mjs`、`test/unit-cs10fix.test.mjs`、`test/unit-flow-areas.test.mjs` AR7／AR8、`test/unit-core.test.mjs`〔stores/noteFields〕(取值與主標籤規則)、`test/unit-package.test.mjs` ⑦。
+- **CAPX-07 免費 AI 能力評分之判準**:與領域發現同一提示詞與契約;席位只放受測模型、不遞補;每案 runs 回之類別皆＝應然才通過(不以比率放行);限流即停該模型、連續 2 回服務面失敗亦停;題組先驗後呼叫。**現況總表 `模型評比.csv`**(`--board`／`mergeAreaBenchBoard`):一角色一模型一列,本次覆蓋同模型、其餘保留;停測或有未呼叫回合者不寫(不完整之分數不得蓋掉完整者);表頭不同即拋錯不覆寫;記 AI 工作目錄(CLI 讀上層指示檔,目錄影響分數)。
+  - 為何:評分結果若只在暫存目錄(可隨時清),套件內即無留存;改由工具產生總表,不手寫。
+  - 量測條件(資訊):表內「AI 工作目錄」欄記該列在何種工作目錄下跑;同一模型之分數跨工作目錄不可比(CAPX-04 之後果)。於無指示檔之目錄重跑會耗免費額度,屬另案。
+  - 盤點:`git grep -nE "mergeAreaBenchBoard|--board" -- src`;評比表之表頭與寫入規則見 `src/bench/report.mjs` 之 `mergeBenchBoard`。
+  - 測試:`test/unit-bench.test.mjs`、`test/unit-bench-kit.test.mjs`、`test/unit-bench-roles.test.mjs`(AI 替身;含評比表之新建／覆蓋／停測不寫／表頭不同拋錯／RFC 4180 跳脫,與 CLI `--board`)、`test/unit-core.test.mjs`〔util/table〕(`csvCell`／`toCsv`／`mdCell`;評分報表與剔除清單同一份)、`test/api-area-ai.test.mjs`(真 AI,需免費額度與網路)。
+- **CAPX-08 同一內容與錯頁判定之穩健**:與 CAP-15 為同一組缺陷之修復,規則內容見 CAP-15(`contentKeysOfUrl` 遇非法百分比編碼以未解碼路徑照算;`contentIndexOf` 建立失敗不留快取;`titleTokens` 逐段切二字組〔CS2 v2〕)。
+  - 測試:`test/unit-capture-standards.test.mjs`(CS2 v2、CS10 壞網址)、`test/unit-cs10fix.test.mjs`(索引建立失敗後重建、含壞網址之庫照建)。
+- **CAPX-09 時區預設 Asia/Taipei、一律可由外部指定**:管線 `cfg.timeZone`／`cfg.clock`;評分 `runAreaBench({ timeZone, clock })`、命令列 `--tz`(無效時區於解析時即拋)。
+  - 盤點:`git grep -n "Asia/Taipei" -- src`(實跑 15 行/4 檔)——預設值落點三處:`src/core/assemblyKit.mjs` 之 `TIME_ZONE_DEFAULT`(`createKnowledgeCapture` 經 `resolveClockCfg` 取用)、`src/bench/benchKit.mjs` 之 `runBench` 的 clock(`runAreaBench` 為其薄包裝)、`benchKit.mjs` 之 `parseBenchArgs` 的 timeZone(`parseAreaBenchArgs` 為其薄包裝),皆有覆寫入口;其餘為 JSDoc、範例、用法說明與錯誤訊息之例。
+  - 測試:`test/unit-assembly.test.mjs`(`cfg.timeZone` 錯值與 UTC)、`test/unit-bench.test.mjs`／`test/unit-bench-kit.test.mjs`(`--tz` 預設、指定、無效;評分時間依所給時區)。
+- **CAPX-10 健全閘為有序偵測器陣列、可整組注入,注入件須能到瀏覽器層**:內建 `GATE_DETECTORS_DEFAULT`(`src/stores/contentGate.mjs`;順序＝判定順序:soft-404 → mojibake → format-noise → not-found → too-short → consent → placeholder → paywall;`builtin:true`、`adapter:true` 者對站台 adapter 之正文亦套),契約與跨行程規格在 `src/core/util/injectables.mjs`(`GATE_KINDS`、`gateDetectorProblems`、`gateDetectorSpecsOf`、`importGateDetectors`;adapter 同法 `adapterSpecsOf`／`importAdapters`)。`settings.capture.standards.detectors`(型別 `detectorsOrNull`):null＝內建;給了即整組取代(含順序)——追加寫 `[...GATE_DETECTORS_DEFAULT, mine]`、換掉某一個以 id 篩掉再放自己的、外部獨立使用即 import 內建陣列自行組合;偵測器 `{ id, kind ∈ GATE_KINDS, adapter?, module, export?, sig?, test(c, env) }`。
+  - 瀏覽器階梯於子行程執行(函數無法序列化):主行程把陣列化為 specs(內建記 id、自訂記 module／export)寫入 optsFile,子行程(`src/fetchers/fetch_web_cli.mjs`)依同一順序重建;**自訂偵測器無 module 者於總組裝 `createCaptureRuntime` 拋錯**(兩層之閘須一致);站台 adapter 帶 module 者子行程亦載入(`deps.siteAdapterSpecs` → `runBrowserCli` 之 `adapterSpecs`),不帶者只作用於主行程之 curl 層(README 已載)。
+  - 閘之簽章只在自訂陣列時含偵測器之 id 與 sig(只用內建時簽章不變,存量 healthV 不因本機制而全數重判;改 sig 即換閘版本 → 存量依新版重判)。分流只認 `GATE_KINDS`,自訂者沿用既有類別。
+  - 盤點:`git grep -nE "createContentGate\(" -- src` → 全部站點經 `settings.capture.standards`(detectors 隨之生效;實跑 10 行/5 檔,含定義與 JSDoc 範例:`captureRuntime`、`detailFetchStage`、`contentGate.gateVersionOf`、`healthRecheck.createHealthGates`,子行程 `fetch_web_cli` 依規格重建);`git grep -nE "detectorSpecs|adapterSpecs" -- src/fetchers` → `browserFetcher` 寫、`fetch_web_cli` 讀,只此兩處(實跑 7 行/2 檔)。
+  - 測試:`test/unit-capture-browser.test.mjs`(偵測器陣列之語意、契約與簽章、跨行程規格與子行程重建〔暫存模組檔〕、總組裝拒無 module、optsFile 帶規格)、`test/unit-settings.test.mjs`(型別 `detectorsOrNull` 之邊界樣本)、`test/unit-assembly.test.mjs`／`test/unit-package.test.mjs`(deps 含 `siteAdapterSpecs`)。
+- **CAPX-11 CS5 來源健康之存量掃描為全掃、與寫入同一判定**:停用條件之純判定 `src/stores/sourcePolicy.mjs sourceStopReasonOf(src, { maxConsecFails, maxConsecEmpty, isAutoSource })`(連敗、自動來源連空;`recordSourceOutcome` 以本輪計數後之記錄呼叫同一函數決定停用)、記錄形狀 `sourceRecordProblems`(時刻欄 ISO、計數欄非負整數、enabled／paused 布林、原因欄字串;未給者不判——手動停用可無原因);符合度掃描(`src/standards/audit.mjs` CS5):全部記錄先驗形狀(不合即不合格,含已停用者)→ 停用者不適用 → 啟用者以 `sourceStopReasonOf`(門檻取 `capture.sources`)與 `cullZeroYieldSources` 唯讀呼叫判。
+  - 為何:掃描若只重用既有判定函數,而連敗／連空之判定內嵌於寫入函數、無純函數可重用,掃描即只能「部分」判;抽出純函數後才能全掃,且寫入與掃描不會分歧。
+  - 盤點:`git grep -nE "sourceStopReasonOf|sourceRecordProblems" -- src` 應命中 `sourcePolicy`(定義與 `recordSourceOutcome`)、`audit`、`registry`。
+  - 測試:`test/unit-capture-policies.test.mjs`(`sourceStopReasonOf` 各條件與 0＝永不、與 `recordSourceOutcome` 同一判定;`sourceRecordProblems` 各欄)、`test/unit-capture-standards.test.mjs` CS5(連敗／連空仍啟用、記錄形狀、停用者不適用、門檻取自設定)。
+- **CAPX-12 PDF 正文抽取暫不做(使用者裁示)**:等更適合解析 PDF(含排版解析)之套件成熟、可免 AI 解讀與判斷結構後再做;CS14 維持已知限制(PDF 網址一輪即 dead,`isPdfUrl`),不以 AI 或臨時抽取器補。
+  - 測試:`test/unit-capture-browser.test.mjs`〔fetchPolicy(CS3 失敗分流;CS14 PDF)〕。

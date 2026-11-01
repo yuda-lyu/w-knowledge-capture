@@ -14,7 +14,7 @@
 // 【可整組置換】總組裝之 cfg.aiAdapter 給了即不建本層;置換者至少具備 callJson(validateSeats／drainStats／aiUsageToday 選用;
 //   另需其他函數之總組裝以 core/assemblyKit 之 checkAiAdapter／buildAiAdapter 之 need 宣告,如工作流入口之 getWkf／seatSpec)。
 // 【w-dispatch-ai 件的使用對照】
-//   (目錄展開)          經執行殼之 resolveCatalogue(與其原始遞補呼叫同一入口):內建目錄＋ai.extraProviders(新 id 追加、同 id 逐欄覆蓋)、
+//   (目錄展開)          經 core/runnerPackage 之 resolveCatalogue(與其原始遞補呼叫同一入口):內建目錄＋ai.extraProviders(新 id 追加、同 id 逐欄覆蓋)、
 //                        金鑰來源(env 物件 → envFile → process.env;金鑰檔讀成物件,不污染 process.env)、逾時三層取值寫進條目、
 //                        providerPick、exes;envVar → keys,缺金鑰之條目列 skipped、不進可用表(不拋)
 //   dispatchAiFallback   依鏈遞補、冷卻降序、時間預算、嘗試間中止;逐次事件(含一組試完仍無成交之 group-exhausted)
@@ -384,7 +384,7 @@ export function createAiAdapter(opt) {
     const withPreview = opt.preview === true
     const withWorkflow = opt.workflow === true
 
-    // ── 展開供應商(執行殼之 resolveCatalogue;檔頭):目錄＋extraProviders → 金鑰來源 → 逾時三層取值寫進條目 → providerPick／exes ──
+    // ── 展開供應商(core/runnerPackage 之 resolveCatalogue;檔頭):目錄＋extraProviders → 金鑰來源 → 逾時三層取值寫進條目 → providerPick／exes ──
     const { merged, resolved } = resolveCatalogue({
         catalogue: opt.catalogue,
         extraProviders: ai.extraProviders,

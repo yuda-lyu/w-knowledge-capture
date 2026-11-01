@@ -1,6 +1,6 @@
 {
   "name": "w-knowledge-capture",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "dist/w-knowledge-capture.umd.js",
   "dependencies": {
     "opencc-js": "^1.4.2",
@@ -9,10 +9,10 @@
     "w-dwdata-hub": "^1.0.25",
     "w-fetch-web": "^1.0.30",
     "w-orm-lmdb": "^1.0.50",
-    "wsemi": "^1.9.39"
+    "wsemi": "^1.9.40"
   },
   "devDependencies": {
-    "w-package-tools": "^1.1.21"
+    "w-package-tools": "^1.1.22"
   },
   "scripts": {
     "test": "mocha --parallel \"test/*.test.mjs\" --timeout 180000",

@@ -192,7 +192,7 @@ const DEFINED = new WeakSet()
  * @param {Function} [def.mismatchNote] 輸入類別不符應然時之未通過原因 (rec, expect) => String(接在「第 n 回」之後)，未給為「判 <類別><補充>，應然 <應然>」
  * @param {Object} [def.report] 輸入報表設定 { criteria:Array<String>(Markdown 之判準說明行)，caseColumns:Array<{ name, key, md? }>(逐案 CSV 之案欄，
  *   取案結果之 key;md 為 true 者亦列於 Markdown 逐案表)，runColumns:Array<{ name, key }>(逐案 CSV 之每回欄，取每回紀錄之 key) }
- * @param {Object} [def.cli] 輸入命令列設定 { command(用法首句之指令，預設 'node bench/cli.mjs')，casesHelp(--cases 之說明)，
+ * @param {Object} [def.cli] 輸入命令列設定 { command(用法首句之指令，預設 'node src/bench/cli.mjs')，casesHelp(--cases 之說明)，
  *   options:Array<{ flag:'--xxx', key, arg?, help?, parse?(值字串, flag) => 值 }>(角色擴充之參數;解析值以 key 交 opt.roleOpt;parse 不合即拋) }
  * @returns {Object} 回傳凍結之角色物件(上列各鍵皆已補預設;std 為陣列、v 無則 null、casesFile 無則空字串、paginate 與 call 無則 null)
  * @throws {Error} 非物件、含不認得之鍵、缺必給之函數、id／name 形式不合、pageSize 與 paginate 並給、blankFields 含共通欄位名、
@@ -310,7 +310,7 @@ export function defineBenchRole(def) {
     // 命令列
     const casesFile = isestr(def.casesFile) ? def.casesFile : ''
     let cli = {
-        command: 'node bench/cli.mjs',
+        command: 'node src/bench/cli.mjs',
         casesHelp: casesFile ? `題組檔(JSON);未給＝角色內建之題組(${path.basename(casesFile)})` : '題組檔(JSON;本角色無內建題組,須給)',
         options: [],
     }

@@ -1,4 +1,4 @@
-// unit-stock-ledger.test.mjs — 存量處置帳之讀寫協定(core/stores/stockLedger;四工作與宿主同一本帳)
+// unit-stock-ledger.test.mjs — 存量處置帳之讀寫協定(core/stores/stockLedger;四工作與使用端同一本帳)
 // 規則(出自 core/stores/stockLedger 檔頭與 JSDoc):
 //   ①路徑:opt.ledgerFile 優先,其次 dirs.state 下之 STOCK_LEDGER_FILE;皆無即拋;時刻:opt.at 優先,其次 clock.iso8()
 //   ②寫列:每列 { at, ...列 } 立即附寫;首次寫入時建目錄(無列不建);未給帳檔者只收於記憶體;onRow 每列呼叫

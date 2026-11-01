@@ -88,7 +88,7 @@ const groupRole = variant({
         for (const c of cases.filter((x) => x.input.vocab)) pages.push([c])
         return pages
     },
-    cli: { command: 'node bench/cli.mjs group', options: [{ flag: '--page-size', key: 'pageSize', arg: '<n>', help: '一頁幾案(預設 3)', parse: benchArgPint }] },
+    cli: { command: 'node src/bench/cli.mjs group', options: [{ flag: '--page-size', key: 'pageSize', arg: '<n>', help: '一頁幾案(預設 3)', parse: benchArgPint }] },
 })
 
 /** 一頁多案之題組(應然:yes＝天文);t5 自帶詞彙 */
@@ -217,7 +217,7 @@ describe('unit-bench-kit', function() {
         assert.deepEqual([min.title, min.runnerName, min.pageSize, min.paginate, min.v, min.casesFile, min.std], ['最小角色 AI 能力評分', 'runBench', 1, null, null, '', []])
         assert.equal(min.models, DEFAULT_FREE_MODELS, '預設受測名單')
         assert.equal(min.report.criteria.length, 2, '預設判準說明')
-        assert.deepEqual([min.check([1]), min.detailOf({}), min.mismatchNote({ cls: 'b' }, 'a'), min.cli.command], [true, '', '判 b，應然 a', 'node bench/cli.mjs'])
+        assert.deepEqual([min.check([1]), min.detailOf({}), min.mismatchNote({ cls: 'b' }, 'a'), min.cli.command], [true, '', '判 b，應然 a', 'node src/bench/cli.mjs'])
         assert.equal(min.vocabOf({ input: { vocab: { a: 1 } } }).a, 1, '預設取 input.vocab')
         assert.ok(Object.isFrozen(min) && Object.isFrozen(min.report) && Object.isFrozen(min.cli.options) && Object.isFrozen(min.blankFields))
         assert.equal(defineBenchRole(min), min, '冪等')
@@ -609,7 +609,7 @@ describe('unit-bench-kit', function() {
         assert.deepEqual(parseBenchArgs(['--models', 'free'], groupRole).models, [...DEFAULT_FREE_MODELS])
         assert.deepEqual(parseBenchArgs([], variant({ id: 'm2', models: ['x', 'y', 'x'] })).models, ['x', 'y'], '角色之預設受測名單(去重)')
         const u = benchUsageOf(groupRole)
-        assert.match(u, /^用法：node bench\/cli\.mjs group \[--models .*\[--vocab <詞彙 json>\] \[--page-size <n>\]$/m)
+        assert.match(u, /^用法：node src\/bench\/cli\.mjs group \[--models .*\[--vocab <詞彙 json>\] \[--page-size <n>\]$/m)
         assert.match(u, /^ {2}--vocab {8}詞彙覆寫/m)
         assert.match(u, /^ {2}--page-size {4}一頁幾案\(預設 3\)$/m)
         assert.match(u, /^ {2}--cases {8}題組檔\(JSON;本角色無內建題組,須給\)$/m)

@@ -1,7 +1,7 @@
 // unit-core-shared.test.mjs — 下游套件共用之核心件(本套件之核心模組,供摘要等下游套件經主入口取用,不另寫一份):
 //   standards/verdict.fromProblems、util/text.slugify／cutAtBoundary、kernel.mergeTaps、settingsDefault.mergeSettingsGroup(含 opt.types)／
 //   cloneSettingsDefault／seatOrNull 型別、captureRuntime 之 conceptFoldsOf／captureIdentityOf／captureNetGuardOf(與抓取執行期件同一判準),
-//   以及主入口確實轉出上列各名與經執行殼埠取用之件(reserveOf／reserveMsOf／readJson／writeFileAtomic;其行為之測試在執行殼)
+//   以及主入口確實轉出上列各名與經 core/runnerPackage 取用之件(reserveOf／reserveMsOf;其行為之測試隨件在 w-data-pipeline 套件內)及本套件 core/util/fileIo 之 readJson／writeFileAtomic
 // 執行:自套件根 npx mocha test/unit-core-shared.test.mjs(暫存落 test/_tmp/core-shared-<pid>,測完即刪;不發網路)
 
 import assert from 'node:assert/strict'

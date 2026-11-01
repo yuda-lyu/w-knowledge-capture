@@ -1,7 +1,7 @@
 // unit-core.test.mjs — 核心件(core/)單元測試:
 //   kernel(洋蔥組合、first 錨點、認名掛載、逐項執行與 emit、輸入檢查)、runtime、dirs、
 //   util(patterns／records／web)、standards/verdict、vocab(含 vocabKit:詞彙表解析之共用件)、ops(runSummary／browserHygiene)
-//   鎖、時鐘、日誌、時間預算、小工具與子行程 JSON 執行屬執行殼(經 core/runnerPackage,其測試在執行殼);概念鍵與正體另見 unit-core-text;分層另見 unit-core-layers
+//   鎖、時鐘、日誌、時間預算、小工具與子行程 JSON 執行屬執行秩序件(經 core/runnerPackage 取自 w-data-pipeline／w-dispatch-ai／wsemi,其行為之測試隨件在該等套件內);概念鍵與正體另見 unit-core-text;分層另見 unit-core-layers
 // 執行:自套件根 npx mocha test/unit-core.test.mjs(暫存落 test/_tmp/core-<pid>,測完即刪;不發網路)
 
 import assert from 'node:assert/strict'

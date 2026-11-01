@@ -133,8 +133,8 @@ export const areaBenchRole = defineBenchRole({
         runColumns: [{ name: '標籤', key: 'label' }, { name: '查詢', key: 'query' }, { name: '理由', key: 'why' }],
     },
     cli: {
-        command: 'node bench/cli.mjs',
-        casesHelp: '題組檔(CS8 題組同形);未給＝套件內建之通用題組(bench/cases/area-generic.json)',
+        command: 'node src/bench/cli.mjs',
+        casesHelp: '題組檔(CS8 題組同形);未給＝套件內建之通用題組(src/bench/cases/area-generic.json)',
     },
 })
 
@@ -318,7 +318,7 @@ export const AREA_BENCH_ROLE = areaBenchRole.name
 /** 評比表之表頭(與核心之 BENCH_BOARD_HEADER 同一物件;各角色同一表頭) */
 export const AREA_BENCH_BOARD_HEADER = BENCH_BOARD_HEADER
 
-// ════════════════ 命令列(node bench/cli.mjs …;亦可程式呼叫 runAreaBenchCli) ════════════════
+// ════════════════ 命令列(node src/bench/cli.mjs …;亦可程式呼叫 runAreaBenchCli) ════════════════
 
 /** 命令列用法說明 */
 export const AREA_BENCH_USAGE = benchUsageOf(areaBenchRole)

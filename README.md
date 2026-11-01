@@ -272,7 +272,7 @@ createKnowledgeCapture({
 | | `maxConsecFails`／`maxConsecEmpty` | 8／5 | 連敗、自動來源連空即停用(`maxConsecFails:0`＝永不因連敗停用,來源由宿主管理時) |
 | | `cullMinJudged`／`lowYieldRate` | 6／0.1 | 零產出淘汰之樣本數／低產出排後門檻 |
 | | `reprobeDays`／`reprobePerRun` | 30／3 | 停用來源與暫停之自動領域冷卻重探 |
-| `articles`(要點 1) | `perRun` | 27 | 每輪最多補抓幾篇全文;**下游每輪容量須 ≥ 本值＋`areas.perRun × sources.itemsPerSource`** |
+| `articles`(要點 1) | `perRun` | 27 | 每輪最多補抓幾篇全文;**下游每輪容量須 ≥ 本值＋`browser.perRun`(瀏覽器分流停用即 `browser.perRun:0` 時計 0)＋`areas.perRun × sources.itemsPerSource`**(推導式見 `captureCapacityOf`) |
 | | `timeoutMs`／`maxTextChars` | 30000／20000 | 單篇抓取逾時／單篇入庫上限 |
 | | `archiveText` | true | 原文另存(CS13);`false` 即不另存、終態瘦身亦不清正文(速報類不需回溯時) |
 | | `maxTries` | 3 | 試滿即 `dead` |
@@ -509,7 +509,7 @@ node <mocha 路徑>/bin/mocha.js --timeout 180000 test/<檔名>      # 單檔
 | 層 | 檔案 | 內容 |
 |---|---|---|
 | 核心 | `unit-core`、`unit-core-text`、`unit-core-layers`、`unit-core-shared` | 管線秩序、執行期生效值、文字正規化、下游筆記欄位之宣告與主標籤、核心件之分層;下游共用之通用函數與共用判準、檔案小工具(readJson、writeFileAtomic、queueAge;鎖、時鐘、日誌、時間預算之行為案在其來源套件) |
-| 設定與組裝 | `unit-settings`、`unit-assembly`、`unit-assembly-kit`、`unit-entry`、`unit-package`、`unit-domain-terms` | 每個設定鍵逐鍵覆寫與拒收、`cfg` 各鍵檢核、總組裝共用件、入口匯出、**套件邊界(不 import 套件外)、發布面(不設 `exports`／`files` 使深層路徑可取用、`.npmignore`、根目錄範本檔、`LICENSE`)與發布內容不帶宿主之痕跡(磁碟機絕對路徑、使用者目錄)、預設領域中立(詞表 `test/tools/domainTerms` 為四套件同一份,下游之測試經其 `captureForTest` 取用;自檢 `unit-domain-terms`)、舊名、沿革與面向使用者之字樣(判準 `test/tools/historyMarks`,四套件同一份;不以名指下游之工作)、下游筆記欄位只經 `core/stores/noteFields` 讀、覆寫生效** |
+| 設定與組裝 | `unit-settings`、`unit-assembly`、`unit-assembly-kit`、`unit-entry`、`unit-package`、`unit-domain-terms` | 每個設定鍵逐鍵覆寫與拒收、`cfg` 各鍵檢核、總組裝共用件、入口匯出、**套件邊界(不 import 套件外)、發布面(不設 `exports`／`files` 使深層路徑可取用、無 `.npmignore` 而發布範圍依 `.gitignore`、`npm pack --dry-run` 清單含 `sgud/` 與 `test/tools/` 而不含 `CLAUDE*.md`、根目錄範本檔、`LICENSE`)與發布內容不帶宿主之痕跡(磁碟機絕對路徑、使用者目錄)、預設領域中立(詞表 `test/tools/domainTerms` 為四套件同一份,下游之測試經其 `captureForTest` 取用;自檢 `unit-domain-terms`)、舊名、沿革與面向使用者之字樣(判準 `test/tools/historyMarks`,四套件同一份;不以名指下游之工作)、下游筆記欄位只經 `core/stores/noteFields` 讀、覆寫生效** |
 | 待判與存量帳 | `unit-holds`、`unit-stock-ledger`、`unit-cs12fix` | 待判之登錄、期限、重試判定與存量待判件;存量處置帳之讀寫協定(壞行即拒、回退列、逐件錯誤列);CS12 之預演／套用／斷言／回退 |
 | AI 調度 | `unit-ai-adapter`、`unit-ai-adapter-ext` | 遞補、驗證、限流冷卻、逾時三層、金鑰來源、斷網不計(本機假 REST);CLI 子行程之環境本層不干預(node 假 CLI);高頻呼叫之機制(截斷放行、避開、預覽、免費池、健康降序、能力預篩)與預設關閉 |
 | 抓取器與政策 | `unit-fetchers`、`unit-siteAdapters`、`unit-capture-fetch-checks`、`unit-capture-policies`、`unit-capture-browser`、`unit-capture-netguard` | 抓取器契約、站台 adapter、健全閘、分流、瀏覽器階梯、本機網路判斷 |

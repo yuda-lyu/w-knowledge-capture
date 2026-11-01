@@ -132,7 +132,7 @@ export async function validateAreaQuery(query, ctx, opt = {}) {
  * @param {Function} [opt.callAI] 輸入覆寫之 AI 呼叫函數 (prompt, check, { shouldStop, budgetMs }) => Promise<{ ok, data, error }>，未給則以 ctx.deps.ai.callJson 呼叫 settings.capture.discover.ai 席位
  * @param {Function} [opt.fetchWebByCurl] 輸入驗證用之 curl 抓取函數(測試注入)
  * @param {Function} [opt.validate] 輸入候選查詢之驗證器 (query, ctx, opt) => Promise<{ ok, reason, transient? }>(預設 validateAreaQuery:OpenAlex);
- *   非學術目錄之領域由宿主注入自己的驗證
+ *   非學術目錄之領域由使用端注入自己的驗證
  * @param {Function} [opt.now] 輸入現在時刻毫秒函數(測試注入)
  * @returns {Object} 回傳階段物件 { name:'areas', run(ctx) }(階段契約欄位 enabled／when 等見 core/kernel stageFields)
  * @throws {MwContractError} opt.tap／opt.chain 給了時拋出(本子階段無動作鏈)
@@ -308,7 +308,7 @@ async function discover(ctx, o) {
         out.proposed++
         if (known.has(id) && !cooled.has(id)) continue // 同查詢已存在(任何狀態;已拒而冷卻已滿者除外——重驗)
         const again = cooled.delete(id) // 本輪只重驗一次(同查詢再被提出即視為已存在)
-        // 驗證器可注入(opt.validate;預設 OpenAlex 計數與首頁摘要):非學術目錄之領域由宿主自驗
+        // 驗證器可注入(opt.validate;預設 OpenAlex 計數與首頁摘要):非學術目錄之領域由使用端自驗
         const validate = typeof o.opt.validate === 'function' ? o.opt.validate : validateAreaQuery
         const v = await validate(query, ctx, o.opt)
         if (!v.ok) {

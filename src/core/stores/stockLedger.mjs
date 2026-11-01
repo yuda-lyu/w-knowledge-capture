@@ -1,4 +1,4 @@
-// stockLedger.mjs — 存量處置帳(JSONL)之讀寫協定(唯一一份;四工作之存量處置與宿主之連鎖處置寫同一本帳)
+// stockLedger.mjs — 存量處置帳(JSONL)之讀寫協定(唯一一份;四工作之存量處置與使用端之連鎖處置寫同一本帳)
 //
 // 【一本帳】帳檔為 dirs.state 下之 STOCK_LEDGER_FILE(呼叫端可明給路徑);每列 { at, object, id, stds, before, … }(其餘欄位屬寫列之工作);
 //   回退列 { at, rollbackOf:被回退列之 at, object, id }——讀帳據以排除已回退者(鍵 `at|object|id`)。各工作只讀「本工作之列」(keep 判定)。
@@ -8,7 +8,7 @@
 //   各工作之讀帳(stockLedgerRowsOf)遇壞行即拋,呼叫端確認後明給 allowBad 才略過。
 // 【時刻】since 以時刻比較(時區表示可不同;任一無法解析時依字面);at 取某次套用之列(字面相等:同一次套用之列 at 相同)。
 // 【逐件錯誤列】預演、套用、回退逐件隔離,失敗之件記 { id, object, error } 而續處置他件——列之形狀與訊息之上限只在 stockErrorOf
-//   (四工作與宿主同用;原各寫一份)。
+//   (四工作與使用端同用;原各寫一份)。
 // 【回退＝撤銷該次處置之效果(回退防護;rollbackPlanOf)】值列記該次處置所動之單位之處置前(before)與處置後(after)——處置前不存在之單位
 //   不列於 before、處置後不存在者不列於 after(回退時刪除而非寫 null)。回退逐單位比現值:＝before → 已回到處置前(冪等);＝after → 寫回 before;
 //   皆不是 → 其後被改動(衝突:不覆寫、不記回退列,該列仍列於帳;使用者明示「接受現值」者記取代列 { accepted:'current' }——appendRollbackRow 之 extra)。
@@ -25,7 +25,7 @@ import { strOf as s, sameValue } from '../util/values.mjs'
 import { readJsonlRows, appendJsonlRow } from '../util/jsonl.mjs'
 
 /**
- * 存量處置帳之檔名(dirs.state 下;四工作與宿主同一本帳)
+ * 存量處置帳之檔名(dirs.state 下;四工作與使用端同一本帳)
  *
  * @type {String}
  */

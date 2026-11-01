@@ -760,7 +760,7 @@ export const mwPersistOutcome = () => defineMw({
  *
  * @param {Object} [opt={}] 輸入子階段設定,非物件則回退為 {};可含 chain, tap, patterns, toLinkedRecord, linksPerDoc, articlesPerRun(每輪補全文篇數,預設 capture.articles.perRun), runCli,
  *   pick(本輪取件 (candidates, { ctx, quota, queues }) => 文件陣列:候選為補全文佇列依現行排序之全部,回傳者截至 quota、須為候選之成員——零件庫用法之
- *   「選完才抓」,如宿主以標題 AI 選文),timeoutMsOf(逐篇逾時,見 mwFetchDetail);階段契約欄位 enabled／when 等(core/kernel stageFields)
+ *   「選完才抓」,如使用端以標題 AI 選文),timeoutMsOf(逐篇逾時,見 mwFetchDetail);階段契約欄位 enabled／when 等(core/kernel stageFields)
  * @returns {Object} 回傳階段物件 { name:'detailFetch', run(ctx) }
  * @throws {Error} run 時 opt.pick 回傳非陣列(須回傳候選之子集陣列)時拋出
  * @example
@@ -824,7 +824,7 @@ export function stageDetailFetch(opt = {}) {
             const order = byRetryTierFifo('fetchTries', { plus: 'fetchChainFails' })
             const ordered = mainQ.sort(order)
             let pending = ordered.slice(0, quota)
-            // 自訂取件(opt.pick):宿主決定本輪抓哪些(回傳截至 quota、只認候選之成員;非陣列即呼叫端錯誤)
+            // 自訂取件(opt.pick):使用端決定本輪抓哪些(回傳截至 quota、只認候選之成員;非陣列即呼叫端錯誤)
             if (typeof opt.pick === 'function') {
                 const picked = await opt.pick(ordered, { ctx, quota, queues: q })
                 if (!Array.isArray(picked)) throw new Error('detailFetch 之 opt.pick 須回傳文件陣列（候選之子集）')

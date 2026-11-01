@@ -133,7 +133,7 @@ export function defineBenchRoles(def) {
     const plan = (roleId, opt = {}) => planBench(roleOf(roleId), opt)
 
     const usage = [
-        `用法：node bench/cli.mjs [--role <${ids.join('|')}|all>] [共用參數…] [角色專屬參數…]`,
+        `用法：node src/bench/cli.mjs [--role <${ids.join('|')}|all>] [共用參數…] [角色專屬參數…]`,
         `  --role         評分角色(預設 all:依序 ${ids.join('、')});all 時不可給 --cases 與角色專屬參數(${roleFlags.join('、')}),各角色用其內建之通用題組;`,
         '                 前面角色已停測之模型(限流、連續呼叫失敗、條目不可用)不再於後續角色受測',
         '  --vocab        詞彙檔只收本套件所讀之鍵(他鍵拋錯,以免打錯之鍵靜默失效);與其他知識處理段共用一份詞彙表者加 --vocab-pick',

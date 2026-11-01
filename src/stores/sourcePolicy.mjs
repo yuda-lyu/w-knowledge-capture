@@ -262,7 +262,7 @@ export async function recordSourceOutcome(sources, src, outcome, cfg = {}) {
 export function sourceStopReasonOf(src, cfg = {}) {
     if (!isobj(cfg)) cfg = {}
     const failCount = Number(src?.failCount) || 0
-    // maxConsecFails 0＝永不因連敗停用(零件庫用法:來源由宿主管理)
+    // maxConsecFails 0＝永不因連敗停用(零件庫用法:來源由使用端管理)
     const maxFails = cfg.maxConsecFails ?? 8
     if (maxFails > 0 && failCount >= maxFails) return `連續失敗 ${failCount} 次`
     // 空回計數只針對自動衍生來源(種子來源一時無新文不停用)

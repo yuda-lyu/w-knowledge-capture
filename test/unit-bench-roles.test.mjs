@@ -146,7 +146,7 @@ describe('unit-bench-roles', function() {
     })
 
     it('用法說明:列出 --role 之可用值與 all 之限制、--vocab-pick 之取鍵函數與子集檔名、各角色之核心用法(含專屬參數)', () => {
-        assert.match(CLI.usage, /--role <alpha\|beta\|all>/)
+        assert.match(CLI.usage, /^用法：node src\/bench\/cli\.mjs \[--role <alpha\|beta\|all>\]/, '首句之指令為命令列檔自套件根起算之位置')
         assert.match(CLI.usage, /all 時不可給 --cases 與角色專屬參數\(--page-size\)/)
         assert.match(CLI.usage, /以 pickTopicVocab 取本套件之鍵/)
         assert.match(CLI.usage, /topic-vocab-<時間戳>\.json/)

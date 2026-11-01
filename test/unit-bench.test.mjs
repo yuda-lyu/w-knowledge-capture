@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import providersAll from 'w-dispatch-ai/src/providers.mjs'
 import {
     runAreaBench, validateAreaCases, loadAreaCases, areaClassOf, areaVerdictOf, freeModelsOf,
@@ -535,6 +536,11 @@ describe('unit-bench', function() {
         assert.equal(cliNs.runAreaBenchCli, runAreaBenchCli)
         assert.equal(WKnowledgeCapture.runAreaBenchCli, runAreaBenchCli)
         assert.match(AREA_BENCH_USAGE, /--models/)
+        // 用法首句與角色之 cli.command＝本命令列檔自套件根起算之實際位置(佈局為 src/ 時須帶 src/;印出之指令可直接複製執行)
+        const cliRel = path.relative(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), fileURLToPath(import.meta.resolve('../src/bench/cli.mjs'))).replace(/\\/g, '/')
+        assert.equal(cliRel, 'src/bench/cli.mjs')
+        assert.equal(areaBenchRole.cli.command, `node ${cliRel}`)
+        assert.ok(AREA_BENCH_USAGE.startsWith(`用法：node ${cliRel} [--models `), AREA_BENCH_USAGE.split('\n')[0])
 
         fs.mkdirSync(TMP, { recursive: true })
         const casesFile = path.join(TMP, 'mini.json')

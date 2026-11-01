@@ -11,7 +11,8 @@
 // ⑤ package.json:scripts 為 test(mocha 標準指令)與 deploy(文件發布,同自有套件);依賴對帳(src/ 之 import 套件＝dependencies,dayjs 等 wsemi 自帶者除外;
 //   測試與編譯工具(g.mjs、toolg/)另 import 者在 devDependencies,測試執行器 mocha 經 scripts.test 呼叫而不 import,隨編譯工具套件 w-package-tools 安裝;所列者皆有使用者);
 //   執行秩序件來源三套件之安裝版合於所列範圍;入口(src/)可載入;
-//   發布面(main 指向 dist 之 UMD、不設 exports 與 files,使下游得以「套件名/src/…」與「套件名/test/tools/…」深層路徑取用;.npmignore 排除 sgud、CLAUDE*.md、暫存與測試檔而保留 test/tools;LICENSE 為 MIT);
+//   發布面(main 指向 dist 之 UMD、不設 exports 與 files,使下游得以「套件名/src/…」與「套件名/test/tools/…」深層路徑取用;無 .npmignore、npm 包＝git 版控內容(依 .gitignore),
+//   npm pack --dry-run 之清單含 sgud/、test/tools/ 而不含 CLAUDE*.md 與暫存;LICENSE 為 MIT);
 //   發布內容(README、*.csv、非測試 .mjs)不含宿主之痕跡:磁碟機絕對路徑與使用者目錄
 // ⑥ 舊名、沿革與面向使用者之字樣不出現:已不存在之套件與總組裝之名、暫存路徑、帶日期之沿革、帳本與審查代號、「此前」敘事、宿主之指令、
 //   下游工作之名(README、package.json 與原始碼逐行;字串字面與 README 另判面向使用者之字樣;判準取 test/tools/historyMarks,四套件同一份)
@@ -23,7 +24,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isBuiltin } from 'node:module'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import W from 'w-data-pipeline/src/WDataPipeline.mjs'
 import WOrm from 'w-orm-lmdb/src/WOrmLmdb.mjs'
 import providers from 'w-dispatch-ai/src/providers.mjs'
@@ -100,10 +101,23 @@ function readText(rel) {
     }
 }
 
+/**
+ * npm 實際打包之檔案清單(自套件根執行 npm pack --dry-run --json;不寫檔、不連網;相對路徑,正斜線)。
+ * npm 11 之 --json 為「套件名 → 結果」之物件、舊版為陣列,兩者皆收
+ *
+ * @returns {Array} 回傳打包清單之相對路徑陣列
+ */
+function packListOf() {
+    const out = execSync('npm pack --dry-run --json', { cwd: ROOT, encoding: 'utf8', timeout: 120_000, maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
+    const j = JSON.parse(out)
+    const r = Array.isArray(j) ? j[0] : Object.values(j)[0]
+    return r.files.map((f) => String(f.path).replace(/\\/g, '/'))
+}
+
 // 原始碼之掃描(指定詞、去註解之程式碼、骨架——字串換成佔位、註解去除)取各套件同一份之詞法器(test/tools/sourceScan):
 //   註解與字串之內容(含「;」、引號、「import … from …」之字樣、錯誤訊息中之「cfg.<鍵>」)不干擾比對
 
-/** 專案內不屬本套件之目錄名:指定詞以之起頭即引用專案既有程式或資料(含宿主之排程殼與下游套件之目錄) */
+/** 專案內不屬本套件之目錄名:指定詞以之起頭即引用專案既有程式或資料(含使用端專案之排程殼與下游套件之目錄) */
 const PROJECT_DIRS = ['src', 'test', 'data', 'srcRunner', 'srcSummarize', 'srcRelate', 'srcExtract']
 
 /** 執行秩序件之單一匯入點 */
@@ -212,7 +226,7 @@ describe('unit-package', function() {
         })
 
         it('不引用專案既有程式與資料(src／專案 test／data／下游套件)、不用絕對路徑或 URL 形式之指定詞', () => {
-            // 規則:只可 import 套件內相對路徑或 node_modules 之套件(執行殼經單一匯入點)
+            // 規則:只可 import 套件內相對路徑或 node_modules 之套件(執行秩序件經單一匯入點 core/runnerPackage)
             const bad = scan.rows.filter((r) => r.kind === 'package' && r.problem).map((r) => `${r.file}：${r.problem}`)
             assert.deepEqual(bad, [])
         })
@@ -591,7 +605,7 @@ describe('unit-package', function() {
                 assert.equal(norm(rep.summaryFile), norm(`${logDir}/20310304050607-run.json`))
                 assert.ok(fs.existsSync(`${logDir}/20310304050607-run.start.json`), '開工標記須與摘要同一時間戳')
                 assert.equal(readRunSummary(rep.summaryFile).startedAt, FIXED.iso8())
-                // 規則:執行殼之 createLogger——每輪一檔 {stamp}-run.log,同時輸出 stdout(logFactory 預設)
+                // 規則:core/runnerPackage 之 createLogger——每輪一檔 {stamp}-run.log,同時輸出 stdout(logFactory 預設)
                 const fileLines = fs.readFileSync(`${logDir}/20310304050607-run.log`, 'utf8').trim().split('\n')
                 assert.ok(fileLines.length >= 5 && fileLines.every((l) => /^\[2031-03-04T05:06:07\+08:00\] (INFO|WARN|ERROR) /.test(l)), `日誌行須帶 clock 之時刻：${fileLines.slice(0, 3).join(' | ')}`)
                 assert.ok(fileLines.every((l) => echoed.includes(l)), '日誌行須同時輸出 stdout')
@@ -634,7 +648,7 @@ describe('unit-package', function() {
                 const rep = await flow.run()
                 const elapsed = Date.now() - t0
                 const df = subReport(rep, '抓取', 'detailFetch').detail
-                // 規則:執行殼之 budgetOf 之 shouldStop 為逐篇守門(stages/detailFetchStage 之 runChainOverMsgs.shouldStop);整輪預算取自 cfg.deadlineMs(core/runtime)
+                // 規則:core/runnerPackage 之 budgetOf 之 shouldStop 為逐篇守門(stages/detailFetchStage 之 runChainOverMsgs.shouldStop);整輪預算取自 cfg.deadlineMs(core/runtime)
                 assert.ok(df.filled >= 1 && df.filled < 6, `預算內只取得部分：${JSON.stringify(df)}`)
                 assert.equal(df.left, 6 - df.filled, '未取件者計入 left')
                 assert.ok(elapsed < 5500, `逾時後須即停(全部 6 篇須 6 秒以上)：${elapsed}ms`)
@@ -1119,19 +1133,30 @@ describe('unit-package', function() {
             assert.deepEqual(Object.keys(mod.default).sort(), named)
         })
 
-        it('發布面:不設 exports 與 files(下游以深層路徑取用 src/ 與 test/tools/);.npmignore 排除 sgud、CLAUDE*.md、暫存、測試檔與文件夾而保留 test/tools;套件根範本檔齊備;LICENSE 為 MIT 且署名同作者', () => {
+        it('發布面:不設 exports 與 files(下游以深層路徑取用 src/ 與 test/tools/);無 .npmignore,發布範圍依 .gitignore(CLAUDE*.md 與暫存不入包);npm pack --dry-run 之清單含 sgud/、test/tools/、src/ 而不含 CLAUDE*.md 與暫存;套件根範本檔齊備;LICENSE 為 MIT 且署名同作者', () => {
             // 規則:設 exports 即擋掉「套件名/src/…」「套件名/test/tools/…」之深層路徑(下游套件與專案以之取用);設 files 白名單則套件根新增檔案時易漏
             assert.equal(pkg.exports, undefined, '不設 exports')
-            assert.equal(pkg.files, undefined, '不設 files(發布範圍由 .npmignore 決定)')
+            assert.equal(pkg.files, undefined, '不設 files(發布範圍依 .gitignore)')
             assert.equal(pkg.name, 'w-knowledge-capture')
             assert.deepEqual([pkg.repository.type, pkg.repository.url], ['git', 'git+https://github.com/yuda-lyu/w-knowledge-capture.git'])
             assert.ok(Array.isArray(pkg.keywords) && pkg.keywords.length >= 3 && typeof pkg.author === 'string' && pkg.author.length > 0, 'keywords 與 author 須有')
-            // sgud/(agent 之指引要求文件:經驗、處理要點、規則帳本、現況)入版控、不入 npm 包——.npmignore 明列;CLAUDE*.md 兩者皆不入
-            const npmignore = (readText('.npmignore') || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+            // 發布範圍(自有套件之 npm 發布範圍):預設不提供 .npmignore,npm 包＝git 版控之內容(依 .gitignore);sgud/(agent 之指引要求文件:經驗、處理要點、
+            //   規則帳本、現況)、test/(含下游取用之 test/tools/)、docs/ 皆隨包;CLAUDE*.md 由 .gitignore 排除,不入版控亦不入包。
+            //   只有外部執行檔與單一資料夾 ≥10MB 之非程式碼資料才提供 .npmignore——本套件兩者皆無(test/、docs/ 皆 <10MB),故不得有該檔
+            //   (npm 於有 .npmignore 時不讀 .gitignore,CLAUDE*.md 與暫存即須另列、sgud 易被誤列)
+            assert.equal(fs.existsSync(`${ROOT}/.npmignore`), false, '不得有 .npmignore(發布範圍依 .gitignore;本套件無外部執行檔與 ≥10MB 之非程式碼資料)')
             const gitignore = (readText('.gitignore') || '').split(/\r?\n/).map((l) => l.trim())
-            for (const l of ['sgud', 'CLAUDE*.md', 'tmp', 'test/_tmp', 'test/*.test.mjs', 'docs', '.env']) assert.ok(npmignore.includes(l), `.npmignore 須列 ${l}`)
-            assert.ok(!npmignore.some((l) => /^\/?test\/?(tools\/?)?$/.test(l) || /^\/?test\/tools/.test(l) || /^\/?(src|dist)\/?$/.test(l)), '.npmignore 不得排除 test 夾整體、test/tools、src、dist(下游取用 test/tools)')
-            assert.ok(gitignore.includes('CLAUDE*.md') && !gitignore.some((l) => /^!?sgud/.test(l) || l === '!CLAUDE.md'), '.gitignore 須列 CLAUDE*.md、不得排除 sgud、不得加 !CLAUDE.md')
+            for (const l of ['CLAUDE*.md', 'node_modules', 'tmp', 'test/_tmp', '.env']) assert.ok(gitignore.includes(l), `.gitignore 須列 ${l}`)
+            assert.ok(!gitignore.some((l) => /^!?\/?(sgud|test\/tools)/.test(l) || l === '!CLAUDE.md'), '.gitignore 不得排除 sgud 與 test/tools(隨包)、不得加 !CLAUDE.md')
+            // 實際打包清單(npm pack --dry-run;不寫檔、不連網):含 sgud/、test/tools/ 之全部檔與 src/ 之主入口,不含 CLAUDE*.md、AGENTS*.md、暫存與 .npmignore
+            const packed = packListOf()
+            for (const f of ['package.json', 'README.md', 'LICENSE', 'src/WKnowledgeCapture.mjs', 'test/unit-package.test.mjs', 'sgud/rule/rulebook.md', 'sgud/state/state.md', 'sgud/proc/process.md', 'sgud/exp/experience.md']) assert.ok(packed.includes(f), `打包清單須含 ${f}`)
+            const toolFiles = fs.readdirSync(`${ROOT}/test/tools`, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => `test/tools/${e.name}`)
+            assert.ok(toolFiles.length >= 5, `test/tools 之檔過少：${toolFiles.length}`)
+            assert.deepEqual(toolFiles.filter((f) => !packed.includes(f)), [], 'test/tools 之檔(下游取用)須全數隨包')
+            assert.ok(packed.some((f) => f.startsWith('sgud/')), '打包清單須含 sgud/')
+            const leaked = packed.filter((f) => /(^|\/)(CLAUDE|AGENTS)[^/]*\.md$/.test(f) || /^(tmp|test\/_tmp|node_modules|\.agents|\.claude|\.opencode)\//.test(f) || /(^|\/)\.(env|npmignore)$/.test(f))
+            assert.deepEqual(leaked, [], '打包清單不得含 CLAUDE*.md、AGENTS*.md、暫存、node_modules、.env、.npmignore')
             // 自有套件根目錄範本檔(編譯、文件、風格與安全政策)
             for (const f of ['.editorconfig', '.eslintignore', '.eslintrc.js', '.jsdoc', 'babel.config.js', 'SECURITY.md', 'g.mjs', 'README.md', 'LICENSE', 'script.txt', 'toolg/addVersion.mjs', 'toolg/modifyReadme.mjs', 'toolg/cleanFolder.mjs', 'toolg/gDocsExams.mjs', 'toolg/gDistRollup.mjs', 'test/tools/captureTestKit.mjs']) {
                 assert.ok(fs.existsSync(`${ROOT}/${f}`), `套件根須有 ${f}`)
