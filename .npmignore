@@ -1,0 +1,13 @@
+node_modules/
+tmp
+test/_tmp
+test/*.test.mjs
+test/fixtures
+docs
+CLAUDE*.md
+AGENTS*.md
+.env
+.agents
+.opencode
+.claude
+sgud

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>stores/sourcePolicy.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="MwContractError.html">MwContractError</a></li></ul><h3>Global</h3><ul><li><a href="global.html#ABSTRACT_MAX">ABSTRACT_MAX</a></li><li><a href="global.html#AI_ADAPTER_NEED_DEFAULT">AI_ADAPTER_NEED_DEFAULT</a></li><li><a href="global.html#AI_ADAPTER_SIGS">AI_ADAPTER_SIGS</a></li><li><a href="global.html#AI_DEFAULT">AI_DEFAULT</a></li><li><a href="global.html#AI_OPTIONS_KEYS">AI_OPTIONS_KEYS</a></li><li><a href="global.html#AI_ROW_KEYS">AI_ROW_KEYS</a></li><li><a href="global.html#AI_SCHEMA">AI_SCHEMA</a></li><li><a href="global.html#ANSI_RE">ANSI_RE</a></li><li><a href="global.html#AREA_AI_BUDGET_MS">AREA_AI_BUDGET_MS</a></li><li><a href="global.html#AREA_BENCH_BOARD_HEADER">AREA_BENCH_BOARD_HEADER</a></li><li><a href="global.html#AREA_BENCH_ROLE">AREA_BENCH_ROLE</a></li><li><a href="global.html#AREA_BENCH_USAGE">AREA_BENCH_USAGE</a></li><li><a href="global.html#AREA_CASES_FILE">AREA_CASES_FILE</a></li><li><a href="global.html#AREA_CONTRACT">AREA_CONTRACT</a></li><li><a href="global.html#AREA_FAIL_KINDS">AREA_FAIL_KINDS</a></li><li><a href="global.html#AREA_META_ID">AREA_META_ID</a></li><li><a href="global.html#AREA_MIN_REMAINING_MS">AREA_MIN_REMAINING_MS</a></li><li><a href="global.html#AREA_PROMPT_SIGS">AREA_PROMPT_SIGS</a></li><li><a href="global.html#AUDITED_STANDARD_IDS">AUDITED_STANDARD_IDS</a></li><li><a href="global.html#AUTO_ORIGIN_PREFIX">AUTO_ORIGIN_PREFIX</a></li><li><a href="global.html#BASE_CLI_KEYS">BASE_CLI_KEYS</a></li><li><a href="global.html#BASE_CLI_OPTS">BASE_CLI_OPTS</a></li><li><a href="global.html#BASE_DIRS">BASE_DIRS</a></li><li><a href="global.html#BENCH_BOARD_HEADER">BENCH_BOARD_HEADER</a></li><li><a href="global.html#BENCH_FAIL_COLUMNS">BENCH_FAIL_COLUMNS</a></li><li><a href="global.html#BENCH_FAIL_KINDS">BENCH_FAIL_KINDS</a></li><li><a href="global.html#BOM">BOM</a></li><li><a href="global.html#BROWSER_CLASS_LADDER">BROWSER_CLASS_LADDER</a></li><li><a href="global.html#BROWSER_CLI">BROWSER_CLI</a></li><li><a href="global.html#BROWSER_LADDER_CONST">BROWSER_LADDER_CONST</a></li><li><a href="global.html#BROWSER_STEPS">BROWSER_STEPS</a></li><li><a href="global.html#CALL_OPT_RESERVED">CALL_OPT_RESERVED</a></li><li><a href="global.html#CAPTURE_DATA_KEYS">CAPTURE_DATA_KEYS</a></li><li><a href="global.html#CAPTURE_DEFAULT">CAPTURE_DEFAULT</a></li><li><a href="global.html#CAPTURE_LOG_KNOWN">CAPTURE_LOG_KNOWN</a></li><li><a href="global.html#CAPTURE_LOG_MUST_SEE">CAPTURE_LOG_MUST_SEE</a></li><li><a href="global.html#CAPTURE_LOG_PARSE">CAPTURE_LOG_PARSE</a></li><li><a href="global.html#CAPTURE_REPORT_KEYS">CAPTURE_REPORT_KEYS</a></li><li><a href="global.html#CAPTURE_SCHEMA">CAPTURE_SCHEMA</a></li><li><a href="global.html#CAPTURE_SEATS">CAPTURE_SEATS</a></li><li><a href="global.html#CAPTURE_SEAT_LABELS">CAPTURE_SEAT_LABELS</a></li><li><a href="global.html#CAPTURE_STAGE_KEYS">CAPTURE_STAGE_KEYS</a></li><li><a href="global.html#CAPTURE_STANDARDS">CAPTURE_STANDARDS</a></li><li><a href="global.html#CAPTURE_STORE_KEYS">CAPTURE_STORE_KEYS</a></li><li><a href="global.html#CAPTURE_TAP_STAGE_KEYS">CAPTURE_TAP_STAGE_KEYS</a></li><li><a href="global.html#CAPTURE_VOCAB_KEYS">CAPTURE_VOCAB_KEYS</a></li><li><a href="global.html#CASE_RESERVED">CASE_RESERVED</a></li><li><a href="global.html#CFG_KEYS">CFG_KEYS</a></li><li><a href="global.html#CLI_FLAG_RE">CLI_FLAG_RE</a></li><li><a href="global.html#CLUE_DROP_LABELS">CLUE_DROP_LABELS</a></li><li><a href="global.html#CLUE_REFS_MAX">CLUE_REFS_MAX</a></li><li><a href="global.html#CLUE_STATUSES">CLUE_STATUSES</a></li><li><a href="global.html#COLLECTION_KEYS">COLLECTION_KEYS</a></li><li><a href="global.html#COLS">COLS</a></li><li><a href="global.html#CONSENT_MARKERS_DEFAULT">CONSENT_MARKERS_DEFAULT</a></li><li><a href="global.html#CONTENT_DEAD_CLASSES">CONTENT_DEAD_CLASSES</a></li><li><a href="global.html#CONTENT_FAIL_TYPES">CONTENT_FAIL_TYPES</a></li><li><a href="global.html#CONTENT_GATE_V">CONTENT_GATE_V</a></li><li><a href="global.html#CORE_LOG_KNOWN">CORE_LOG_KNOWN</a></li><li><a href="global.html#CORE_LOG_MUST_SEE">CORE_LOG_MUST_SEE</a></li><li><a href="global.html#CS12_HOLD_DEADLINE_DAYS">CS12_HOLD_DEADLINE_DAYS</a></li><li><a href="global.html#CS12_HOLD_NEXT">CS12_HOLD_NEXT</a></li><li><a href="global.html#CS12_HOLD_OBJECT">CS12_HOLD_OBJECT</a></li><li><a href="global.html#CURRENT_PAGE_FROM">CURRENT_PAGE_FROM</a></li><li><a href="global.html#DATA_KEYS">DATA_KEYS</a></li><li><a href="global.html#DAY_MS">DAY_MS</a></li><li><a href="global.html#DEFAULT_CRITERIA">DEFAULT_CRITERIA</a></li><li><a href="global.html#DEFAULT_DEDUP">DEFAULT_DEDUP</a></li><li><a href="global.html#DEFAULT_FREE_MODELS">DEFAULT_FREE_MODELS</a></li><li><a href="global.html#DEFAULT_LANG">DEFAULT_LANG</a></li><li><a href="global.html#DEFAULT_SITE_ADAPTERS">DEFAULT_SITE_ADAPTERS</a></li><li><a href="global.html#DEFINED">DEFINED</a></li><li><a href="global.html#DEPS_COMMON_KEYS">DEPS_COMMON_KEYS</a></li><li><a href="global.html#DISCOVER_RETRY_MS">DISCOVER_RETRY_MS</a></li><li><a href="global.html#DISCOVER_SEAT">DISCOVER_SEAT</a></li><li><a href="global.html#DOC_PENDING_STATUSES">DOC_PENDING_STATUSES</a></li><li><a href="global.html#DOC_STANDARDS">DOC_STANDARDS</a></li><li><a href="global.html#DOC_STATUS">DOC_STATUS</a></li><li><a href="global.html#DOC_STATUSES">DOC_STATUSES</a></li><li><a href="global.html#DOC_TERMINAL_STATUSES">DOC_TERMINAL_STATUSES</a></li><li><a href="global.html#DOC_TEXT_STATUSES">DOC_TEXT_STATUSES</a></li><li><a href="global.html#FINAL_HTTP_CODES">FINAL_HTTP_CODES</a></li><li><a href="global.html#FOREIGN_SPAN_RE">FOREIGN_SPAN_RE</a></li><li><a href="global.html#FORMAT_NOISE_DEFAULT">FORMAT_NOISE_DEFAULT</a></li><li><a href="global.html#FREE_BY_PRICING">FREE_BY_PRICING</a></li><li><a href="global.html#GATE_DEAD_CLASSES">GATE_DEAD_CLASSES</a></li><li><a href="global.html#GATE_DETECTORS_DEFAULT">GATE_DETECTORS_DEFAULT</a></li><li><a href="global.html#GATE_KINDS">GATE_KINDS</a></li><li><a href="global.html#GRID_MIN_CHARS">GRID_MIN_CHARS</a></li><li><a href="global.html#GRID_PER_PAGE">GRID_PER_PAGE</a></li><li><a href="global.html#GROUP_ID_SEP">GROUP_ID_SEP</a></li><li><a href="global.html#GUIDE_TYPES">GUIDE_TYPES</a></li><li><a href="global.html#HEAD_BYTES">HEAD_BYTES</a></li><li><a href="global.html#HEALTH_RECHECK_PER_RUN">HEALTH_RECHECK_PER_RUN</a></li><li><a href="global.html#HOLD_OWNERS">HOLD_OWNERS</a></li><li><a href="global.html#HOLD_STATUSES">HOLD_STATUSES</a></li><li><a href="global.html#HYGIENE_TARGETS_DEFAULT">HYGIENE_TARGETS_DEFAULT</a></li><li><a href="global.html#IGNORE_TYPES">IGNORE_TYPES</a></li><li><a href="global.html#INFO_COMMON_KEYS">INFO_COMMON_KEYS</a></li><li><a href="global.html#KINDS">KINDS</a></li><li><a href="global.html#KIND_MAX_PROMPT_CHARS">KIND_MAX_PROMPT_CHARS</a></li><li><a href="global.html#LABELS">LABELS</a></li><li><a href="global.html#LIMIT_TEXT_RE">LIMIT_TEXT_RE</a></li><li><a href="global.html#LINK_FILTER_LABELS">LINK_FILTER_LABELS</a></li><li><a href="global.html#LIST_MAX">LIST_MAX</a></li><li><a href="global.html#LMDB_DB_DEFAULT">LMDB_DB_DEFAULT</a></li><li><a href="global.html#LMDB_KEYS">LMDB_KEYS</a></li><li><a href="global.html#MECH_KEYS">MECH_KEYS</a></li><li><a href="global.html#MOJIBAKE_DEFAULT">MOJIBAKE_DEFAULT</a></li><li><a href="global.html#NAMESPACES">NAMESPACES</a></li><li><a href="global.html#NON_JUDGING_SKIP_KINDS">NON_JUDGING_SKIP_KINDS</a></li><li><a href="global.html#NON_TEXT_KINDS">NON_TEXT_KINDS</a></li><li><a href="global.html#NOTE_FIELDS">NOTE_FIELDS</a></li><li><a href="global.html#NOT_FOUND_LEAD_CHARS">NOT_FOUND_LEAD_CHARS</a></li><li><a href="global.html#NOT_FOUND_PATTERNS_DEFAULT">NOT_FOUND_PATTERNS_DEFAULT</a></li><li><a href="global.html#OPENALEX_PAGING_MAX">OPENALEX_PAGING_MAX</a></li><li><a href="global.html#PANEL_SEAT_KEYS">PANEL_SEAT_KEYS</a></li><li><a href="global.html#PARA_KEYS_MAX">PARA_KEYS_MAX</a></li><li><a href="global.html#PARA_KEYS_PER_RUN">PARA_KEYS_PER_RUN</a></li><li><a href="global.html#PARA_MIN_CHARS">PARA_MIN_CHARS</a></li><li><a href="global.html#PARA_SHARED_MIN">PARA_SHARED_MIN</a></li><li><a href="global.html#PARA_SHARED_RATIO">PARA_SHARED_RATIO</a></li><li><a href="global.html#PAYWALL_PATTERNS_DEFAULT">PAYWALL_PATTERNS_DEFAULT</a></li><li><a href="global.html#PIPELINE_NAME">PIPELINE_NAME</a></li><li><a href="global.html#PLACEHOLDER_PATTERNS_DEFAULT">PLACEHOLDER_PATTERNS_DEFAULT</a></li><li><a href="global.html#PLAYWRIGHT_PROFILE_PREFIX">PLAYWRIGHT_PROFILE_PREFIX</a></li><li><a href="global.html#PREFIX_RE">PREFIX_RE</a></li><li><a href="global.html#PREVIEW_CHARS">PREVIEW_CHARS</a></li><li><a href="global.html#PROMPT_KEYS">PROMPT_KEYS</a></li><li><a href="global.html#PROMPT_RETURNS_DEFAULT">PROMPT_RETURNS_DEFAULT</a></li><li><a href="global.html#QUOTA_PATTERNS">QUOTA_PATTERNS</a></li><li><a href="global.html#REFETCH_LEDGER_FILE">REFETCH_LEDGER_FILE</a></li><li><a href="global.html#REJECT_OBJECTS">REJECT_OBJECTS</a></li><li><a href="global.html#REPROBE_MAX_BACKOFF">REPROBE_MAX_BACKOFF</a></li><li><a href="global.html#RESET_FIELDS">RESET_FIELDS</a></li><li><a href="global.html#ROLE_ID_RE">ROLE_ID_RE</a></li><li><a href="global.html#ROLE_KEYS">ROLE_KEYS</a></li><li><a href="global.html#ROLE_OPTIONAL_FNS">ROLE_OPTIONAL_FNS</a></li><li><a href="global.html#ROLE_REQUIRED_FNS">ROLE_REQUIRED_FNS</a></li><li><a href="global.html#ROUTE_LABELS">ROUTE_LABELS</a></li><li><a href="global.html#RUNTIME_CFG_KEYS">RUNTIME_CFG_KEYS</a></li><li><a href="global.html#RUN_RESERVED">RUN_RESERVED</a></li><li><a href="global.html#RUN_SUMMARY_VERSION">RUN_SUMMARY_VERSION</a></li><li><a href="global.html#SCRIPT_NA_DETAIL">SCRIPT_NA_DETAIL</a></li><li><a href="global.html#SCRIPT_NONE">SCRIPT_NONE</a></li><li><a href="global.html#SCRIPT_ZH_HANT_TW">SCRIPT_ZH_HANT_TW</a></li><li><a href="global.html#SEAT_KEYS">SEAT_KEYS</a></li><li><a href="global.html#SETTINGS_SECTIONS">SETTINGS_SECTIONS</a></li><li><a href="global.html#SETTING_TYPES">SETTING_TYPES</a></li><li><a href="global.html#SIMPLIFIED_ONLY">SIMPLIFIED_ONLY</a></li><li><a href="global.html#SKIP_KIND_MATERIAL">SKIP_KIND_MATERIAL</a></li><li><a href="global.html#SKIP_TITLE_PATTERNS_DEFAULT">SKIP_TITLE_PATTERNS_DEFAULT</a></li><li><a href="global.html#SLUG_SUFFIX_CHARS">SLUG_SUFFIX_CHARS</a></li><li><a href="global.html#SOURCE_TIME_FIELDS">SOURCE_TIME_FIELDS</a></li><li><a href="global.html#STATUS">STATUS</a></li><li><a href="global.html#STOCK_ERROR_MAX">STOCK_ERROR_MAX</a></li><li><a href="global.html#STOCK_LEDGER_BAD_LINES">STOCK_LEDGER_BAD_LINES</a></li><li><a href="global.html#STOCK_LEDGER_FILE">STOCK_LEDGER_FILE</a></li><li><a href="global.html#TEXT_FROM_LABELS">TEXT_FROM_LABELS</a></li><li><a href="global.html#TIME_ZONE_DEFAULT">TIME_ZONE_DEFAULT</a></li><li><a href="global.html#TRANSPORT_REASONS">TRANSPORT_REASONS</a></li><li><a href="global.html#TRUNC_REJECTED_RE">TRUNC_REJECTED_RE</a></li><li><a href="global.html#TW_MISUSE_CHARS">TW_MISUSE_CHARS</a></li><li><a href="global.html#TW_MISUSE_PHRASES">TW_MISUSE_PHRASES</a></li><li><a href="global.html#TW_SCRIPT_CODES">TW_SCRIPT_CODES</a></li><li><a href="global.html#UPSTREAM_MIN_ATTEMPT_MS">UPSTREAM_MIN_ATTEMPT_MS</a></li><li><a href="global.html#VOCAB_DEFAULT">VOCAB_DEFAULT</a></li><li><a href="global.html#VOCAB_KEYS">VOCAB_KEYS</a></li><li><a href="global.html#VOCAB_NULL_AS">VOCAB_NULL_AS</a></li><li><a href="global.html#WKnowledgeCapture">WKnowledgeCapture</a></li><li><a href="global.html#account">account</a></li><li><a href="global.html#accountSourceOutcome">accountSourceOutcome</a></li><li><a href="global.html#activeAreaCount">activeAreaCount</a></li><li><a href="global.html#adapterSpecsOf">adapterSpecsOf</a></li><li><a href="global.html#admitFeedItems">admitFeedItems</a></li><li><a href="global.html#aggStats">aggStats</a></li><li><a href="global.html#aiAdapterNeedOf">aiAdapterNeedOf</a></li><li><a href="global.html#aiEventLoggersOf">aiEventLoggersOf</a></li><li><a href="global.html#allDocsOf">allDocsOf</a></li><li><a href="global.html#appendJsonlRow">appendJsonlRow</a></li><li><a href="global.html#appendJsonlRows">appendJsonlRows</a></li><li><a href="global.html#appendRollbackRow">appendRollbackRow</a></li><li><a href="global.html#applyConceptFold">applyConceptFold</a></li><li><a href="global.html#applyCs10Fix">applyCs10Fix</a></li><li><a href="global.html#applyCs12Fix">applyCs12Fix</a></li><li><a href="global.html#applyTaps">applyTaps</a></li><li><a href="global.html#archiveDocText">archiveDocText</a></li><li><a href="global.html#archiveIntact">archiveIntact</a></li><li><a href="global.html#archiveNow">archiveNow</a></li><li><a href="global.html#areaBenchCasesCsv">areaBenchCasesCsv</a></li><li><a href="global.html#areaBenchMarkdown">areaBenchMarkdown</a></li><li><a href="global.html#areaBenchModelsCsv">areaBenchModelsCsv</a></li><li><a href="global.html#areaBenchRole">areaBenchRole</a></li><li><a href="global.html#areaCaseProblems">areaCaseProblems</a></li><li><a href="global.html#areaClassOf">areaClassOf</a></li><li><a href="global.html#areaCountsOf">areaCountsOf</a></li><li><a href="global.html#areaFieldsOf">areaFieldsOf</a></li><li><a href="global.html#areaIdOf">areaIdOf</a></li><li><a href="global.html#areaQualityCfgOf">areaQualityCfgOf</a></li><li><a href="global.html#areaQualityIssue">areaQualityIssue</a></li><li><a href="global.html#areaRowOf">areaRowOf</a></li><li><a href="global.html#areaVerdictOf">areaVerdictOf</a></li><li><a href="global.html#arxivSearchUrl">arxivSearchUrl</a></li><li><a href="global.html#assemblyInfoOf">assemblyInfoOf</a></li><li><a href="global.html#attemptsOf">attemptsOf</a></li><li><a href="global.html#auditCaptureStandards">auditCaptureStandards</a></li><li><a href="global.html#autoSourceOrigin">autoSourceOrigin</a></li><li><a href="global.html#backoffUntil">backoffUntil</a></li><li><a href="global.html#batchOption">batchOption</a></li><li><a href="global.html#benchArgPint">benchArgPint</a></li><li><a href="global.html#benchCasesCsv">benchCasesCsv</a></li><li><a href="global.html#benchFailOf">benchFailOf</a></li><li><a href="global.html#benchMarkdown">benchMarkdown</a></li><li><a href="global.html#benchModelsCsv">benchModelsCsv</a></li><li><a href="global.html#benchPintOf">benchPintOf</a></li><li><a href="global.html#benchPromptFpOf">benchPromptFpOf</a></li><li><a href="global.html#benchUsageOf">benchUsageOf</a></li><li><a href="global.html#benchVoteMissingOf">benchVoteMissingOf</a></li><li><a href="global.html#bingNewsSearchUrl">bingNewsSearchUrl</a></li><li><a href="global.html#boardWorkspaceOf">boardWorkspaceOf</a></li><li><a href="global.html#browserQueueFields">browserQueueFields</a></li><li><a href="global.html#browserQueueOn">browserQueueOn</a></li><li><a href="global.html#buildAiAdapter">buildAiAdapter</a></li><li><a href="global.html#buildIndex">buildIndex</a></li><li><a href="global.html#buildRunSummary">buildRunSummary</a></li><li><a href="global.html#builtIndexOf">builtIndexOf</a></li><li><a href="global.html#byRetryTierFifo">byRetryTierFifo</a></li><li><a href="global.html#callJsonShapeOf">callJsonShapeOf</a></li><li><a href="global.html#callPage">callPage</a></li><li><a href="global.html#canStart">canStart</a></li><li><a href="global.html#canonOf">canonOf</a></li><li><a href="global.html#captureAiNoteOf">captureAiNoteOf</a></li><li><a href="global.html#captureCapacityOf">captureCapacityOf</a></li><li><a href="global.html#captureIdentityOf">captureIdentityOf</a></li><li><a href="global.html#captureNetGuardOf">captureNetGuardOf</a></li><li><a href="global.html#captureSeatsOf">captureSeatsOf</a></li><li><a href="global.html#captureSummaryOf">captureSummaryOf</a></li><li><a href="global.html#captureVocabDefaultOf">captureVocabDefaultOf</a></li><li><a href="global.html#casesOf">casesOf</a></li><li><a href="global.html#chainFailed">chainFailed</a></li><li><a href="global.html#check">check</a></li><li><a href="global.html#checkAiAdapter">checkAiAdapter</a></li><li><a href="global.html#checkChain">checkChain</a></li><li><a href="global.html#checkCtxDeps">checkCtxDeps</a></li><li><a href="global.html#checkDataKeys">checkDataKeys</a></li><li><a href="global.html#checkGridTopics">checkGridTopics</a></li><li><a href="global.html#checkKeys">checkKeys</a></li><li><a href="global.html#checkNameMap">checkNameMap</a></li><li><a href="global.html#checkOptionalCollections">checkOptionalCollections</a></li><li><a href="global.html#checkResult">checkResult</a></li><li><a href="global.html#checkSeedSources">checkSeedSources</a></li><li><a href="global.html#checkStageConfig">checkStageConfig</a></li><li><a href="global.html#checkTitleBody">checkTitleBody</a></li><li><a href="global.html#chunk">chunk</a></li><li><a href="global.html#classifyFetch">classifyFetch</a></li><li><a href="global.html#cleanReply">cleanReply</a></li><li><a href="global.html#clearParaKeys">clearParaKeys</a></li><li><a href="global.html#cliTimeZone">cliTimeZone</a></li><li><a href="global.html#cloneSettingsDefault">cloneSettingsDefault</a></li><li><a href="global.html#closeOf">closeOf</a></li><li><a href="global.html#closeStockHold">closeStockHold</a></li><li><a href="global.html#clueDropOf">clueDropOf</a></li><li><a href="global.html#clueKey">clueKey</a></li><li><a href="global.html#cluePriority">cluePriority</a></li><li><a href="global.html#clueRowOf">clueRowOf</a></li><li><a href="global.html#clueRulesOf">clueRulesOf</a></li><li><a href="global.html#cmp">cmp</a></li><li><a href="global.html#cnToTw">cnToTw</a></li><li><a href="global.html#composeChain">composeChain</a></li><li><a href="global.html#composeNamespaces">composeNamespaces</a></li><li><a href="global.html#conceptFoldsOf">conceptFoldsOf</a></li><li><a href="global.html#confirmDown">confirmDown</a></li><li><a href="global.html#contentIndexIfBuilt">contentIndexIfBuilt</a></li><li><a href="global.html#contentIndexOf">contentIndexOf</a></li><li><a href="global.html#contentKeysOfUrl">contentKeysOfUrl</a></li><li><a href="global.html#contentSha1">contentSha1</a></li><li><a href="global.html#coolDetect">coolDetect</a></li><li><a href="global.html#count">count</a></li><li><a href="global.html#countBy">countBy</a></li><li><a href="global.html#countKeyOf">countKeyOf</a></li><li><a href="global.html#coveringArea">coveringArea</a></li><li><a href="global.html#createAiAdapter">createAiAdapter</a></li><li><a href="global.html#createAreaDomain">createAreaDomain</a></li><li><a href="global.html#createBrowserFetcher">createBrowserFetcher</a></li><li><a href="global.html#createBrowserRound">createBrowserRound</a></li><li><a href="global.html#createCaptureObject">createCaptureObject</a></li><li><a href="global.html#createCaptureRuntime">createCaptureRuntime</a></li><li><a href="global.html#createContentGate">createContentGate</a></li><li><a href="global.html#createDefaultFetchers">createDefaultFetchers</a></li><li><a href="global.html#createHealthGates">createHealthGates</a></li><li><a href="global.html#createKnowledgeCapture">createKnowledgeCapture</a></li><li><a href="global.html#createNetGuard">createNetGuard</a></li><li><a href="global.html#createPoolQuota">createPoolQuota</a></li><li><a href="global.html#createProviderHealth">createProviderHealth</a></li><li><a href="global.html#createRoundLog">createRoundLog</a></li><li><a href="global.html#createRoundRunner">createRoundRunner</a></li><li><a href="global.html#createStandardsTally">createStandardsTally</a></li><li><a href="global.html#createStoreOpener">createStoreOpener</a></li><li><a href="global.html#csvCell">csvCell</a></li><li><a href="global.html#cullZeroYieldSources">cullZeroYieldSources</a></li><li><a href="global.html#curlProbe">curlProbe</a></li><li><a href="global.html#cutAtBoundary">cutAtBoundary</a></li><li><a href="global.html#deadMatcher">deadMatcher</a></li><li><a href="global.html#dedupeText">dedupeText</a></li><li><a href="global.html#defaultNet">defaultNet</a></li><li><a href="global.html#defaultOpencodeLog">defaultOpencodeLog</a></li><li><a href="global.html#defaultToLinkedRecord">defaultToLinkedRecord</a></li><li><a href="global.html#defaultToRecord">defaultToRecord</a></li><li><a href="global.html#deferClue">deferClue</a></li><li><a href="global.html#deferToBrowser">deferToBrowser</a></li><li><a href="global.html#defineBenchRole">defineBenchRole</a></li><li><a href="global.html#defineBenchRoles">defineBenchRoles</a></li><li><a href="global.html#defineFirstMw">defineFirstMw</a></li><li><a href="global.html#defineMw">defineMw</a></li><li><a href="global.html#deinvertAbstract">deinvertAbstract</a></li><li><a href="global.html#deps">deps</a></li><li><a href="global.html#describe">describe</a></li><li><a href="global.html#detailOf">detailOf</a></li><li><a href="global.html#discover">discover</a></li><li><a href="global.html#discoverFeed">discoverFeed</a></li><li><a href="global.html#docArchiveOf">docArchiveOf</a></li><li><a href="global.html#docQueueStatsOf">docQueueStatsOf</a></li><li><a href="global.html#docQueuesOf">docQueuesOf</a></li><li><a href="global.html#docRecord">docRecord</a></li><li><a href="global.html#docRowOf">docRowOf</a></li><li><a href="global.html#docStd">docStd</a></li><li><a href="global.html#docTextOf">docTextOf</a></li><li><a href="global.html#docTextRestoreOf">docTextRestoreOf</a></li><li><a href="global.html#domainNeedsOf">domainNeedsOf</a></li><li><a href="global.html#domainProblemOf">domainProblemOf</a></li><li><a href="global.html#domainsOf">domainsOf</a></li><li><a href="global.html#dupPlanOf">dupPlanOf</a></li><li><a href="global.html#duplicateGroups">duplicateGroups</a></li><li><a href="global.html#enforceFrontierCap">enforceFrontierCap</a></li><li><a href="global.html#ensureSeedSources">ensureSeedSources</a></li><li><a href="global.html#entryOf">entryOf</a></li><li><a href="global.html#errorsOf">errorsOf</a></li><li><a href="global.html#expandDirs">expandDirs</a></li><li><a href="global.html#expandSeeds">expandSeeds</a></li><li><a href="global.html#externalDocOf">externalDocOf</a></li><li><a href="global.html#extraOf">extraOf</a></li><li><a href="global.html#extractLinks">extractLinks</a></li><li><a href="global.html#failedNames">failedNames</a></li><li><a href="global.html#featureProblemsOf">featureProblemsOf</a></li><li><a href="global.html#featuresOnOf">featuresOnOf</a></li><li><a href="global.html#feedUsableOf">feedUsableOf</a></li><li><a href="global.html#fetchArticle">fetchArticle</a></li><li><a href="global.html#fetchArticleLinks">fetchArticleLinks</a></li><li><a href="global.html#filterFeedItems">filterFeedItems</a></li><li><a href="global.html#findOrphans">findOrphans</a></li><li><a href="global.html#fitChain">fitChain</a></li><li><a href="global.html#fixOf">fixOf</a></li><li><a href="global.html#formatNoiseOf">formatNoiseOf</a></li><li><a href="global.html#freeModelsOf">freeModelsOf</a></li><li><a href="global.html#freshWindowPatch">freshWindowPatch</a></li><li><a href="global.html#fromProblems">fromProblems</a></li><li><a href="global.html#gateDetectorProblems">gateDetectorProblems</a></li><li><a href="global.html#gateDetectorSpecsOf">gateDetectorSpecsOf</a></li><li><a href="global.html#gateVersionOf">gateVersionOf</a></li><li><a href="global.html#genericSummary">genericSummary</a></li><li><a href="global.html#given">given</a></li><li><a href="global.html#gridAbstractCheck">gridAbstractCheck</a></li><li><a href="global.html#gridSourceOf">gridSourceOf</a></li><li><a href="global.html#gridSourceUrl">gridSourceUrl</a></li><li><a href="global.html#groupBy">groupBy</a></li><li><a href="global.html#healthVOf">healthVOf</a></li><li><a href="global.html#holdDeadlineOf">holdDeadlineOf</a></li><li><a href="global.html#holdKey">holdKey</a></li><li><a href="global.html#holdStockUnfixable">holdStockUnfixable</a></li><li><a href="global.html#hostOf">hostOf</a></li><li><a href="global.html#httpCodeOf">httpCodeOf</a></li><li><a href="global.html#importAdapters">importAdapters</a></li><li><a href="global.html#importGateDetectors">importGateDetectors</a></li><li><a href="global.html#importOne">importOne</a></li><li><a href="global.html#inBackoff">inBackoff</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#ingestFeedItems">ingestFeedItems</a></li><li><a href="global.html#inputVocabProblemsOf">inputVocabProblemsOf</a></li><li><a href="global.html#intersectEntryValidate">intersectEntryValidate</a></li><li><a href="global.html#isContentAnchor">isContentAnchor</a></li><li><a href="global.html#isCs10Row">isCs10Row</a></li><li><a href="global.html#isCs12Row">isCs12Row</a></li><li><a href="global.html#isDirectRun">isDirectRun</a></li><li><a href="global.html#isDown">isDown</a></li><li><a href="global.html#isEnvFailure">isEnvFailure</a></li><li><a href="global.html#isLowYield">isLowYield</a></li><li><a href="global.html#isMojibakeText">isMojibakeText</a></li><li><a href="global.html#isPdfUrl">isPdfUrl</a></li><li><a href="global.html#isRetryHttp">isRetryHttp</a></li><li><a href="global.html#isSoft404">isSoft404</a></li><li><a href="global.html#isTw">isTw</a></li><li><a href="global.html#jsonClone">jsonClone</a></li><li><a href="global.html#jsonFragmentsOf">jsonFragmentsOf</a></li><li><a href="global.html#judgeAbstractRefetch">judgeAbstractRefetch</a></li><li><a href="global.html#judgeArticleRefetch">judgeArticleRefetch</a></li><li><a href="global.html#judgeBenchCase">judgeBenchCase</a></li><li><a href="global.html#judgeFromDocs">judgeFromDocs</a></li><li><a href="global.html#kbLabelOf">kbLabelOf</a></li><li><a href="global.html#keyIdOf">keyIdOf</a></li><li><a href="global.html#keyedObjectsOf">keyedObjectsOf</a></li><li><a href="global.html#kindFnsOf">kindFnsOf</a></li><li><a href="global.html#ladderFor">ladderFor</a></li><li><a href="global.html#ladderTimeoutMs">ladderTimeoutMs</a></li><li><a href="global.html#lastPassing">lastPassing</a></li><li><a href="global.html#later">later</a></li><li><a href="global.html#lengthFor">lengthFor</a></li><li><a href="global.html#limitMinOfDeadline">limitMinOfDeadline</a></li><li><a href="global.html#listHolds">listHolds</a></li><li><a href="global.html#listOf">listOf</a></li><li><a href="global.html#listProcessesWin">listProcessesWin</a></li><li><a href="global.html#loadAreaCases">loadAreaCases</a></li><li><a href="global.html#loadBenchCases">loadBenchCases</a></li><li><a href="global.html#localeProblem">localeProblem</a></li><li><a href="global.html#looksLikeFeed">looksLikeFeed</a></li><li><a href="global.html#main">main</a></li><li><a href="global.html#makeMsg">makeMsg</a></li><li><a href="global.html#markSameContent">markSameContent</a></li><li><a href="global.html#matchSameContent">matchSameContent</a></li><li><a href="global.html#maxPromptCharsOf">maxPromptCharsOf</a></li><li><a href="global.html#mayBeNetFailure">mayBeNetFailure</a></li><li><a href="global.html#mdCell">mdCell</a></li><li><a href="global.html#mdTable">mdTable</a></li><li><a href="global.html#mean">mean</a></li><li><a href="global.html#meaningfulChars">meaningfulChars</a></li><li><a href="global.html#mergeAreaBenchBoard">mergeAreaBenchBoard</a></li><li><a href="global.html#mergeBenchBoard">mergeBenchBoard</a></li><li><a href="global.html#mergeDomains">mergeDomains</a></li><li><a href="global.html#mergeDupGroups">mergeDupGroups</a></li><li><a href="global.html#mergeFetchers">mergeFetchers</a></li><li><a href="global.html#mergeGuideFields">mergeGuideFields</a></li><li><a href="global.html#mergeSettingsGroup">mergeSettingsGroup</a></li><li><a href="global.html#mergeSiteAdapters">mergeSiteAdapters</a></li><li><a href="global.html#mergeTaps">mergeTaps</a></li><li><a href="global.html#minAttemptOf">minAttemptOf</a></li><li><a href="global.html#mojibakeOf">mojibakeOf</a></li><li><a href="global.html#mwAccountSource">mwAccountSource</a></li><li><a href="global.html#mwAdmitPersist">mwAdmitPersist</a></li><li><a href="global.html#mwBrowserRetry">mwBrowserRetry</a></li><li><a href="global.html#mwContentGate">mwContentGate</a></li><li><a href="global.html#mwCullSources">mwCullSources</a></li><li><a href="global.html#mwFeedFallback">mwFeedFallback</a></li><li><a href="global.html#mwFetchDetail">mwFetchDetail</a></li><li><a href="global.html#mwFetchList">mwFetchList</a></li><li><a href="global.html#mwFillParaKeys">mwFillParaKeys</a></li><li><a href="global.html#mwFilterItems">mwFilterItems</a></li><li><a href="global.html#mwNormalizeItems">mwNormalizeItems</a></li><li><a href="global.html#mwPersistOutcome">mwPersistOutcome</a></li><li><a href="global.html#mwProbe">mwProbe</a></li><li><a href="global.html#mwRecheckHealth">mwRecheckHealth</a></li><li><a href="global.html#mwRouteFetcher">mwRouteFetcher</a></li><li><a href="global.html#mwSettleClue">mwSettleClue</a></li><li><a href="global.html#mwSlim">mwSlim</a></li><li><a href="global.html#mwSyncSeeds">mwSyncSeeds</a></li><li><a href="global.html#mwTitleSkip">mwTitleSkip</a></li><li><a href="global.html#mwTranscodeLinks">mwTranscodeLinks</a></li><li><a href="global.html#netDownAtStart">netDownAtStart</a></li><li><a href="global.html#netDownNow">netDownNow</a></li><li><a href="global.html#netProbeUrlsOf">netProbeUrlsOf</a></li><li><a href="global.html#newSource">newSource</a></li><li><a href="global.html#noVerdict">noVerdict</a></li><li><a href="global.html#normalizeClue">normalizeClue</a></li><li><a href="global.html#normalizeConcept">normalizeConcept</a></li><li><a href="global.html#normalizeFeedItems">normalizeFeedItems</a></li><li><a href="global.html#normalizeUrl">normalizeUrl</a></li><li><a href="global.html#normalizeWorkDir">normalizeWorkDir</a></li><li><a href="global.html#notBefore">notBefore</a></li><li><a href="global.html#notRunOf">notRunOf</a></li><li><a href="global.html#noteConceptsOf">noteConceptsOf</a></li><li><a href="global.html#noteConsumedOf">noteConsumedOf</a></li><li><a href="global.html#noteCreatedMsOf">noteCreatedMsOf</a></li><li><a href="global.html#noteDocIdOf">noteDocIdOf</a></li><li><a href="global.html#noteGridDrops">noteGridDrops</a></li><li><a href="global.html#noteLinkFiltered">noteLinkFiltered</a></li><li><a href="global.html#notePrimaryConceptOf">notePrimaryConceptOf</a></li><li><a href="global.html#noteTitleOf">noteTitleOf</a></li><li><a href="global.html#objectReport">objectReport</a></li><li><a href="global.html#openStores">openStores</a></li><li><a href="global.html#overdueHolds">overdueHolds</a></li><li><a href="global.html#overridablePrompt">overridablePrompt</a></li><li><a href="global.html#ownFields">ownFields</a></li><li><a href="global.html#packText">packText</a></li><li><a href="global.html#paginateByVocab">paginateByVocab</a></li><li><a href="global.html#paraKeysOf">paraKeysOf</a></li><li><a href="global.html#parseAreaBenchArgs">parseAreaBenchArgs</a></li><li><a href="global.html#parseArxivFeed">parseArxivFeed</a></li><li><a href="global.html#parseBenchArgs">parseBenchArgs</a></li><li><a href="global.html#parseCsv">parseCsv</a></li><li><a href="global.html#parseQuotaLines">parseQuotaLines</a></li><li><a href="global.html#parseStockLedger">parseStockLedger</a></li><li><a href="global.html#pct">pct</a></li><li><a href="global.html#pendingCluesOf">pendingCluesOf</a></li><li><a href="global.html#pendingDocsOf">pendingDocsOf</a></li><li><a href="global.html#pendingLinesOf">pendingLinesOf</a></li><li><a href="global.html#pendingSourcesOf">pendingSourcesOf</a></li><li><a href="global.html#perRunOf">perRunOf</a></li><li><a href="global.html#pickAreaCandidates">pickAreaCandidates</a></li><li><a href="global.html#pickCaptureVocab">pickCaptureVocab</a></li><li><a href="global.html#pickClues">pickClues</a></li><li><a href="global.html#pickDueSources">pickDueSources</a></li><li><a href="global.html#pickJsonReply">pickJsonReply</a></li><li><a href="global.html#pickKeyedJson">pickKeyedJson</a></li><li><a href="global.html#pickVocabKeys">pickVocabKeys</a></li><li><a href="global.html#pintOpt">pintOpt</a></li><li><a href="global.html#pipelineDueOf">pipelineDueOf</a></li><li><a href="global.html#pipelineNameOf">pipelineNameOf</a></li><li><a href="global.html#planBench">planBench</a></li><li><a href="global.html#planCs10Fix">planCs10Fix</a></li><li><a href="global.html#planCs12Fix">planCs12Fix</a></li><li><a href="global.html#planDeadRecheck">planDeadRecheck</a></li><li><a href="global.html#planHealthRecheck">planHealthRecheck</a></li><li><a href="global.html#poolsProblem">poolsProblem</a></li><li><a href="global.html#posNum">posNum</a></li><li><a href="global.html#positiveNumber">positiveNumber</a></li><li><a href="global.html#preFormOf">preFormOf</a></li><li><a href="global.html#preflight">preflight</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#probeFailText">probeFailText</a></li><li><a href="global.html#probeSearchEndpoints">probeSearchEndpoints</a></li><li><a href="global.html#probeSiteFeed">probeSiteFeed</a></li><li><a href="global.html#probes">probes</a></li><li><a href="global.html#problemsNote">problemsNote</a></li><li><a href="global.html#problemsOf">problemsOf</a></li><li><a href="global.html#profileDirOf">profileDirOf</a></li><li><a href="global.html#promptCtxOf">promptCtxOf</a></li><li><a href="global.html#promptDomainConflicts">promptDomainConflicts</a></li><li><a href="global.html#promptDomainOf">promptDomainOf</a></li><li><a href="global.html#promptOverridesOf">promptOverridesOf</a></li><li><a href="global.html#promptSigText">promptSigText</a></li><li><a href="global.html#promptSigsProblem">promptSigsProblem</a></li><li><a href="global.html#promptTextOf">promptTextOf</a></li><li><a href="global.html#promptsForDomain">promptsForDomain</a></li><li><a href="global.html#putHold">putHold</a></li><li><a href="global.html#queueAge">queueAge</a></li><li><a href="global.html#ranked">ranked</a></li><li><a href="global.html#readBenchVocabFile">readBenchVocabFile</a></li><li><a href="global.html#readCs10Ledger">readCs10Ledger</a></li><li><a href="global.html#readCs12Ledger">readCs12Ledger</a></li><li><a href="global.html#readGrid">readGrid</a></li><li><a href="global.html#readJson">readJson</a></li><li><a href="global.html#readJsonlRows">readJsonlRows</a></li><li><a href="global.html#readLedgerLast">readLedgerLast</a></li><li><a href="global.html#readOnlyOf">readOnlyOf</a></li><li><a href="global.html#readRunStart">readRunStart</a></li><li><a href="global.html#readRunSummary">readRunSummary</a></li><li><a href="global.html#readVocabFile">readVocabFile</a></li><li><a href="global.html#recordOf">recordOf</a></li><li><a href="global.html#recordSourceChainFail">recordSourceChainFail</a></li><li><a href="global.html#recordSourceOutcome">recordSourceOutcome</a></li><li><a href="global.html#refetchMethodOf">refetchMethodOf</a></li><li><a href="global.html#refetchRequestOf">refetchRequestOf</a></li><li><a href="global.html#refetchRowOf">refetchRowOf</a></li><li><a href="global.html#refetchSkipOf">refetchSkipOf</a></li><li><a href="global.html#refetchSources">refetchSources</a></li><li><a href="global.html#rejectChainOpts">rejectChainOpts</a></li><li><a href="global.html#rejectClassOf">rejectClassOf</a></li><li><a href="global.html#rejectListOf">rejectListOf</a></li><li><a href="global.html#renameChainProblems">renameChainProblems</a></li><li><a href="global.html#renderAreasMd">renderAreasMd</a></li><li><a href="global.html#reopenArea">reopenArea</a></li><li><a href="global.html#reopenStockHold">reopenStockHold</a></li><li><a href="global.html#reportRoleOf">reportRoleOf</a></li><li><a href="global.html#reprobeAutoAreas">reprobeAutoAreas</a></li><li><a href="global.html#reprobeDue">reprobeDue</a></li><li><a href="global.html#reprobeFailedClues">reprobeFailedClues</a></li><li><a href="global.html#reprobeSources">reprobeSources</a></li><li><a href="global.html#requestRetry">requestRetry</a></li><li><a href="global.html#resetStartMs">resetStartMs</a></li><li><a href="global.html#resolveAfterRun">resolveAfterRun</a></li><li><a href="global.html#resolveCaptureData">resolveCaptureData</a></li><li><a href="global.html#resolveCaptureSettings">resolveCaptureSettings</a></li><li><a href="global.html#resolveClockCfg">resolveClockCfg</a></li><li><a href="global.html#resolveDataCfg">resolveDataCfg</a></li><li><a href="global.html#resolveDirsCfg">resolveDirsCfg</a></li><li><a href="global.html#resolveHold">resolveHold</a></li><li><a href="global.html#resolveLmdbCfg">resolveLmdbCfg</a></li><li><a href="global.html#resolveLocale">resolveLocale</a></li><li><a href="global.html#resolveLogFactory">resolveLogFactory</a></li><li><a href="global.html#resolvePromptsCfg">resolvePromptsCfg</a></li><li><a href="global.html#resolveRuntime">resolveRuntime</a></li><li><a href="global.html#resolveSettings">resolveSettings</a></li><li><a href="global.html#resolveVocab">resolveVocab</a></li><li><a href="global.html#result">result</a></li><li><a href="global.html#retryRequestedOf">retryRequestedOf</a></li><li><a href="global.html#reviewAutoAreas">reviewAutoAreas</a></li><li><a href="global.html#reviveDeadDocs">reviveDeadDocs</a></li><li><a href="global.html#roleOptOf">roleOptOf</a></li><li><a href="global.html#rollbackCs10Fix">rollbackCs10Fix</a></li><li><a href="global.html#rollbackCs12Fix">rollbackCs12Fix</a></li><li><a href="global.html#rollbackPlanOf">rollbackPlanOf</a></li><li><a href="global.html#rollbackStockHold">rollbackStockHold</a></li><li><a href="global.html#rollbackWriteOf">rollbackWriteOf</a></li><li><a href="global.html#rowsToCsv">rowsToCsv</a></li><li><a href="global.html#rowsToMd">rowsToMd</a></li><li><a href="global.html#runAreaBench">runAreaBench</a></li><li><a href="global.html#runAreaBenchCli">runAreaBenchCli</a></li><li><a href="global.html#runBench">runBench</a></li><li><a href="global.html#runBenchCli">runBenchCli</a></li><li><a href="global.html#runBrowserCli">runBrowserCli</a></li><li><a href="global.html#runBrowserLadder">runBrowserLadder</a></li><li><a href="global.html#runChainOverMsgs">runChainOverMsgs</a></li><li><a href="global.html#runPool">runPool</a></li><li><a href="global.html#runSubStages">runSubStages</a></li><li><a href="global.html#runText">runText</a></li><li><a href="global.html#runtimeCfgOf">runtimeCfgOf</a></li><li><a href="global.html#sameContentOn">sameContentOn</a></li><li><a href="global.html#sameContentPatch">sameContentPatch</a></li><li><a href="global.html#sameValue">sameValue</a></li><li><a href="global.html#sanitize">sanitize</a></li><li><a href="global.html#sanitizeAreaQuery">sanitizeAreaQuery</a></li><li><a href="global.html#saveClues">saveClues</a></li><li><a href="global.html#scriptApplies">scriptApplies</a></li><li><a href="global.html#scriptOf">scriptOf</a></li><li><a href="global.html#scriptProblem">scriptProblem</a></li><li><a href="global.html#scriptProblems">scriptProblems</a></li><li><a href="global.html#seatLabelsFrom">seatLabelsFrom</a></li><li><a href="global.html#seatProblem">seatProblem</a></li><li><a href="global.html#seatsFrom">seatsFrom</a></li><li><a href="global.html#sec">sec</a></li><li><a href="global.html#setAreaStatus">setAreaStatus</a></li><li><a href="global.html#setConceptFold">setConceptFold</a></li><li><a href="global.html#settleClue">settleClue</a></li><li><a href="global.html#sha1">sha1</a></li><li><a href="global.html#sharedParas">sharedParas</a></li><li><a href="global.html#showSettingValue">showSettingValue</a></li><li><a href="global.html#skipDerived">skipDerived</a></li><li><a href="global.html#slimTerminalDocs">slimTerminalDocs</a></li><li><a href="global.html#slugSuffixOf">slugSuffixOf</a></li><li><a href="global.html#slugify">slugify</a></li><li><a href="global.html#sortByEnforce">sortByEnforce</a></li><li><a href="global.html#sourceId">sourceId</a></li><li><a href="global.html#sourceMayBeNetFailure">sourceMayBeNetFailure</a></li><li><a href="global.html#sourceOriginOf">sourceOriginOf</a></li><li><a href="global.html#sourceRecordProblems">sourceRecordProblems</a></li><li><a href="global.html#sourceRowOf">sourceRowOf</a></li><li><a href="global.html#sourceStopReasonOf">sourceStopReasonOf</a></li><li><a href="global.html#specToUrl">specToUrl</a></li><li><a href="global.html#stableKey">stableKey</a></li><li><a href="global.html#stageAreas">stageAreas</a></li><li><a href="global.html#stageDetailFetch">stageDetailFetch</a></li><li><a href="global.html#stageDocMaintain">stageDocMaintain</a></li><li><a href="global.html#stageExpand">stageExpand</a></li><li><a href="global.html#stageFields">stageFields</a></li><li><a href="global.html#stageHygiene">stageHygiene</a></li><li><a href="global.html#stageListFetch">stageListFetch</a></li><li><a href="global.html#stageSeedSync">stageSeedSync</a></li><li><a href="global.html#standardsCountsOf">standardsCountsOf</a></li><li><a href="global.html#standardsScanOf">standardsScanOf</a></li><li><a href="global.html#startupWarningsOf">startupWarningsOf</a></li><li><a href="global.html#state">state</a></li><li><a href="global.html#stdReport">stdReport</a></li><li><a href="global.html#stepOpt">stepOpt</a></li><li><a href="global.html#stepOptsOf">stepOptsOf</a></li><li><a href="global.html#stockAtOf">stockAtOf</a></li><li><a href="global.html#stockErrorOf">stockErrorOf</a></li><li><a href="global.html#stockHoldProblems">stockHoldProblems</a></li><li><a href="global.html#stockLedgerFileOf">stockLedgerFileOf</a></li><li><a href="global.html#stockLedgerRowsOf">stockLedgerRowsOf</a></li><li><a href="global.html#stockLedgerWriter">stockLedgerWriter</a></li><li><a href="global.html#stopRequested">stopRequested</a></li><li><a href="global.html#strOf">strOf</a></li><li><a href="global.html#strictTextOf">strictTextOf</a></li><li><a href="global.html#stripOf">stripOf</a></li><li><a href="global.html#subOpt">subOpt</a></li><li><a href="global.html#subReportOf">subReportOf</a></li><li><a href="global.html#summaryOf">summaryOf</a></li><li><a href="global.html#sweepOrphanBrowsers">sweepOrphanBrowsers</a></li><li><a href="global.html#syncAreaSources">syncAreaSources</a></li><li><a href="global.html#syncIndex">syncIndex</a></li><li><a href="global.html#syncSeedAreas">syncSeedAreas</a></li><li><a href="global.html#tally">tally</a></li><li><a href="global.html#textFromLabelOf">textFromLabelOf</a></li><li><a href="global.html#textListOf">textListOf</a></li><li><a href="global.html#textOf">textOf</a></li><li><a href="global.html#textValueOf">textValueOf</a></li><li><a href="global.html#titleKeyOf">titleKeyOf</a></li><li><a href="global.html#titleMismatchOf">titleMismatchOf</a></li><li><a href="global.html#titleTokens">titleTokens</a></li><li><a href="global.html#toCsv">toCsv</a></li><li><a href="global.html#toPatterns">toPatterns</a></li><li><a href="global.html#toTw">toTw</a></li><li><a href="global.html#toTwKeepLinks">toTwKeepLinks</a></li><li><a href="global.html#toTwOnce">toTwOnce</a></li><li><a href="global.html#tryCall">tryCall</a></li><li><a href="global.html#typeName">typeName</a></li><li><a href="global.html#uniq">uniq</a></li><li><a href="global.html#unknownKeysProblem">unknownKeysProblem</a></li><li><a href="global.html#unpackText">unpackText</a></li><li><a href="global.html#unpackTextStrict">unpackTextStrict</a></li><li><a href="global.html#unwrapNewsUrl">unwrapNewsUrl</a></li><li><a href="global.html#validateAreaCases">validateAreaCases</a></li><li><a href="global.html#validateAreaQuery">validateAreaQuery</a></li><li><a href="global.html#validateBenchCases">validateBenchCases</a></li><li><a href="global.html#valueAtPath">valueAtPath</a></li><li><a href="global.html#verdictSafe">verdictSafe</a></li><li><a href="global.html#verifyCs10Chain">verifyCs10Chain</a></li><li><a href="global.html#verifyCs12Chain">verifyCs12Chain</a></li><li><a href="global.html#vocabHeadOf">vocabHeadOf</a></li><li><a href="global.html#vocabKeyOf">vocabKeyOf</a></li><li><a href="global.html#waiveHold">waiveHold</a></li><li><a href="global.html#watchSeedAreas">watchSeedAreas</a></li><li><a href="global.html#withArg">withArg</a></li><li><a href="global.html#withoutForeignSpans">withoutForeignSpans</a></li><li><a href="global.html#writeAreaBenchReport">writeAreaBenchReport</a></li><li><a href="global.html#writeAreasProjection">writeAreasProjection</a></li><li><a href="global.html#writeBenchReport">writeBenchReport</a></li><li><a href="global.html#writeFileAtomic">writeFileAtomic</a></li><li><a href="global.html#writeRollback">writeRollback</a></li><li><a href="global.html#writeRunStart">writeRunStart</a></li><li><a href="global.html#writeRunSummary">writeRunSummary</a></li><li><a href="global.html#zhLabelOf">zhLabelOf</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">stores/sourcePolicy.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>// sourcePolicy.mjs — 來源管理的泛用機制：種子同步、輪抓挑選、成敗計數、品質淘汰與產出率回饋
+//
+// 【機制入套件，數字與判準留執行端】「連續失敗幾次停用」「零產出怎麼判定」是品質政策，
+//   各知識庫不同——故門檻走 config、產出判定走注入函數；本檔只保證機制正確：
+//   計數歸零時機（成功即歸零，否則跨月累積間歇性失敗會讓健康來源莫名被停用）、
+//   停用可逆、宣告欄位與執行期統計分離。
+// 【產出率回饋輪抓配額】下游 AI 判定（noted／skip）是來源品質的唯一事實來源；若只用它做「零產出淘汰」，
+//   產出率極低但不為零的來源會與高產出來源同等競爭名額。故每輪把各來源的
+//   judged／yielded 落在來源記錄上（同一次文件掃描，不另加成本），輪抓挑選時把「樣本足量且產出率
+//   低於門檻」者排到同層級之末——降序不停用，記錄與名額都不丟。
+
+import isarr from 'wsemi/src/isarr.mjs'
+import isobj from 'wsemi/src/isobj.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import isnum from 'wsemi/src/isnum.mjs'
+import isp0int from 'wsemi/src/isp0int.mjs'
+import cdbl from 'wsemi/src/cdbl.mjs'
+import cint from 'wsemi/src/cint.mjs'
+
+/**
+ * 把種子來源補進集合（已存在者不動統計），並同步宣告欄位。
+ *
+ * 【宣告欄位要跟著種子檔更新】種子檔是 tier／name 等欄位的唯一真理來源；
+ *   不同步的話，改了種子宣告，庫裡舊記錄永遠停在建立當時的值。
+ *   執行期統計（lastFetchAt／okCount／failCount／enabled）不可覆寫。
+ *
+ * @param {Object} sources 輸入來源集合（w-data-pipeline openCollection 介面），需具 insertNew／select／patch 方法
+ * @param {Array} seeds 輸入已含 id 之種子記錄陣列（id 由執行端算好——它是去重鍵）
+ * @param {Array} [declaredFields=['tier','name','lang','query']] 輸入要同步的宣告欄位字串陣列，非陣列則用預設
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { addCount, dupCount, synced }
+ * @throws {Error} sources 缺 insertNew／select／patch 方法，或 seeds 非陣列時拋出
+ * @example
+ * const rows = new Map()
+ * const sources = {
+ *     insertNew: async (items) => {
+ *         const fresh = items.filter((it) => !rows.has(it.id))
+ *         fresh.forEach((it) => rows.set(it.id, { ...it }))
+ *         return { addCount: fresh.length, dupCount: items.length - fresh.length }
+ *     },
+ *     select: async () => [...rows.values()],
+ *     patch: async (id, fields) => { Object.assign(rows.get(id), fields) },
+ * }
+ * console.log(await ensureSeedSources(sources, [{ id: 's1', name: '天文快訊', tier: 1 }]))
+ * // => { addCount: 1, dupCount: 0, synced: 0 }
+ * console.log(await ensureSeedSources(sources, [{ id: 's1', name: '天文快訊', tier: 2 }]))
+ * // => { addCount: 0, dupCount: 1, synced: 1 }
+ * console.log(rows.get('s1').tier)
+ * // => 2
+ */
+export async function ensureSeedSources(sources, seeds, declaredFields = ['tier', 'name', 'lang', 'query']) {
+
+    //check
+    if (!isfun(sources?.insertNew) || !isfun(sources?.select) || !isfun(sources?.patch)) {
+        throw new Error('ensureSeedSources 需要 sources 集合（具 insertNew/select/patch 方法）')
+    }
+    if (!isarr(seeds)) {
+        throw new Error('ensureSeedSources 需要 seeds（種子記錄陣列）')
+    }
+    if (!isarr(declaredFields)) {
+        declaredFields = ['tier', 'name', 'lang', 'query']
+    }
+
+    const r = await sources.insertNew(seeds)
+    const existing = new Map((await sources.select()).map((s) => [s.id, s]))
+    let synced = 0
+    for (const s of seeds) {
+        const cur = existing.get(s.id)
+        if (!cur) continue
+        const patch = {}
+        for (const f of declaredFields) {
+            if (s[f] !== undefined &amp;&amp; cur[f] !== s[f]) patch[f] = s[f]
+        }
+        if (Object.keys(patch).length) {
+            await sources.patch(s.id, patch); synced++
+        }
+    }
+    return { addCount: r.addCount, dupCount: r.dupCount, synced }
+}
+
+/**
+ * 低產出判定：樣本足量（judged ≥ minJudged）且產出率低於 lowYieldRate；統計缺席者不判
+ *
+ * @param {Object} src 輸入來源記錄，需含 judged／yielded 統計欄位（缺席視為 0）
+ * @param {Object} [opt={}] 輸入設定物件，非物件則回退為 {}
+ * @param {Number} [opt.lowYieldRate] 輸入產出率門檻（0～1），未給或非正數即不判定為低產出
+ * @param {Integer} [opt.minJudged=6] 輸入樣本足量之最少已判定篇數
+ * @returns {Boolean} 回傳是否為低產出來源
+ * @example
+ * console.log(isLowYield({ judged: 10, yielded: 1 }, { lowYieldRate: 0.3, minJudged: 6 }))
+ * // => true
+ *
+ * console.log(isLowYield({ judged: 2, yielded: 0 }, { lowYieldRate: 0.3, minJudged: 6 }))
+ * // => false
+ */
+export function isLowYield(src, opt = {}) {
+
+    //check
+    if (!isobj(opt)) {
+        opt = {}
+    }
+    const { lowYieldRate, minJudged } = opt
+
+    const rate = Number(lowYieldRate)
+    if (!(rate > 0)) return false
+    const judged = Number(src?.judged) || 0
+    if (judged &lt; (minJudged ?? 6)) return false
+    return (Number(src?.yielded) || 0) / judged &lt; rate
+}
+
+/**
+ * 挑出本輪要抓的來源：先 tier，同層級內低產出者排末，再 lastFetchAt（最舊優先）；且需超過最短重抓間隔。
+ *
+ * @param {Object} sources 輸入來源集合，需具 select 方法
+ * @param {Object} [opt={}] 輸入設定物件，非物件則回退為 {}
+ * @param {Integer} [opt.limit] 輸入本輪最多取幾筆，非非負整數(含未給)即不限（全取語意，與 frontierPolicy 之 pickClues 同一規則）
+ * @param {Integer} [opt.minIntervalMs=0] 輸入最短重抓間隔毫秒數，非數值(含未給)視為 0（不設間隔，已抓過者亦到期）
+ * @param {Number} [opt.lowYieldRate] 輸入產出率門檻，未給或 0 即不降序
+ * @param {Integer} [opt.minJudged] 輸入樣本足量之最少已判定篇數
+ * @param {Function} [opt.filter] 輸入額外篩選 (src)=>Boolean(如只挑 grid 或排除 grid;grid 與 rss 分名額挑選用)
+ * @returns {Promise} 回傳 Promise，resolve 回傳到期來源陣列（依優先序排序後取前 limit 筆）；已停用(enabled false)或暫停(paused true)者不列
+ * @throws {Error} sources 缺 select 方法時拋出
+ * @example
+ * const sources = {
+ *     select: async () => [
+ *         { id: 'a', tier: 2, lastFetchAt: '2026-08-01T00:00:00Z' },
+ *         { id: 'b', tier: 1, lastFetchAt: '2026-08-02T00:00:00Z' },
+ *         { id: 'c', tier: 1, enabled: false },
+ *         { id: 'd', tier: 1, judged: 10, yielded: 0 },
+ *     ],
+ * }
+ * console.log((await pickDueSources(sources, { lowYieldRate: 0.3 })).map((s) => s.id))
+ * // => [ 'b', 'd', 'a' ]
+ * console.log((await pickDueSources(sources, { lowYieldRate: 0.3, limit: 2 })).map((s) => s.id))
+ * // => [ 'b', 'd' ]
+ */
+export async function pickDueSources(sources, opt = {}) {
+
+    //check
+    if (!isfun(sources?.select)) {
+        throw new Error('pickDueSources 需要 sources 集合（具 select 方法）')
+    }
+    if (!isobj(opt)) {
+        opt = {}
+    }
+    const { limit, lowYieldRate, minJudged } = opt
+    // 未給 minIntervalMs 時須視為 0:否則 `now - t >= undefined` 恆為 false,已抓過之來源永不到期(只剩從未抓過者);
+    // 管線內呼叫端一律帶 settings.capture.sources.minIntervalMs,故只影響直接呼叫本函數者
+    let minIntervalMs = opt.minIntervalMs
+    if (!isnum(minIntervalMs)) {
+        minIntervalMs = 0
+    }
+    minIntervalMs = cdbl(minIntervalMs)
+
+    const all = await sources.select()
+    const now = Date.now()
+    const extra = typeof opt.filter === 'function' ? opt.filter : null
+    const due = all.filter((s) => {
+        // enabled 歸品質政策(連敗／連空／零產出)單一擁有;paused 歸種子與領域同步單一擁有(領域暫停／退役、種子檔已移除)——
+        //   兩欄各有其寫入者,互不覆寫(領域暫停若寫 enabled 即成第三個寫入者,恢復時會把品質政策停掉的打開)
+        if (s.enabled === false || s.paused === true) return false
+        if (extra &amp;&amp; !extra(s)) return false
+        if (!s.lastFetchAt) return true
+        const t = Date.parse(s.lastFetchAt)
+        return !Number.isFinite(t) || now - t >= minIntervalMs
+    })
+    const demoted = (s) => (isLowYield(s, { lowYieldRate, minJudged }) ? 1 : 0)
+    due.sort((a, b) => ((a.tier || 2) - (b.tier || 2)) ||
+    (demoted(a) - demoted(b)) ||
+    String(a.lastFetchAt || '').localeCompare(String(b.lastFetchAt || '')))
+    if (!isp0int(limit)) {
+        return due
+    }
+    return due.slice(0, cint(limit))
+}
+
+/**
+ * 記錄單一來源本輪成敗並套用停用規則。
+ *
+ * 【failCount 成功即歸零】停用門檻的本意是「連續」失敗 N 次；不歸零會跨月累積
+ *   間歇性失敗，健康的種子來源終有一天被莫名停用且極難歸因。
+ * 【空回計數只針對自動衍生來源】種子來源一時無新文不停用（人工驗證過的來源
+ *   值得長期監看）；自動衍生的查詢來源連續全空即停用，否則永久佔用輪抓名額。
+ *
+ * @param {Object} sources 輸入來源集合，需具 patch 方法
+ * @param {Object} src 輸入來源記錄
+ * @param {Object} outcome 輸入本輪結果物件，需含 ok（Boolean），可含 itemCount(Number)、error(String)
+ * @param {Object} [cfg={}] 輸入設定物件，非物件則回退為 {}
+ * @param {String} [cfg.nowIso] 輸入現在時刻 ISO 字串
+ * @param {Integer} [cfg.maxConsecFails=8] 輸入連續失敗幾次即停用(0＝永不因連敗停用)
+ * @param {Integer} [cfg.maxConsecEmpty=5] 輸入自動衍生來源連續空回幾次即停用
+ * @param {Function} [cfg.isAutoSource] 輸入判斷是否為自動衍生來源之函數，簽名 (src)=>Boolean
+ * @param {Object} [cfg.extraPatch] 輸入成功時一併寫入之額外欄位物件(逐來源狀態推進,如 grid 翻頁;失敗時不套用)
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { disabled:Boolean, reason:String }
+ * @throws {Error} sources 缺 patch 方法，或 outcome 非物件時拋出
+ * @example
+ * const rows = new Map([['s1', { id: 's1', failCount: 7 }], ['s2', { id: 's2', failCount: 3 }]])
+ * const sources = { patch: async (id, fields) => { Object.assign(rows.get(id), fields) } }
+ * const r1 = await recordSourceOutcome(sources, rows.get('s1'), { ok: false, error: '逾時' }, { nowIso: '2026-09-01T00:00:00Z', maxConsecFails: 8 })
+ * console.log(r1, rows.get('s1').enabled)
+ * // => { disabled: true, reason: '連續失敗 8 次' } false
+ * const r2 = await recordSourceOutcome(sources, rows.get('s2'), { ok: true, itemCount: 5 }, { nowIso: '2026-09-01T00:00:00Z' })
+ * console.log(r2, rows.get('s2').failCount)
+ * // => { disabled: false, reason: '' } 0
+ */
+export async function recordSourceOutcome(sources, src, outcome, cfg = {}) {
+
+    //check
+    if (!isfun(sources?.patch)) {
+        throw new Error('recordSourceOutcome 需要 sources 集合（具 patch 方法）')
+    }
+    if (!isobj(outcome)) {
+        throw new Error('recordSourceOutcome 需要 outcome 物件（{ ok, itemCount?, error? }）')
+    }
+    if (!isobj(cfg)) {
+        cfg = {}
+    }
+
+    const nowIso = cfg.nowIso
+    // 停用時記時刻與原因(冷卻重探之起點,reprobeSources);停用條件以本輪計數後之記錄交 sourceStopReasonOf(與符合度掃描 CS5 同一判定)
+    const disabledPatch = (reason) => ({ enabled: false, disabledAt: nowIso || '', disableReason: reason })
+    if (outcome.ok) {
+        const emptyCount = (outcome.itemCount || 0) === 0 ? (src.emptyCount || 0) + 1 : 0
+        const reason = sourceStopReasonOf({ ...src, failCount: 0, emptyCount }, cfg)
+        await sources.patch(src.id, {
+            lastFetchAt: nowIso,
+            okCount: (src.okCount || 0) + 1,
+            failCount: 0,
+            lastError: '',
+            emptyCount,
+            ...(reason ? disabledPatch(reason) : { enabled: true }),
+            ...(cfg.extraPatch || {}),
+        })
+        return { disabled: !!reason, reason }
+    }
+    // 失敗不套 extraPatch:它是「成功後之逐來源狀態推進」(如 grid 翻頁 cursor),失敗時推進即漏頁
+    const failCount = (src.failCount || 0) + 1
+    const reason = sourceStopReasonOf({ ...src, failCount }, cfg)
+    await sources.patch(src.id, {
+        lastFetchAt: nowIso,
+        failCount,
+        lastError: String(outcome.error || '').slice(0, 200),
+        ...(reason ? disabledPatch(reason) : { enabled: true }),
+    })
+    return { disabled: !!reason, reason }
+}
+
+/**
+ * 來源依已記計數是否已達停用條件(CS5 之單一判定:recordSourceOutcome 之停用與符合度掃描同用):
+ *   連敗(failCount ≥ maxConsecFails;0＝永不因連敗停用)、自動衍生來源連空(emptyCount ≥ maxConsecEmpty;isAutoSource 判定)。
+ *   零產出另由 cullZeroYieldSources 以文件統計判(本函數不判)
+ *
+ * @param {Object} src 輸入來源記錄(讀 failCount、emptyCount)
+ * @param {Object} [cfg={}] 輸入 { maxConsecFails=8, maxConsecEmpty=5, isAutoSource }
+ * @returns {String} 回傳停用原因;未達條件回 ''
+ * @example
+ * console.log(sourceStopReasonOf({ failCount: 8 }, { maxConsecFails: 8 }))
+ * // => 連續失敗 8 次
+ *
+ * console.log(sourceStopReasonOf({ failCount: 8 }, { maxConsecFails: 0 }))
+ * // =>
+ */
+export function sourceStopReasonOf(src, cfg = {}) {
+    if (!isobj(cfg)) cfg = {}
+    const failCount = Number(src?.failCount) || 0
+    // maxConsecFails 0＝永不因連敗停用(零件庫用法:來源由宿主管理)
+    const maxFails = cfg.maxConsecFails ?? 8
+    if (maxFails > 0 &amp;&amp; failCount >= maxFails) return `連續失敗 ${failCount} 次`
+    // 空回計數只針對自動衍生來源(種子來源一時無新文不停用)
+    const emptyCount = Number(src?.emptyCount) || 0
+    const maxEmpty = cfg.maxConsecEmpty ?? 5
+    if (maxEmpty > 0 &amp;&amp; emptyCount >= maxEmpty &amp;&amp; !!cfg.isAutoSource?.(src)) return `連續 ${emptyCount} 次無資料`
+    return ''
+}
+
+/** 來源記錄之時刻欄(ISO 字串)與計數欄(非負整數):給了即須合形狀(符合度掃描 CS5 之記錄形狀判定) */
+const SOURCE_TIME_FIELDS = Object.freeze(['lastFetchAt', 'disabledAt', 'windowFrom', 'reprobedAt'])
+const SOURCE_COUNT_FIELDS = Object.freeze(['okCount', 'failCount', 'emptyCount', 'judged', 'yielded', 'reprobes', 'chainFails'])
+
+/**
+ * 來源記錄之執行期欄位形狀問題(CS5 存量掃描:本套件寫入之欄位給了即須合形狀;未給者不判——手動停用可無原因,舊記錄可缺時刻):
+ *   時刻欄須為可解析之 ISO 字串、計數欄須為非負整數、enabled／paused 為布林、disableReason／lastError 為字串
+ *
+ * @param {Object} src 輸入來源記錄
+ * @returns {Array} 回傳問題字串陣列(無問題回 [])
+ * @example
+ * console.log(sourceRecordProblems({ id: 'a', enabled: false, disabledAt: '2026-01-01T00:00:00Z', failCount: 8 }))
+ * // => []
+ *
+ * console.log(sourceRecordProblems({ id: 'a', disabledAt: 'yesterday' }))
+ * // => [ 'disabledAt 非時刻字串' ]
+ */
+export function sourceRecordProblems(src) {
+    if (!isobj(src)) return ['記錄非物件']
+    const given = (v) => v !== undefined &amp;&amp; v !== null &amp;&amp; v !== ''
+    const p = []
+    for (const k of SOURCE_TIME_FIELDS) if (given(src[k]) &amp;&amp; (typeof src[k] !== 'string' || !Number.isFinite(Date.parse(src[k])))) p.push(`${k} 非時刻字串`)
+    for (const k of SOURCE_COUNT_FIELDS) if (given(src[k]) &amp;&amp; !(Number.isInteger(src[k]) &amp;&amp; src[k] >= 0)) p.push(`${k} 非非負整數`)
+    for (const k of ['enabled', 'paused']) if (src[k] !== undefined &amp;&amp; src[k] !== null &amp;&amp; typeof src[k] !== 'boolean') p.push(`${k} 非布林`)
+    for (const k of ['disableReason', 'lastError']) if (src[k] !== undefined &amp;&amp; src[k] !== null &amp;&amp; typeof src[k] !== 'string') p.push(`${k} 非字串`)
+    return p
+}
+
+/**
+ * 逐來源鏈異常之落帳(程式／環境問題,與抓取失敗分帳):記 chainFails 與 lastError、更新 lastFetchAt(排到最舊優先之隊尾,
+ *   不擋隊頭),**不加 failCount、不停用**——若與抓取失敗共用 failCount,連 8 次即停用並進 30 天冷卻,程式修好後也要等冷卻
+ *
+ * @param {Object} sources 輸入來源集合，需具 patch 方法
+ * @param {Object} src 輸入來源記錄
+ * @param {Object} [cfg={}] 輸入 { nowIso, error }
+ * @param {String} [cfg.nowIso] 輸入現在時刻 ISO 字串(記為 lastFetchAt)
+ * @param {String} [cfg.error] 輸入異常說明(記為 lastError,至多 200 字)
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { chainFails:Integer }
+ * @throws {Error} sources 缺 patch 方法時拋出
+ * @example
+ * const rows = new Map([['s1', { id: 's1', chainFails: 1 }]])
+ * const sources = { patch: async (id, fields) => { Object.assign(rows.get(id), fields) } }
+ * const r = await recordSourceChainFail(sources, rows.get('s1'), { nowIso: '2026-09-01T00:00:00Z', error: '解析鏈拋錯' })
+ * console.log(r)
+ * // => { chainFails: 2 }
+ * console.log(rows.get('s1').lastError)
+ * // => 解析鏈拋錯
+ */
+export async function recordSourceChainFail(sources, src, cfg = {}) {
+    if (!isfun(sources?.patch)) throw new Error('recordSourceChainFail 需要 sources 集合（具 patch 方法）')
+    if (!isobj(cfg)) cfg = {}
+    const chainFails = (Number(src?.chainFails) || 0) + 1
+    await sources.patch(src.id, { lastFetchAt: cfg.nowIso, chainFails, lastError: String(cfg.error || '').slice(0, 200) })
+    return { chainFails }
+}
+
+/**
+ * 零產出來源淘汰＋產出統計落帳：已判定樣本夠多且產出掛零者停用；每來源之 judged／yielded 有變即寫回
+ * 來源記錄（供輪抓挑選之產出率回饋與巡檢／工具檢視）。
+ *
+ * 【判準：產出掛零，而非丟棄率高】混合型來源有真產出，以丟棄率淘汰就是誤殺；
+ *   判定數據由注入的 judge 提供（通常自文件集統計 AI 已做過的逐篇分類），
+ *   不引入新的猜測。停用可逆：手動 enable 後若產出首篇即不再觸發。
+ *
+ * @param {Object} sources 輸入來源集合，需具 select／patch 方法
+ * @param {Function} judgeOf 輸入每來源的判定統計函數，簽名 (src)=>{judged:Number, yielded:Number}|null
+ * @param {Object} [cfg={}] 輸入設定物件，非物件則回退為 {}
+ * @param {Integer} [cfg.minJudged=6] 輸入樣本足量之最少已判定篇數
+ * @param {String} [cfg.nowIso=''] 輸入現在時刻(停用時刻,冷卻重探之起點)
+ * @param {Object} [cfg.log] 輸入 logger 物件（用 warn 記錄自動停用）
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { culled:Integer, synced:Integer }
+ * @throws {Error} sources 缺 select／patch 方法，或 judgeOf 非函數時拋出
+ * @example
+ * const rows = new Map([['s1', { id: 's1', name: '示範站', enabled: true }], ['s2', { id: 's2', name: '產出站', enabled: true }]])
+ * const sources = {
+ *     select: async () => [...rows.values()].map((r) => ({ ...r })),
+ *     patch: async (id, fields) => { Object.assign(rows.get(id), fields) },
+ * }
+ * const judgeOf = (s) => (s.id === 's1' ? { judged: 8, yielded: 0 } : { judged: 8, yielded: 3 })
+ * console.log(await cullZeroYieldSources(sources, judgeOf, { nowIso: '2026-09-01T00:00:00Z' }))
+ * // => { culled: 1, synced: 2 }
+ * console.log(rows.get('s1').enabled, rows.get('s1').disableReason)
+ * // => false 已判定 8 篇產出 0，自動停用
+ */
+export async function cullZeroYieldSources(sources, judgeOf, cfg = {}) {
+
+    //check
+    if (!isfun(sources?.select) || !isfun(sources?.patch)) {
+        throw new Error('cullZeroYieldSources 需要 sources 集合（具 select/patch 方法）')
+    }
+    if (!isfun(judgeOf)) {
+        throw new Error('cullZeroYieldSources 需要 judgeOf 函數')
+    }
+    if (!isobj(cfg)) {
+        cfg = {}
+    }
+
+    const minJudged = cfg.minJudged ?? 6
+    let culled = 0
+    let synced = 0
+    for (const s of await sources.select()) {
+        const j = judgeOf(s)
+        if (j &amp;&amp; ((s.judged || 0) !== j.judged || (s.yielded || 0) !== j.yielded)) {
+            await sources.patch(s.id, { judged: j.judged, yielded: j.yielded })
+            synced++
+        }
+        if (s.enabled === false) continue
+        if (!j || j.yielded > 0 || j.judged &lt; minJudged) continue
+        const reason = `已判定 ${j.judged} 篇產出 0，自動停用`
+        await sources.patch(s.id, { enabled: false, lastError: reason, disabledAt: cfg.nowIso || '', disableReason: reason })
+        cfg.log?.warn?.(`來源[${s.name}] 已判定 ${j.judged} 篇、產出 0，自動停用`)
+        culled++
+    }
+    return { culled, synced }
+}
+
+/** 冷卻倍增之上限倍數(重探 n 次後之冷卻＝reprobeDays × min(2^n, 本值)) */
+export const REPROBE_MAX_BACKOFF = 8
+
+/**
+ * 冷卻是否已滿(來源停用與自動領域暫停之重探共用同一判定):起點 + reprobeDays × min(2^重探次數, REPROBE_MAX_BACKOFF) 天 ≤ 現在
+ *
+ * @param {String} sinceIso 輸入冷卻起點(停用或暫停之時刻)
+ * @param {Integer} tries 輸入已重探次數
+ * @param {Number} nowMs 輸入現在時刻毫秒
+ * @param {Number} reprobeDays 輸入基本冷卻天數(≤0 即不重探)
+ * @returns {Boolean} 回傳是否已滿
+ * @example
+ * console.log(reprobeDue('2020-01-01T00:00:00Z', 0, Date.parse('2020-02-01T00:00:00Z'), 30))
+ * // => true
+ *
+ * console.log(reprobeDue('2020-01-01T00:00:00Z', 1, Date.parse('2020-02-01T00:00:00Z'), 30))
+ * // => false
+ */
+export function reprobeDue(sinceIso, tries, nowMs, reprobeDays) {
+    const t = Date.parse(sinceIso || '')
+    if (!(reprobeDays > 0) || !Number.isFinite(t) || !Number.isFinite(nowMs)) return false
+    return nowMs - t >= reprobeDays * Math.min(2 ** (Number(tries) || 0), REPROBE_MAX_BACKOFF) * 86400_000
+}
+
+/**
+ * 新觀察窗之欄位(重探、手動恢復共用):連敗、連空、產出統計與新件率自本刻起算
+ *
+ * @param {String} [nowIso] 輸入新觀察窗起點之 ISO 時刻字串(未給記為空字串)
+ * @returns {Object} 回傳要寫回來源記錄之欄位 { windowFrom, failCount:0, emptyCount:0, lastError:'', judged:0, yielded:0, freshHist:[] }
+ * @example
+ * console.log(freshWindowPatch('2026-09-01T00:00:00Z'))
+ * // => {
+ * //   windowFrom: '2026-09-01T00:00:00Z',
+ * //   failCount: 0,
+ * //   emptyCount: 0,
+ * //   lastError: '',
+ * //   judged: 0,
+ * //   yielded: 0,
+ * //   freshHist: []
+ * // }
+ */
+export const freshWindowPatch = (nowIso) => ({ windowFrom: nowIso || '', failCount: 0, emptyCount: 0, lastError: '', judged: 0, yielded: 0, freshHist: [] })
+
+/**
+ * 冷卻重探(CS5):被品質政策停用(enabled false)之來源,冷卻期滿即重新啟用並開新觀察窗——
+ *   試抓:新窗內再達停用條件(連敗、連空、零產出;產出統計只計窗內之判定,judgeFromDocs 之 since)即再停用,冷卻依重探次數倍增。
+ *   每輪至多 reprobePerRun 個(停用最久者先),以免一次湧入大量待判文件(進料不得超過下游處理容量)。
+ *   停用時刻未記者(由他處寫入 enabled false)以首次觀察為冷卻起點(記 disabledAt,本輪不重探)
+ *
+ * @param {Object} sources 輸入來源集合，需具 select／patch 方法
+ * @param {Object} [cfg={}] 輸入設定物件
+ * @param {String} cfg.nowIso 輸入現在時刻
+ * @param {Number} [cfg.reprobeDays=0] 輸入基本冷卻天數(0＝不重探)
+ * @param {Integer} [cfg.reprobePerRun=0] 輸入每輪至多重探數(0＝不重探)
+ * @param {Object} [cfg.log] 輸入 logger 物件(info 記錄重探)
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { reprobed:Array(來源 id), stamped:Integer(補記停用時刻數), due:Integer(冷卻已滿數) }
+ * @throws {Error} sources 缺 select／patch 方法時拋出
+ * @example
+ * const rows = new Map([['s1', { id: 's1', name: '示範站', enabled: false, disabledAt: '2026-01-01T00:00:00Z', reprobes: 0 }]])
+ * const sources = {
+ *     select: async () => [...rows.values()].map((r) => ({ ...r })),
+ *     patch: async (id, fields) => { Object.assign(rows.get(id), fields) },
+ * }
+ * console.log(await reprobeSources(sources, { nowIso: '2026-03-01T00:00:00Z', reprobeDays: 30, reprobePerRun: 2 }))
+ * // => { reprobed: [ 's1' ], stamped: 0, due: 1 }
+ * console.log(rows.get('s1').enabled, rows.get('s1').reprobes)
+ * // => true 1
+ */
+export async function reprobeSources(sources, cfg = {}) {
+
+    //check
+    if (!isfun(sources?.select) || !isfun(sources?.patch)) {
+        throw new Error('reprobeSources 需要 sources 集合（具 select/patch 方法）')
+    }
+    if (!isobj(cfg)) {
+        cfg = {}
+    }
+
+    const out = { reprobed: [], stamped: 0, due: 0 }
+    const days = Number(cfg.reprobeDays) || 0
+    const perRun = Number(cfg.reprobePerRun) || 0
+    const nowMs = Date.parse(cfg.nowIso || '')
+    if (!(days > 0) || !(perRun > 0) || !Number.isFinite(nowMs)) return out
+    const due = []
+    for (const s of await sources.select()) {
+        if (s.enabled !== false) continue
+        if (!Number.isFinite(Date.parse(s.disabledAt || ''))) {
+            await sources.patch(s.id, { disabledAt: cfg.nowIso })
+            out.stamped++
+            continue
+        }
+        if (reprobeDue(s.disabledAt, s.reprobes, nowMs, days)) due.push(s)
+    }
+    out.due = due.length
+    due.sort((a, b) => String(a.disabledAt).localeCompare(String(b.disabledAt)) || String(a.id).localeCompare(String(b.id)))
+    for (const s of due.slice(0, perRun)) {
+        await sources.patch(s.id, { enabled: true, ...freshWindowPatch(cfg.nowIso), reprobes: (Number(s.reprobes) || 0) + 1, reprobedAt: cfg.nowIso })
+        out.reprobed.push(s.id)
+        cfg.log?.info?.(`來源[${s.name || s.id}] 冷卻期滿重探（第 ${(Number(s.reprobes) || 0) + 1} 次；原停用：${String(s.disableReason || s.lastError || '').slice(0, 60)}），新觀察窗自本刻起算`)
+    }
+    return out
+}
+
+export default { ensureSeedSources, isLowYield, pickDueSources, recordSourceOutcome, sourceStopReasonOf, sourceRecordProblems, recordSourceChainFail, cullZeroYieldSources, reprobeDue, freshWindowPatch, reprobeSources, REPROBE_MAX_BACKOFF }
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sun Nov 01 2026 20:24:39 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

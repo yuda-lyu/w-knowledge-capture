@@ -1,0 +1,949 @@
+// adapter.mjs — AI 調度層(建構於 w-dispatch-ai;四大工作共用之唯一實作):目錄展開、遞補呼叫、取最後一段合格之 JSON、限流冷卻、斷網不計;
+//   高頻呼叫之機制以選項開啟
+//
+// 【範圍】抓取之領域發現(每日至多一次)與下游套件之批次呼叫、多棒工作流同經本層:各總組裝與安裝端之正式管線皆建同一實作。
+//   預設只做「席位 → 遞補鏈 → 一次 JSON 任務」;高頻多角色之呼叫端所需之機制預設全關(未開即上述行為,結果形狀與錯誤字樣不變),
+//   以建構選項或 ai 段之值開啟:
+//     截斷放行與部分接受(acceptTruncated)、避開曾產出不合格結果之條目(callOpt.avoid)、失敗預覽(preview)、
+//     免費池當日額度(ai.pools,見 ai/poolQuota)、供應商健康降序(ai.healthStreak,見 ai/providerHealth)、
+//     prompt 長度之能力預篩(ai.providerLimits 與 capability,見 ai/capability)、多棒工作流之呼叫入口(workflow,見【工作流入口】)。
+//   多棒工作流之編排(各棒之順序、降級、守門)不在本層。
+// 【安裝端之資產以建構選項給】可用池(providerPick:只展開所列、依序)、逐 kind 之 CLI 執行檔(exes)、跨行程之持久狀態(persistStore:游標與冷卻;
+//   usageCounter:逐日用量)——其檔名與落點屬安裝端,本層不知;未給即行程內(見【狀態】)。不進 ai 段之 schema:下游套件恆以席位呼叫,
+//   不收供應商池之設定。
+// 【可整組置換】總組裝之 cfg.aiAdapter 給了即不建本層;置換者至少具備 callJson(validateSeats／drainStats／aiUsageToday 選用;
+//   另需其他函數之總組裝以 core/assemblyKit 之 checkAiAdapter／buildAiAdapter 之 need 宣告,如工作流入口之 getWkf／seatSpec)。
+// 【w-dispatch-ai 件的使用對照】
+//   (目錄展開)          經執行殼之 resolveCatalogue(與其原始遞補呼叫同一入口):內建目錄＋ai.extraProviders(新 id 追加、同 id 逐欄覆蓋)、
+//                        金鑰來源(env 物件 → envFile → process.env;金鑰檔讀成物件,不污染 process.env)、逾時三層取值寫進條目、
+//                        providerPick、exes;envVar → keys,缺金鑰之條目列 skipped、不進可用表(不拋)
+//   dispatchAiFallback   依鏈遞補、冷卻降序、時間預算、嘗試間中止;逐次事件(含一組試完仍無成交之 group-exhausted)
+//   budgetFor            遞補鏈預算＝各條目逾時之總和(手寫數字會在改 fallback 時失準)
+//   salvageTruncatedArray 截斷陣列之前段搶救(只收完整之頂層物件元素):經 core/ai/jsonReply,僅於開啟截斷放行時用之
+//   noSideEffectPrefix   防寫檔前綴(agentic CLI 會順手寫檔;唯讀查閱不在此限)
+//   buildValidator／safeValidate  條目自帶 validate 時與本層驗證取交集——遞補層以條目覆寫共用選項({ ...共用, ...條目 }),
+//                        不取交集則條目之 validate 會整個蓋掉本層之 JSON 驗證,放行非 JSON 回覆
+//   dispatchAiWkf        工作流(callAi／runFanout);僅於建構選項 workflow 開啟時建立(見【工作流入口】)
+//   dfTimeoutMs          套件統一之預設逾時(300,000;seatSpec 之條目與 ai 段皆無逾時時用之)
+// 【回覆取最後一段合格之 JSON(core/ai/jsonReply 之 pickJsonReply)】回覆中之完整 JSON 片段由後往前,取第一段 check(d) === true 者——
+//   模型先回一段、再「更正如下」回完整一段時取後者;前言之括號與尾隨說明之小片段由 check 篩掉(上游 extractJsonLoose 取第一段,不用)。
+// 【逾時三層取值】providerTimeouts 逐 id > 條目自帶 timeoutMs > ai.timeoutMs;一律寫進條目,預算與實際派送讀同一個數字。
+//   席位給 timeoutMs 時覆寫該席位鏈內各條目之值(遞補層以條目值優先,席位層須直接改條目才生效)。
+// 【單次嘗試之開工門檻】上游於剩餘預算低於 minAttemptMs(未給為 20 秒)時不開下一次嘗試;遞補鏈之預算為各條目逾時之和(席位可另給),
+//   故單次逾時設得短(如 5 秒)而未給 minAttemptMs 之席位,預算不足 20 秒即一次都不送出、每次皆 budget exhausted;單次逾時恰在 20 秒上下者
+//   末家開工時之剩餘因毫秒級之開銷而略低於門檻,亦不開工。未給 minAttemptMs 時門檻取 min(20 秒, 單次逾時之一半)(單次逾時多條目取最小;
+//   callJson 與 seatSpec 同一規則);明給者照用,單次逾時 ≥ 40 秒者即上游預設(行為不變)。
+// 【狀態】游標(多金鑰輪替)與冷卻存於本實例之 store:同行程多個 adapter 互不相踩(w-dispatch-ai 未注入 store 時用模組層共用之狀態,
+//   多實例會互相覆蓋)。get 恆回同一物件,並行之呼叫就地修改、不互相覆蓋(其檔案實作「假定單行程序列調用」:各呼叫各自 get 副本再整份
+//   set 會失落更新)。未給 persistStore 即行程內、不落檔;給了即以其 get 之內容為起點(行程內第一次讀取),每次 set 把外來副本併入同一物件
+//   後寫回 persistStore(不整份取代;寫回失敗不影響呼叫)。用量:未給 usageCounter 即行程內(依 clock 之今日分日),給了即以其記帳與查詢。
+//   免費池額度與健康降序亦寫入此 store 之 cooling,同一實例之全部呼叫一處寫入處處生效。
+// 【截斷放行與部分接受(acceptTruncated,預設關)】上游之 REST 截斷(finish_reason=length)於 validate 之前即判失敗;開啟時明示
+//   acceptTruncated:true 交本層驗證裁決,截斷之尾段以 salvageTruncatedArray 搶救而為最後一段(jsonReply)——收前段完整項目,未涵蓋者由
+//   呼叫端之批次層處置(部分接受,避免全有全無);成功結果於上游標截斷時帶 truncated:true。拿不到終止訊號之截斷(CLI 型)只能於解析時
+//   發現,同樣經搶救而成功,但無 truncated 標記。content_filter 與可見輸出為空者上游一律判失敗。外包物件之輸出被截斷時搶救只救回
+//   內層陣列(形狀改變),全有全無之輸出不宜開啟,或以 callOpt.acceptTruncated:false 逐次關閉。
+// 【能力預篩(prompt 長度)】命令列型供應商有 prompt 長度硬上限(如 antigravity 30,000 字元),超過即「未執行就失敗」;呼叫前依實際長度
+//   剔除放不下之條目(只剔除、不改鏈序,全部放不下即回失敗、不送出)。ai.providerLimits 所列之逐 id 上限恆生效(明給之設定);
+//   條目與 kind 之固有上限屬隱含行為,建構選項 capability 為 true 才計入——未開時長 prompt 照常送交轉接器、由其回 params 後遞補。
+//   validateSeats 對「全鏈條目皆有上限」之席位回警告(長 prompt 無處可去)。
+// 【池額度與健康降序經冷卻機制生效】兩者皆把條目寫進 store 之 cooling(降至鏈尾、不移除,前面全敗時仍會試到它);
+//   ai.cooldownMs 為 0 時上游不依冷卻重排,兩者即無降序效果(健康層仍計數)。
+// 【事件單一入口】逐次事件先經本層:用量計帳(try)、健康層(開啟時)、免費池之成交恢復(開啟時);呼叫端之 callOpt.onEvent 排在其後,
+//   拋錯不外洩(工作流入口亦同,見【工作流入口】③)。
+// 【工作流入口(建構選項 workflow,預設關)】多棒工作流(如下游之「三家起草 → 整合 → 審計 → 修訂 → 終審」)經 w-dispatch-ai 之工作流
+//   (dispatchAiWkf 之 callAi／runFanout)呼叫;開啟時另回 getWkf()／seatSpec(seat, promptLen),與 callJson 共用同一實例之 store(游標與冷卻)、
+//   冷卻偵測、事件入口(用量、健康、免費池)與工作目錄之確保——兩條路徑若各自一套,一邊之冷卻另一邊看不見(同一家之限流各踩一次),
+//   用量與健康亦各只記一邊。
+//   ①定義表去掉條目之逾時:工作流以條目覆寫共用選項({ ...共用, ...條目 }),條目逾時會蓋過席位逾時;逾時一律由 seatSpec 帶入。
+//   ②seatSpec:依實際提示詞長度(加防寫前綴;工作流同樣前置)預篩遞補鏈,判準與計帳同 callJson,全放不下回 null;timeoutMs＝席位值,
+//     否則留存條目之逾時取大;budgetMs＝席位值,否則 timeoutMs×留存條目數;minAttemptMs＝席位值,否則 min(20 秒, timeoutMs 之一半)
+//     (等於 20 秒者不帶;同 callJson,見【單次嘗試之開工門檻】);席位形狀與 id 之檢核同 validateSeats(不合即拋)。
+//   ③呼叫端之 onEvent 串在本層事件入口之後,不取代:上游以 { ...共用, ...逐次 } 合併,呼叫端給了 onEvent(callAi 之第二參數、runFanout 之
+//     callOpt 與各席／整合之規格,含值為 undefined 者)即蓋掉本層之計帳與健康——包裝一律改為「本層先、呼叫端後(拋錯不外洩)」。
+//   ④斷網不計(同 callJson):callAi 整鏈皆敗(已送出、無成交、非預算用盡或中止所致)、未逢整輪截止(shouldStop),且本機網路不通
+//     → 回 { ...原結果, ok:false, skipped:true, netDown:true }。runFanout 失敗時(各席皆敗,或整合已呼叫而敗)以同一前提詢問一次,
+//     不通即回傳標 netDown:true,其中整鏈皆敗之席位／整合結果各標 skipped:true、netDown:true(預算用盡或中止者不標,其型別已自明)。
+//   ⑤多棒管線(runRolePipeline／runFanoutPipeline)不轉出:其各棒未經上列③④之包裝與工作目錄之確保。
+// 【啟動期席位檢核】validateSeats:所有席位之 use／fallback 皆須可解析——缺金鑰之條目不進可用表、不拋,
+//   不在啟動期檢核就要到第一次呼叫才發現;設定錯誤須在啟動期爆。
+// 【不拋錯】callJson 一律回傳結果物件,呼叫端只需處理單一失敗形狀;skipped:true 表「不是這次之失敗」
+//   (時間預算用盡、中止、本機網路不通),呼叫端不計次。工作流入口之 callAi／runFanout 亦不拋錯;seatSpec 對不合之席位拋錯(設定錯誤,同 validateSeats)。
+// 【工作目錄於每次派送前確保存在】子進程 cwd 不存在時 spawn 回 ENOENT(報的是執行檔路徑,極易誤判為 CLI 未安裝);
+//   w-dispatch-ai 不建立 cwd。
+// 【CLI 讀取哪些檔由 CLI 決定】CLI 型條目本即開放讀寫(工作目錄只隔離寫入),讀取哪些指示檔與規則由各 CLI 自行決定,本層不干預。
+//   例:opencode 自工作目錄往上讀 AGENTS.md(無則 CLAUDE.md),並讀 ~/.claude/CLAUDE.md——工作目錄在某專案下時,模型會帶著
+//   該專案之規則與主題作答;要量不受其影響之能力,把 aiWorkspace 放在沒有這些檔之目錄樹,或改用 REST 條目。
+
+import fs from 'fs'
+import isobj from 'wsemi/src/isobj.mjs'
+import isarr from 'wsemi/src/isarr.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import strFindSimilar from 'wsemi/src/strFindSimilar.mjs'
+import dispatchAiFallback from 'w-dispatch-ai/src/dispatchAiFallback.mjs'
+import dispatchAiWkf from 'w-dispatch-ai/src/dispatchAiWkf.mjs'
+import dfTimeoutMs from 'w-dispatch-ai/src/dfTimeoutMs.mjs'
+import budgetFor from 'w-dispatch-ai/src/budgetFor.mjs'
+import buildValidator from 'w-dispatch-ai/src/buildValidator.mjs'
+import { safeValidate } from 'w-dispatch-ai/src/checkTruncation.mjs'
+import NO_SIDE_EFFECT from 'w-dispatch-ai/src/wkf/noSideEffectPrefix.mjs'
+import { resolveCatalogue } from '../runnerPackage.mjs'
+import { given, textValueOf } from '../util/values.mjs'
+import { seatProblem, SETTING_TYPES, AI_SCHEMA } from '../settingsDefault.mjs'
+import { createPoolQuota, defaultOpencodeLog } from './poolQuota.mjs'
+import { pickJsonReply } from './jsonReply.mjs'
+import { createProviderHealth } from './providerHealth.mjs'
+import { fitChain, maxPromptCharsOf } from './capability.mjs'
+
+/**
+ * 限流／額度用盡字樣(冷卻偵測之單一來源;只收實際觀察到者,未見過的不猜)
+ *
+ * 觀察來源:opencode 之 FreeUsageLimitError;REST 之 rate limit／quota exceeded／too many requests／HTTP 429;
+ * Claude Code 之「You've hit your session limit · resets …」(exit 1、只在 stdout);codex 之「You've hit your usage limit … try again at …」。
+ *
+ * @type {RegExp}
+ */
+export const LIMIT_TEXT_RE = /FreeUsageLimitError|rate.?limit|quota exceeded|too many requests|usage limit|session limit|hit your .{0,20}limit|HTTP 429/i
+
+/**
+ * 內容型失敗之 errorType:此類失敗之 stdout／stderr 為模型產出(被拒之回覆或 REST 原始本體),不含執行層之限流訊息
+ *
+ * @type {Set}
+ */
+const CONTENT_FAIL_TYPES = new Set(['validation', 'incomplete', 'tool-unsupported', 'invalid-response'])
+
+/**
+ * 高頻呼叫機制之 ai 段鍵(值即開關;給了即依 AI_SCHEMA 之型別驗)
+ *
+ * @type {Array}
+ */
+const MECH_KEYS = ['pools', 'healthStreak', 'providerLimits']
+
+/**
+ * 上游於「截斷內容經放行後被驗證拒收」時附於錯誤訊息之字樣(w-dispatch-ai checkTruncation 之 judgeTruncated):
+ * 此類嘗試之型別為 incomplete,但本層驗證確有執行並記下不合格原因
+ *
+ * @type {RegExp}
+ */
+const TRUNC_REJECTED_RE = /rejected by validate/
+
+/**
+ * 失敗預覽之字數(stdout 前段;日誌一行可容)
+ *
+ * @type {Integer}
+ */
+const PREVIEW_CHARS = 120
+
+/**
+ * 冷卻偵測:執行層失敗之 stderr／stdout 命中限流字樣(LIMIT_TEXT_RE)即冷卻該條目(移到鏈尾,不移除)。
+ * 內容型失敗與截斷不掃:其輸出是模型對輸入之回覆,輸入談到 rate limit／quota 就會誤觸冷卻
+ *
+ * @param {Object} r 輸入呼叫結果物件，取 errorType、truncated、stderr、stdout
+ * @returns {Boolean} 回傳是否命中冷卻字樣
+ */
+function coolDetect(r) {
+    if (CONTENT_FAIL_TYPES.has(r?.errorType) || r?.truncated === true) return false
+    return LIMIT_TEXT_RE.test(`${r?.stderr || ''} ${r?.stdout || ''}`)
+}
+
+/**
+ * 取正數值(非正數或非有限數回 null)
+ *
+ * @param {*} v 輸入任意值
+ * @returns {Number|null} 回傳正數或 null
+ */
+const posNum = (v) => (Number.isFinite(v) && v > 0 ? v : null)
+
+/** 上游(w-dispatch-ai 之 dispatchAiFallback)之單次嘗試最低剩餘預算之預設毫秒數(呼叫端未給 minAttemptMs 時上游所用之值) */
+const UPSTREAM_MIN_ATTEMPT_MS = 20_000
+
+/**
+ * 單次嘗試之最低剩餘預算(檔頭【單次嘗試之開工門檻】):明給者照用;未給者取 min(上游預設 20 秒, 單次逾時之一半)——遞補鏈之預算為各條目逾時
+ *   之和,末家開工時之剩餘恰為其逾時(再扣毫秒級之開銷),門檻須明顯小於單次逾時才不致因開銷而不開工;等於上游預設者不給(行為不變)
+ *
+ * @param {Number|null} explicit 輸入明給之值(呼叫端或席位;posNum 之產物)
+ * @param {Number} attemptMs 輸入單次嘗試之逾時毫秒數(多條目者取最小)
+ * @returns {Number|undefined} 回傳交上游之 minAttemptMs(undefined＝不給,上游用其預設)
+ * @example
+ * console.log([minAttemptOf(90_000, 5000), minAttemptOf(null, 5000), minAttemptOf(null, 20_000), minAttemptOf(null, 300_000)])
+ * // => [ 90000, 2500, 10000, undefined ]
+ */
+function minAttemptOf(explicit, attemptMs) {
+    if (explicit) return explicit
+    if (!(Number.isFinite(attemptMs) && attemptMs > 0)) return undefined
+    const half = Math.max(1, Math.floor(attemptMs / 2))
+    return half < UPSTREAM_MIN_ATTEMPT_MS ? half : undefined
+}
+
+/**
+ * 由遞補歷程(tried)數實際送出之嘗試次數(ok／next-key／skip-group 各一次;budget-out／aborted 未送出)
+ *
+ * 遞補層之結果展開自最後一次轉接器結果,其 attempts 是該次轉接器之內部重試數,不是遞補總嘗試數,故不用 r.attempts
+ *
+ * @param {Array} tried 輸入 dispatchAiFallback 結果之 tried 陣列，非陣列視為空
+ * @returns {Integer} 回傳實際嘗試次數
+ */
+function attemptsOf(tried) {
+    return (isarr(tried) ? tried : []).filter((t) => t && (t.outcome === 'ok' || t.outcome === 'next-key' || t.outcome === 'skip-group')).length
+}
+
+/**
+ * 整鏈皆敗:已實際送出、無成交,且非時間預算用盡或中止所致——本機網路之詢問以此為前提(callJson 與工作流入口同一判準;
+ * 未送出即失敗者如席位或條目名稱不合,屬設定問題,不問網路)
+ *
+ * @param {Object} r 輸入呼叫結果(遞補層或工作流之結果；取 ok、errorType、tried)，非物件視為否
+ * @returns {Boolean} 回傳是否整鏈皆敗
+ */
+function chainFailed(r) {
+    if (!isobj(r) || r.ok === true || r.errorType === 'budget' || r.errorType === 'aborted') return false
+    const tried = isarr(r.tried) ? r.tried : []
+    return attemptsOf(tried) > 0 && !tried.some((t) => t?.outcome === 'ok')
+}
+
+/**
+ * 呼叫端之中止判斷是否成立(整輪截止等;非函數或拋錯視同不成立)
+ *
+ * @param {*} shouldStop 輸入中止判斷函數 () => Boolean
+ * @returns {Boolean} 回傳是否已要求中止(嚴格 true 才算)
+ */
+function stopRequested(shouldStop) {
+    if (!isfun(shouldStop)) return false
+    try {
+        return shouldStop() === true
+    }
+    catch {
+        return false
+    }
+}
+
+/**
+ * 由遞補歷程取失敗摘要:依序列出非成功項之「條目:錯誤型別(耗時)」,經本層驗證而不合格者附 check 之不合格原因
+ *
+ * 全數失敗時頂層 error 只反映最後一次嘗試;耗時一併列出才分得出「快速失敗」與「空耗一輪逾時」。
+ * 經本層驗證而不合格者:驗證失敗(validation),以及截斷放行時截斷內容被本層驗證拒收者(incomplete 且上游註明 rejected by validate)——
+ * 不合格原因依發生順序對應(未經本層驗證之失敗不取原因,後續之原因不錯位)
+ *
+ * @param {Array} tried 輸入 dispatchAiFallback 結果之 tried 陣列，非陣列視為空
+ * @param {Array} rejects 輸入本次各驗證失敗之原因(依發生順序)
+ * @returns {Array} 回傳字串陣列，如 ['oc:x:validation(12.3s)：非 JSON（或輸出截斷）', 'oc:y:timeout(300.0s)']
+ */
+function errorsOf(tried, rejects) {
+    let i = 0
+    return (isarr(tried) ? tried : []).filter((t) => t && t.outcome !== 'ok').map((t) => {
+        const sec = Number.isFinite(t.durationMs) ? `(${(t.durationMs / 1000).toFixed(1)}s)` : ''
+        const judged = t.errorType === 'validation' || (t.errorType === 'incomplete' && TRUNC_REJECTED_RE.test(String(t.error || '')))
+        const why = judged && i < rejects.length ? `：${rejects[i++]}` : ''
+        return `${t.keyId || t.providerId}:${t.errorType || t.outcome}${sec}${why}`
+    })
+}
+
+/**
+ * 工作流入口之單棒結果(getWkf().callAi 之回傳;或呼叫端之單棒包裝未送出／截止之形狀)→ callJson 結果之形狀——嘗試數與失敗摘要與 callJson
+ *   同一判準(attemptsOf、errorsOf;經本層驗證而不合格者附不合格原因):評分角色之自訂呼叫(benchKit 之 call)與各工作之單棒包裝同讀此一份
+ *
+ * 未送出／截止之形狀(呼叫端之單棒包裝所回;如下游套件之單棒呼叫包裝):oversize(整條鏈放不下,未送出)、unset(席位未設,未送出)、
+ *   stopped(截止或中止;netDown 為本機網路不通、cause 為原錯誤之節錄)——皆不計此次之失敗(skipped)者為 stopped、skipped、
+ *   errorType budget／aborted
+ *
+ * @param {Object} r 輸入單棒結果({ ok, json, providerId, error, errorType?, tried, skipped?, netDown?, oversize?, unset?, stopped?, cause? })
+ * @param {Array} [rejects=[]] 輸入本次各驗證失敗之原因(依發生順序;對應 tried 中驗證失敗者——同 callJson 之不合格原因)
+ * @returns {Object} 回傳 { ok, data, error, providerId, attempts(實際送出之嘗試數), skipped(不計此次之失敗), errors }
+ * @example
+ * console.log(callJsonShapeOf({ ok: false, error: 'x', errorType: 'validation', tried: [{ providerId: 'p', outcome: 'skip-group', errorType: 'validation', durationMs: 3000 }] }, ['回覆不含 { ops:[…] }']).errors)
+ * // => [ 'p:validation(3.0s)：回覆不含 { ops:[…] }' ]
+ */
+export function callJsonShapeOf(r, rejects = []) {
+    const tried = isarr(r?.tried) ? r.tried : []
+    const attempts = attemptsOf(tried)
+    if (r?.ok === true) return { ok: true, data: r.json, error: '', providerId: textValueOf(r.providerId), attempts, skipped: false, errors: [] }
+    const errors = errorsOf(tried, isarr(rejects) ? rejects.map((x) => textValueOf(x)) : [])
+    const skipped = r?.stopped === true || r?.skipped === true || r?.errorType === 'budget' || r?.errorType === 'aborted'
+    let error = textValueOf(r?.error) || '呼叫失敗'
+    if (r?.oversize) error = '提示詞超過受測條目之上限（未送出）'
+    else if (r?.unset) error = '席位未設（未送出）'
+    else if (r?.stopped) error = `中止（${r.netDown ? '本機網路不通' : '截止或預算用盡'}${textValueOf(r.cause) ? `：${textValueOf(r.cause)}` : ''}）`
+    return { ok: false, data: null, error, providerId: '', attempts, skipped, errors }
+}
+
+/**
+ * 由結果物件推出 keyId(實績彙總用):遞補層之結果頂層只有 providerId 與 keyIndex,keyId 僅存在於 tried 各項
+ *
+ * @param {Object} r 輸入呼叫結果物件
+ * @returns {String} 回傳 keyId 字串，無 providerId 時回傳空字串
+ */
+function keyIdOf(r) {
+    if (r?.keyId) return r.keyId
+    const id = r?.providerId
+    if (!id) return ''
+    return (r.keyIndex === null || r.keyIndex === undefined) ? id : `${id}#${r.keyIndex}`
+}
+
+/**
+ * 條目自帶 validate 時與本層 validate 取交集(兩者皆過才算過;見檔頭)
+ *
+ * @param {Object} entry 輸入供應商條目
+ * @param {Function} validate 輸入本層驗證函數 (stdout) => Boolean
+ * @returns {Object} 回傳條目；條目無有效 validate 時原樣回傳，否則回傳 validate 已取交集之淺拷貝
+ */
+function intersectEntryValidate(entry, validate) {
+    const ev = buildValidator(entry?.validate)
+    if (ev === null) return entry
+    return { ...entry, validate: (s) => safeValidate(ev, s).pass && validate(s) }
+}
+
+/**
+ * 建立 AI 調度層(見檔頭):所有狀態收在閉包內(或注入之持久層),同進程可開多個互不相踩之實例
+ *
+ * @param {Object} opt 輸入設定物件，非物件視為 {} 後由必填檢查拋錯
+ * @param {Object} opt.ai 輸入 settings.ai 形狀 { timeoutMs?, maxRetries?, cooldownMs?, providerTimeouts?, extraProviders?, pools?, healthStreak?, providerLimits? }
+ *   (席位不在此:由呼叫端於 callJson 之 callOpt.spec 給,領域發現之席位為 settings.capture.discover.ai;其餘之鍵不讀)。
+ *   高頻呼叫之機制以值開關(未給、null 或下列關閉值即不開;給了而形狀不合即拋,判準同設定段之 AI_SCHEMA):
+ *   pools 為 { oc: { log:'auto'|日誌路徑, resetUtcHour:0～23 } } 即開免費池當日額度({}＝不開;'auto'＝opencode 預設日誌位置,見 ai/poolQuota);
+ *   healthStreak 為正整數即開健康降序(連續幾次「整組皆敗」即降序;0＝不開——需要者於其設定之預設給定,如下游套件與安裝端之正式管線);
+ *   providerLimits 為 { 條目 id: 字元數上限 }(列出者恆依實際 prompt 長度預篩;0＝解除該條目之固有上限;{}＝不剔除)
+ * @param {String} opt.workspace 輸入 AI 子進程工作目錄字串(與知識庫隔離,防模型順手寫檔;每次派送前確保存在)
+ * @param {String} [opt.envFile] 輸入金鑰檔路徑(.env;值不進 cfg)，與 env 擇一；兩者皆未給則讀 process.env
+ * @param {Object} [opt.env] 輸入已解析之金鑰物件(變數名 → 逗號分隔金鑰；測試替身)，優先於 envFile
+ * @param {Array} [opt.providerPick] 輸入可用池(條目 id 之非空字串陣列):只展開所列、依序(席位只能引用其內之 id);未給即全目錄
+ * @param {Object} [opt.exes] 輸入逐 kind 之 CLI 執行檔絕對路徑對照(如 { claude: 'C:/…/claude.exe' };條目已自帶 exe 者不覆寫)
+ * @param {Object} [opt.persistStore] 輸入游標與冷卻之持久層 { get():Object, set(state) }(如 w-dispatch-ai 之 createFileStore;見檔頭【狀態】)，未給即行程內
+ * @param {Object} [opt.usageCounter] 輸入逐日用量計數器 { onEvent(ev), today():{ today, byKey } }(如 w-dispatch-ai 之 createUsageCounter)，未給即行程內
+ * @param {Object} [opt.clock] 輸入 genClockTZ 產物(用量之「今日」判定;未給則不分日)
+ * @param {Function} [opt.isNetDown] 輸入本機網路確認函數 () => Promise<Boolean>:整條遞補鏈皆敗時詢問,不通即回 skipped(不計此次之失敗)
+ * @param {Boolean} [opt.acceptTruncated=false] 輸入是否截斷放行與部分接受(見檔頭;callOpt.acceptTruncated 逐次覆寫)，未給或 null 為 false
+ * @param {Boolean} [opt.preview=false] 輸入失敗形狀是否附 preview(最後一次失敗嘗試之 stdout 前 120 字;未送出即失敗者為 '')，未給或 null 為 false
+ * @param {Boolean} [opt.capability=false] 輸入能力預篩是否計入條目與 kind 之固有 prompt 長度上限(見檔頭;ai.providerLimits 之逐 id 上限不受此影響、恆生效)，
+ *   未給或 null 為 false
+ * @param {Boolean} [opt.workflow=false] 輸入是否開啟多棒工作流之呼叫入口(見檔頭【工作流入口】:另回 getWkf／seatSpec)，未給或 null 為 false
+ * @param {Function} [opt.onPool] 輸入免費池當日額度用盡而降序時之回呼(每條目每行程一次)，格式 ({ providerId, model, first, last, n, resetUtcHour }) => void；
+ *   僅 ai.pools.oc 給定時作用；拋錯不影響呼叫
+ * @param {Function} [opt.onHealth] 輸入健康層觸發冷卻時之回呼，格式 ({ providerId, streak, errorType, error, keys? }) => void，
+ *   keys 僅於觸發之組為多金鑰條目且每把皆試過而敗時附上；僅 ai.healthStreak 為正整數時作用；拋錯不影響呼叫
+ * @param {Function} [opt.onOversize] 輸入 prompt 逾長而剔除條目時之回呼(每條目每實例一次;次數另計於健康層)，格式 ({ providerId, promptLen, limit }) => void；拋錯不影響呼叫
+ * @param {Array} [opt.catalogue] 輸入供應商目錄(測試注入)，預設 w-dispatch-ai 內建目錄
+ * @returns {Object} 回傳 { callJson, validateSeats, chainFor, drainStats, recordCall, aiUsageToday, available }；
+ *   ai.healthStreak 為正整數時另帶 health(健康層:snapshot、summary 等,見 ai/providerHealth;執行摘要 run.json 之 ai.health 讀它)；
+ *   workflow 為 true 時另帶 getWkf(工作流,快取)與 seatSpec(席位 → 工作流之名額規格)
+ * @throws {Error} opt 缺 ai／workspace、envFile 或 env 型別不符、acceptTruncated／preview／capability／workflow 非布林值、providerPick／exes／persistStore／
+ *   usageCounter 形狀不合、providerPick 含未知 id、ai.extraProviders 不合格式、或 ai.pools／ai.healthStreak／ai.providerLimits 給了而形狀不合時拋出
+ * @example
+ * need test in nodejs.
+ *
+ * let ad = createAiAdapter({ ai: resolveSettings({}).ai, envFile: 'c:/kb/.env', workspace: 'c:/kb/tmp/ai-workspace' })
+ * ad.validateSeats({ 'capture.discover.ai': resolveSettings({}).capture.discover.ai })
+ * let r = await ad.callJson('只回覆 JSON 陣列 [1]', (d) => (Array.isArray(d) ? true : '須為陣列'), { spec: resolveSettings({}).capture.discover.ai })
+ * console.log(r.ok, r.providerId)
+ */
+export function createAiAdapter(opt) {
+
+    //check
+    if (!isobj(opt)) {
+        opt = {}
+    }
+
+    const { ai, envFile, env, workspace, clock } = opt
+    if (!isobj(ai) || !isestr(workspace)) {
+        throw new Error('createAiAdapter 需要 { ai(settings.ai), workspace(AI 子進程工作目錄) }；金鑰以 envFile 或 env 給（皆未給則讀 process.env）')
+    }
+    if (envFile !== undefined && envFile !== null && !isestr(envFile)) {
+        throw new Error('createAiAdapter 之 envFile 須為金鑰檔路徑字串')
+    }
+    if (env !== undefined && env !== null && !isobj(env)) {
+        throw new Error('createAiAdapter 之 env 須為物件 { 變數名: 逗號分隔之金鑰 }')
+    }
+    for (const k of ['acceptTruncated', 'preview', 'capability', 'workflow']) {
+        if (opt[k] !== undefined && opt[k] !== null && typeof opt[k] !== 'boolean') {
+            throw new Error(`createAiAdapter 之 ${k} 須為布林值`)
+        }
+    }
+    // 機制之鍵:給了即依設定段之同一判準驗(呼叫端可不經設定段直接給 ai;形狀錯若靜默視為不開,安裝方之意圖即被改寫)
+    for (const k of MECH_KEYS) {
+        const v = ai[k]
+        if (v === undefined || v === null) continue
+        const t = SETTING_TYPES[AI_SCHEMA[k]]
+        if (!t.test(v)) throw new Error(`createAiAdapter 之 ai.${k} 須為${t.desc}${t.why ? `（${t.why(v)}）` : ''}`)
+    }
+    const providerPick = given(opt.providerPick) ? opt.providerPick : null
+    if (providerPick && !(isarr(providerPick) && providerPick.length > 0 && providerPick.every(isestr))) {
+        throw new Error('createAiAdapter 之 providerPick 須為條目 id 之非空字串陣列')
+    }
+    if (given(opt.exes) && !isobj(opt.exes)) {
+        throw new Error('createAiAdapter 之 exes 須為物件 { kind: CLI 執行檔路徑 }')
+    }
+    const persistStore = given(opt.persistStore) ? opt.persistStore : null
+    if (persistStore && !(isobj(persistStore) && isfun(persistStore.get) && isfun(persistStore.set))) {
+        throw new Error('createAiAdapter 之 persistStore 須為 { get(), set(state) }')
+    }
+    const usageCounter = given(opt.usageCounter) ? opt.usageCounter : null
+    if (usageCounter && !(isobj(usageCounter) && isfun(usageCounter.onEvent) && isfun(usageCounter.today))) {
+        throw new Error('createAiAdapter 之 usageCounter 須為 { onEvent(ev), today() }')
+    }
+    const isNetDown = isfun(opt.isNetDown) ? opt.isNetDown : null
+    const acceptTruncatedDefault = opt.acceptTruncated === true
+    const withPreview = opt.preview === true
+    const withWorkflow = opt.workflow === true
+
+    // ── 展開供應商(執行殼之 resolveCatalogue;檔頭):目錄＋extraProviders → 金鑰來源 → 逾時三層取值寫進條目 → providerPick／exes ──
+    const { merged, resolved } = resolveCatalogue({
+        catalogue: opt.catalogue,
+        extraProviders: ai.extraProviders,
+        ...(providerPick ? { pick: providerPick } : {}),
+        ...(isobj(env) ? { env } : {}),
+        ...(isestr(envFile) ? { envFile } : {}),
+        ...(isobj(opt.exes) ? { exes: opt.exes } : {}),
+        providerTimeouts: ai.providerTimeouts,
+        timeoutMs: ai.timeoutMs,
+    })
+    if (resolved.missing.length) {
+        const hints = Object.entries(resolved.hints || {}).filter(([, v]) => isestr(v)).map(([k, v]) => `${k}→${v}`).join('、')
+        throw new Error(`ai.providerPick 含未知 id：${resolved.missing.join('、')}（內建目錄與 ai.extraProviders 皆無${hints ? `；最接近：${hints}` : ''}）`)
+    }
+    const skippedOf = new Map(resolved.skipped.map((x) => [x.id, x.envVar]))
+    const allIds = merged.map((x) => x?.id).filter(isestr)
+    // 目錄有、而不在可用池者(席位引用時之原因須與「目錄無此條目」分開)
+    const unpicked = new Set(providerPick ? allIds.filter((id) => !providerPick.includes(id)) : [])
+    const cooldownMs = ai.cooldownMs ?? 900_000
+
+    // ── 免費池當日額度(ai.pools.oc;見 ai/poolQuota):日誌回報當日額度用盡之 opencode 條目,於每次 store.get()(上游每次呼叫開頭讀狀態)
+    //    寫進 cooling——與逾時冷卻同一機制,降至鏈尾、不移除,至每日重置止;本行程見其成交即停。opencode CLI 撞額度上限時不返回、
+    //    自行退避到被逾時砍掉,不先避開就每個行程各等一次逾時 ──
+    const ocCfg = isobj(ai.pools?.oc) ? ai.pools.oc : null
+    const ocModels = ocCfg ? Object.entries(resolved.table).filter(([, e]) => e?.kind === 'opencode' && isestr(e?.model)).map(([id, e]) => ({ id, model: e.model })) : []
+    const ocModelOf = new Map(ocModels.map((x) => [x.id, x.model]))
+    const resetUtcHour = ocCfg?.resetUtcHour ?? 0
+    const pool = ocModels.length ? createPoolQuota({ file: !ocCfg.log || ocCfg.log === 'auto' ? defaultOpencodeLog() : ocCfg.log, resetUtcHour }) : null
+    const onPool = isfun(opt.onPool) ? opt.onPool : null
+    const poolNoted = new Set()
+    /**
+     * 額度用盡之 opencode 條目寫進狀態之 cooling(時刻＝當下);每個條目每行程回呼 onPool 一次
+     *
+     * @param {Object} st 輸入 store 之共享狀態物件
+     * @returns {undefined} 無回傳值
+     */
+    const applyPool = (st) => {
+        if (!pool || !isobj(st)) return
+        const now = Date.now()
+        for (const { id, model } of ocModels) {
+            if (!pool.isExhausted(model, now)) continue
+            if (!isobj(st.cooling)) st.cooling = {}
+            st.cooling[id] = now
+            if (poolNoted.has(id)) continue
+            poolNoted.add(id)
+            if (!onPool) continue
+            try {
+                onPool({ providerId: id, model, ...pool.info(model), resetUtcHour })
+            }
+            catch { /* 回呼失敗不影響呼叫 */ }
+        }
+    }
+
+    // ── 狀態(游標與冷卻;檔頭【狀態】):get 恆回同一物件,並行之呼叫就地修改,不互相覆蓋;開啟免費池額度時 get 先套用其冷卻。
+    //    給了 persistStore 即以其內容為起點(行程內第一次讀取),每次 set 併入後寫回 ──
+    let state = persistStore ? null : { cursors: {}, cooling: {} }
+    /**
+     * 取共享之狀態物件(給了 persistStore 者第一次讀取其內容;讀取失敗或非物件視為全新狀態)
+     *
+     * @returns {Object} 回傳共享之狀態物件
+     */
+    const sharedState = () => {
+        if (state) return state
+        let s = null
+        try {
+            s = persistStore.get()
+        }
+        catch { /* 讀取失敗視為全新狀態 */ }
+        state = isobj(s) ? s : {}
+        return state
+    }
+    const store = {
+        get: () => {
+            const st = sharedState()
+            applyPool(st)
+            return st
+        },
+        set: (s) => {
+            const st = sharedState()
+            if (isobj(s) && s !== st) Object.assign(st, s) // 外來副本併入,不整份取代
+            if (!persistStore) return
+            try {
+                persistStore.set(st)
+            }
+            catch { /* 寫回失敗不影響呼叫(下一次 set 再寫) */ }
+        },
+    }
+
+    // ── 供應商健康降序(ai.healthStreak 為正整數;見 ai/providerHealth):連續 N 次「整組皆敗」即寫進同一 store 之 cooling ──
+    const health = Number.isInteger(ai.healthStreak) && ai.healthStreak > 0
+        ? createProviderHealth({ store, threshold: ai.healthStreak, windowMs: cooldownMs, onCool: isfun(opt.onHealth) ? opt.onHealth : undefined })
+        : null
+
+    // ── 能力預篩(ai/capability;檔頭):逐 id 上限恆生效,條目與 kind 之固有上限於 capability 開啟時才計 ──
+    const providerLimits = isobj(ai.providerLimits) ? ai.providerLimits : {}
+    const fitOpt = { inherent: opt.capability === true }
+    const onOversize = isfun(opt.onOversize) ? opt.onOversize : null
+    const oversizeSeen = new Set()
+    /**
+     * 逾長剔除之計數與留痕:次數計於健康層(開啟時);同一條目只回呼一次,其餘只累計
+     *
+     * @param {String} id 輸入條目 id
+     * @param {Integer} promptLen 輸入 prompt 實際字元數(含防寫前綴)
+     * @param {Integer} limit 輸入該條目之字元數上限
+     * @returns {undefined} 無回傳值
+     */
+    const noteOversize = (id, promptLen, limit) => {
+        if (health) health.noteOversize(id)
+        if (oversizeSeen.has(id)) return
+        oversizeSeen.add(id)
+        if (!onOversize) return
+        try {
+            onOversize({ providerId: id, promptLen, limit })
+        }
+        catch { /* 回呼失敗不影響呼叫 */ }
+    }
+
+    /**
+     * 確保子進程工作目錄存在(檔頭);建立失敗不拋,由派送回報實際錯誤
+     *
+     * @returns {undefined} 無回傳值
+     */
+    const ensureWorkspace = () => {
+        try {
+            fs.mkdirSync(workspace, { recursive: true })
+        }
+        catch { /* 交由 spawn 回報 */ }
+    }
+
+    // ── 用量(依 clock 之今日分日;純觀測,不參與任何判斷):給了 usageCounter 即以其記帳與查詢(跨行程),否則行程內;與實績彙總 ──
+    let usage = { day: '', byKey: {} }
+    const dayOf = () => (isfun(clock?.date8) ? clock.date8() : '')
+    /**
+     * 逐次事件之單一入口(檔頭):於 'try' 依金鑰(keyId)記一次用量——嘗試時即記,行程被外部時限中途砍掉之請求仍有紀錄
+     * (給了 usageCounter 者交其記帳,計帳失敗不影響呼叫);開啟時另交健康層計數、並於額度用盡之條目成交時解除其額度降序
+     *
+     * @param {Object} ev 輸入 dispatchAiFallback 之事件物件
+     * @returns {undefined} 無回傳值
+     */
+    const onEvent = (ev) => {
+        if (usageCounter) {
+            try {
+                usageCounter.onEvent(ev)
+            }
+            catch { /* 計帳失敗不影響呼叫 */ }
+        }
+        else if (ev?.type === 'try') {
+            const day = dayOf()
+            if (usage.day !== day) usage = { day, byKey: {} }
+            const k = String(ev.keyId || ev.providerId || '')
+            if (k) usage.byKey[k] = (usage.byKey[k] || 0) + 1
+        }
+        if (health) {
+            try {
+                health.onEvent(ev)
+            }
+            catch { /* 健康層失敗不影響呼叫 */ }
+        }
+        // 額度用盡之條目於本行程成交 → 視為恢復(上游於成交時已刪除其冷卻)
+        if (pool && ev?.type === 'ok' && ocModelOf.has(String(ev.providerId))) pool.noteOk(ocModelOf.get(String(ev.providerId)))
+    }
+
+    /**
+     * 呼叫端之逐次事件回呼串在本層事件入口之後(檔頭【事件單一入口】;callJson 與工作流入口共用):本層先、呼叫端後,呼叫端拋錯不外洩
+     *
+     * @param {*} userOnEvent 輸入呼叫端之回呼 (ev) => void，非函數即只用本層之事件入口
+     * @returns {Function} 回傳交上游之事件回呼
+     */
+    const chainOnEvent = (userOnEvent) => {
+        if (!isfun(userOnEvent)) return onEvent
+        return (ev) => {
+            onEvent(ev)
+            try {
+                userOnEvent(ev)
+            }
+            catch { /* 呼叫端回呼失敗不影響呼叫 */ }
+        }
+    }
+
+    /**
+     * 本機網路是否不通(建構時給了 isNetDown 才詢問;回嚴格 true 才算,判斷拋錯視同通——照常計)
+     *
+     * @returns {Promise} 回傳 Promise，resolve 回傳是否不通之布林值
+     */
+    const netDownNow = async () => {
+        if (!isNetDown) return false
+        try {
+            return (await isNetDown()) === true
+        }
+        catch {
+            return false
+        }
+    }
+    let tally = []
+
+    /**
+     * 席位規格 { use, fallback, timeoutMs? } → 條目陣列;引用不可用之 id 拋錯(靜默略過會讓鏈莫名變短)
+     *
+     * @param {Object} spec 輸入席位規格；timeoutMs 為正數時覆寫鏈內各條目之逾時(檔頭【逾時三層取值】)
+     * @returns {Array} 回傳條目陣列(use 於前、fallback 依序在後、重複者去除)，各項為 { id, ...可用表之條目 }
+     * @throws {Error} spec 之 use 與 fallback 皆無可用名稱(席位缺 use 而無 fallback)、或引用了不可用(未知或缺金鑰)之 id 時拋出(未知 id 附最接近之拼寫提示);
+     *   席位形狀(use 必給等)由 seatProblem 把關,validateSeats、callJson 與 seatSpec 皆先檢
+     */
+    function chainFor(spec) {
+        // 去重:首選同時出現在遞補鏈時不重試同一家
+        const names = [...new Set([spec?.use, ...(isarr(spec?.fallback) ? spec.fallback : [])].filter(isestr))]
+        if (!names.length) throw new Error(`席位缺 use：${JSON.stringify(spec)}`)
+        const bad = names.filter((n) => !resolved.table[n])
+        if (bad.length) {
+            const why = bad.map((n) => {
+                if (skippedOf.has(n)) return `${n}（缺金鑰 ${skippedOf.get(n)}）`
+                if (unpicked.has(n)) return `${n}（未列於 ai.providerPick）`
+                const hint = allIds.length ? strFindSimilar(n, allIds)?.bestMatch?.target : ''
+                return `${n}（內建目錄與 ai.extraProviders 皆無${hint ? `；最接近：${hint}` : ''}）`
+            }).join('、')
+            throw new Error(`席位引用了不可用的條目：${why}（可用：${Object.keys(resolved.table).join('、')}）`)
+        }
+        const seatTimeout = posNum(spec?.timeoutMs)
+        return names.map((n) => ({ ...resolved.table[n], id: n, ...(seatTimeout ? { timeoutMs: seatTimeout } : {}) }))
+    }
+
+    /**
+     * 啟動期席位檢核(檔頭):任一席位形狀不合(core/settingsDefault 之 seatProblem)或無法解析即拋錯,訊息列出席位名與原因
+     *
+     * 【長度上限不在此猜】prompt 長度是呼叫當下才知道的事實:此處只警告「全鏈條目皆有長度上限」之席位——遇長 prompt 無處可去、
+     *   呼叫即失敗;首選有上限而遞補無上限者屬正常配置,由 callJson 依實際長度剔除(上限之取法同 callJson,見檔頭【能力預篩】)
+     *
+     * @param {Object} seats 輸入席位對照 { 席位名: { use, fallback?, timeoutMs?, minAttemptMs?, budgetMs? } }
+     * @returns {Object} 回傳 { ok:true, warnings:Array }，warnings 為全鏈條目皆有長度上限之席位提示(未開能力預篩且無逐 id 上限時恆為空)
+     * @throws {Error} 任一席位不合格時拋出，訊息彙整全部問題席位
+     */
+    function validateSeats(seats) {
+        const problems = []
+        const warnings = []
+        for (const [name, spec] of Object.entries(isobj(seats) ? seats : {})) {
+            const p = seatProblem(spec)
+            if (p) {
+                problems.push(`${name} → ${p}`)
+                continue
+            }
+            let chain
+            try {
+                chain = chainFor(spec)
+            }
+            catch (e) {
+                problems.push(`${name} → ${e.message}`)
+                continue
+            }
+            const limits = chain.map((e) => maxPromptCharsOf(e, providerLimits, fitOpt))
+            if (limits.every((n) => Number.isFinite(n))) {
+                warnings.push(`${name} 之全鏈條目皆有 prompt 長度上限（${chain.map((e, i) => `${e.id}≤${limits[i]}`).join('、')}）：prompt 超過時本席位無處可去、呼叫即失敗；建議遞補鏈至少留一家無上限者`)
+            }
+        }
+        if (problems.length) throw new Error(`AI 席位於啟動期檢核失敗（${problems.length} 席）：${problems.join('；')}`)
+        return { ok: true, warnings }
+    }
+
+    /**
+     * 記錄一次呼叫結果供實績彙總(drainStats);健康層開啟時,截斷內容經放行之成功另計於健康層(執行摘要揭露放行頻率,不當失敗)
+     *
+     * @param {Object} r 輸入 dispatchAiFallback 之結果(工作流入口之 callAi 結果、runFanout 之各席結果同形，呼叫端自行補記)，假值不記錄
+     * @returns {undefined} 無回傳值
+     */
+    function recordCall(r) {
+        if (!r) return
+        if (health && r.ok && r.truncated === true && r.providerId) health.noteTruncated(String(r.providerId))
+        tally.push({ keyId: keyIdOf(r), ok: !!r.ok, skipped: (isarr(r.tried) ? r.tried : []).filter((t) => t && t.outcome !== 'ok').map((t) => `${t.keyId || t.providerId}(${t.errorType || t.outcome || '?'})`) })
+    }
+
+    /**
+     * 彙整並清空實績暫存(日誌之「成交／遞補略過」一行;健康層開啟時附其摘要並歸零其累計),呼叫後歸零
+     *
+     * @returns {String} 回傳一行摘要，無呼叫紀錄(且無健康摘要)時回傳「無呼叫」
+     */
+    function drainStats() {
+        const win = {}
+        const skip = {}
+        for (const c of tally) {
+            if (c.ok && c.keyId) win[c.keyId] = (win[c.keyId] || 0) + 1
+            for (const s of c.skipped) skip[s] = (skip[s] || 0) + 1
+        }
+        tally = []
+        const w = Object.entries(win).map(([k, n]) => `${k}×${n}`).join(' ')
+        const s = Object.entries(skip).map(([k, n]) => `${k}×${n}`).join(' ')
+        const h = health ? health.summary(health.snapshot(true)) : ''
+        return [w && `成交 ${w}`, s && `遞補略過 ${s}`, h].filter(Boolean).join('；') || '無呼叫'
+    }
+
+    /**
+     * 今日用量與可用條目(執行摘要 run.json 之 ai.usageToday 讀 byKey;維運之顯示與健康檢查讀 chain／providers／skipped)
+     *
+     * @returns {Object} 回傳 { today, used, byKey, chain(可用條目依序之「id×金鑰數」以 → 相連), providers:[{ id, kind }](依序;不帶金鑰),
+     *   skipped:[{ id, envVar }](因缺金鑰而停用者) }；給了 usageCounter 者用量取其今日統計(跨行程),否則本行程內
+     */
+    function aiUsageToday() {
+        let day = dayOf()
+        let byKey = {}
+        if (usageCounter) {
+            let t = null
+            try {
+                t = usageCounter.today()
+            }
+            catch { /* 讀取失敗視為無資料 */ }
+            if (isestr(t?.today)) day = t.today
+            byKey = isobj(t?.byKey) ? { ...t.byKey } : {}
+        }
+        else if (usage.day === day) {
+            byKey = { ...usage.byKey }
+        }
+        const used = Object.values(byKey).reduce((a, b) => a + (Number(b) || 0), 0)
+        const chain = resolved.providers.map((p) => `${p.id}${isarr(p.keys) ? `×${p.keys.length}` : ''}`).join(' → ')
+        return { today: day, used, byKey, chain, providers: resolved.providers.map((p) => ({ id: p.id, kind: p.kind })), skipped: resolved.skipped.map((x) => ({ ...x })) }
+    }
+
+    /**
+     * 可用條目與因缺金鑰而停用之條目(維運與評比用)
+     *
+     * @returns {Object} 回傳 { ids:Array(可解析之條目 id), skipped:Array({ id, envVar }) }
+     */
+    function available() {
+        return { ids: Object.keys(resolved.table), skipped: resolved.skipped.map((x) => ({ ...x })) }
+    }
+
+    /**
+     * 單次 JSON 任務(含遞補;不拋錯,見檔頭)
+     *
+     * 回覆中之完整 JSON 片段由後往前交 check 驗(core/ai/jsonReply 之 pickJsonReply;截斷放行開啟時截斷之尾段之搶救結果為最後一段),
+     * 取第一段 check 回 true 者;回字串即不合格之原因(記入 errors),回其他值或拋錯亦不合格。全部不合格即換下一家(遞補)。
+     * 送出前依實際長度剔除放不下之條目(能力預篩,見檔頭),再於放得下者中避開 callOpt.avoid 所列。
+     *
+     * @param {String} prompt 輸入提示詞(非空字串)；送出前加防寫前綴
+     * @param {Function} check 輸入驗證函數 (data) => true｜錯誤訊息字串
+     * @param {Object} [callOpt={}] 輸入逐次設定物件，非物件視為 {}
+     * @param {Object} callOpt.spec 輸入席位規格 { use, fallback?, timeoutMs?, minAttemptMs?, budgetMs? }，必給(領域發現傳 settings.capture.discover.ai);缺或形狀不合回 ok:false「席位無法解析」
+     * @param {Number} [callOpt.budgetMs] 輸入本次時間預算毫秒數，與席位 budgetMs、鏈預算(budgetFor)取最小者
+     * @param {Number} [callOpt.minAttemptMs] 輸入單次嘗試之最低剩餘預算毫秒數(剩餘低於此值即停止遞補)；未給依序取席位值、上游預設 20000
+     *   (遞補鏈之單次逾時〔取最小〕低於 40000 者改取其一半——否則預算不足 20 秒之鏈一次都不送出)
+     * @param {Function} [callOpt.shouldStop] 輸入中止判斷函數 () => Boolean，嘗試之間呼叫(如整輪時間預算已到)
+     * @param {Function} [callOpt.onEvent] 輸入逐次事件回呼 (ev) => void，於本層之事件入口之後呼叫，拋錯不影響呼叫
+     * @param {Boolean} [callOpt.acceptTruncated] 輸入本次是否截斷放行(布林值優先於建構之 acceptTruncated;非布林值視為未給)
+     * @param {Array} [callOpt.avoid] 輸入本次避開之條目 id 陣列(曾對同一輸入產出不合格結果者);避開後無條目則不避;非陣列視為未給
+     * @returns {Promise} 回傳 Promise，resolve 回傳 { ok, data, error, providerId, attempts, skipped, errors }：
+     *   ok 成功時 data 為解析後之 JSON、providerId 為成交條目；attempts 為實際送出之嘗試次數(含遞補)；
+     *   skipped 為 true 表時間預算用盡、中止或本機網路不通(不計此次之失敗)；errors 為各次失敗之「條目:錯誤型別(耗時)」；
+     *   全鏈皆放不下 prompt 者回失敗(attempts 0、未送出、另帶 oversize:true——呼叫端據此分辨逾長,不比對字樣)；截斷放行之成功另帶 truncated:true；
+     *   建構時 preview 為 true 者失敗另帶 preview(最後一次失敗嘗試之 stdout 前 120 字)
+     */
+    async function callJson(prompt, check, callOpt = {}) {
+        const fail = (error) => ({ ok: false, data: null, error, providerId: '', attempts: 0, skipped: false, errors: [], ...(withPreview ? { preview: '' } : {}) })
+
+        //check
+        if (!isestr(prompt) || !isfun(check)) {
+            return fail('callJson 需要 prompt（非空字串）與 check（函數）')
+        }
+        if (!isobj(callOpt)) {
+            callOpt = {}
+        }
+
+        const spec = callOpt.spec
+        let chain0
+        try {
+            const p = seatProblem(spec)
+            if (p) throw new Error(p)
+            chain0 = chainFor(spec)
+        }
+        catch (e) {
+            return fail(`席位無法解析：${e.message}`)
+        }
+        // 能力預篩(檔頭):依實際長度(含防寫前綴)剔除放不下之條目;全部放不下即不送出
+        const text = NO_SIDE_EFFECT + prompt
+        const fit = fitChain(chain0, text.length, providerLimits, fitOpt)
+        for (const d of fit.dropped) noteOversize(d.id, text.length, d.limit)
+        if (!fit.kept.length) {
+            return { ...fail(`prompt ${text.length} 字元超過本席位全部條目之上限（${fit.dropped.map((d) => `${d.id}≤${d.limit}`).join('、')}）：縮短輸入或於遞補鏈加入無上限之條目`), oversize: true }
+        }
+        // 避開(callOpt.avoid:條目 id 陣列):呼叫端已知某家對本次輸入產出過不合格結果(如末次重試換家);於放得下之條目中避開,
+        //   避開後無條目則不避(不以避開讓呼叫失敗)
+        const avoid = new Set(isarr(callOpt.avoid) ? callOpt.avoid.map(String).filter(Boolean) : [])
+        const chain = avoid.size && fit.kept.some((e) => !avoid.has(String(e.id))) ? fit.kept.filter((e) => !avoid.has(String(e.id))) : fit.kept
+        // 截斷放行:逐次之布林值優先於建構值(檔頭)
+        const acceptTruncated = typeof callOpt.acceptTruncated === 'boolean' ? callOpt.acceptTruncated : acceptTruncatedDefault
+
+        // 解析與驗證:回覆中「最後一段合格」之 JSON(core/ai/jsonReply 之 pickJsonReply:由後往前取第一段 check(d) === true 者;截斷放行時
+        //   截斷之尾段之搶救結果為最後一段)——模型先回一段、再「更正如下」回一段時取後者;check 拋錯視同不合格(該家失敗、交遞補),不中斷整條鏈
+        //   合格者依回覆原文記下,成交後直接取用(check 每次嘗試只呼叫一輪)
+        const passed = new Map()
+        const rejects = []
+        const validate = (s) => {
+            const p = pickJsonReply(s, check, { acceptTruncated })
+            if (p.ok) {
+                passed.set(s, p.data)
+                return true
+            }
+            rejects.push(p.reason)
+            return false
+        }
+        const providers = chain.map((e) => intersectEntryValidate(e, validate))
+        ensureWorkspace()
+        const cap = Math.min(posNum(callOpt.budgetMs) ?? Infinity, posNum(spec.budgetMs) ?? Infinity)
+        const minAttemptMs = minAttemptOf(posNum(callOpt.minAttemptMs) ?? posNum(spec.minAttemptMs), Math.min(...providers.map((e) => posNum(e.timeoutMs) ?? dfTimeoutMs)))
+        const shouldStop = isfun(callOpt.shouldStop) ? callOpt.shouldStop : null
+        const stopNow = () => stopRequested(shouldStop)
+        const r = await dispatchAiFallback(text, {
+            providers,
+            cwd: workspace,
+            validate,
+            // 截斷放行(檔頭):明示同意才交本層驗證裁決;未開者不帶此鍵(上游預設判失敗)
+            ...(acceptTruncated ? { acceptTruncated: true } : {}),
+            budgetMs: Math.min(budgetFor(providers), cap),
+            ...(minAttemptMs ? { minAttemptMs } : {}),
+            maxRetries: ai.maxRetries ?? 0,
+            cooldownMs,
+            coolDetect,
+            store,
+            // 本層之事件入口必先執行,呼叫端回呼在後且拋錯不外洩
+            onEvent: chainOnEvent(callOpt.onEvent),
+            ...(shouldStop ? { shouldStop: stopNow } : {}),
+        })
+        recordCall(r)
+        const attempts = attemptsOf(r.tried)
+        if (!r.ok) {
+            // 不是這次之失敗:時間預算用盡、嘗試之間中止,以及被整輪截止切斷者——被切斷的若是鏈中最後一家,上游回的是該家之
+            //   逾時而非 aborted(無下一家可中止),故另以 shouldStop 判定;本機網路不通者亦然(整鏈皆敗時以 isNetDown 確認)
+            let skipped = r.errorType === 'budget' || r.errorType === 'aborted' || stopNow()
+            let error = String(r.error || '')
+            if (!skipped && chainFailed(r) && await netDownNow()) {
+                skipped = true
+                error = `本機網路不通（不計此次之失敗）：${error}`
+            }
+            return { ok: false, data: null, error, providerId: '', attempts, skipped, errors: errorsOf(r.tried, rejects), ...(withPreview ? { preview: String(r.stdout || '').slice(0, PREVIEW_CHARS) } : {}) }
+        }
+        const data = passed.has(r.stdout) ? passed.get(r.stdout) : pickJsonReply(r.stdout, check, { acceptTruncated }).data
+        return { ok: true, data, error: '', providerId: String(r.providerId || ''), attempts, skipped: false, errors: [], ...(r.truncated === true ? { truncated: true } : {}) }
+    }
+
+    // ── 工作流入口(建構選項 workflow;檔頭【工作流入口】):與 callJson 共用 store、冷卻偵測、事件入口與工作目錄之確保 ──
+    let cachedWkf = null
+
+    /**
+     * 規格物件之 onEvent 改為「本層先、呼叫端後」(檔頭【工作流入口】③);規格未含 onEvent 鍵者原樣(沿用上層之串接)
+     *
+     * @param {*} x 輸入規格物件(runFanout 之席位或整合規格)
+     * @returns {*} 回傳規格(含 onEvent 鍵者為淺拷貝)
+     */
+    const withChainedOnEvent = (x) => (isobj(x) && Object.prototype.hasOwnProperty.call(x, 'onEvent') ? { ...x, onEvent: chainOnEvent(x.onEvent) } : x)
+
+    /**
+     * 標為本機網路不通(不計此次之失敗;檔頭【工作流入口】④)
+     *
+     * @param {Object} r 輸入整鏈皆敗之結果
+     * @returns {Object} 回傳 { ...r, ok:false, skipped:true, netDown:true }
+     */
+    const markNetDown = (r) => ({ ...r, ok: false, skipped: true, netDown: true })
+
+    /**
+     * 取得(並快取)w-dispatch-ai 工作流;定義表去掉條目之逾時(逾時由 seatSpec 帶),共用預設為本實例之 store、冷卻、事件入口與重試數
+     *
+     * @returns {Object} 回傳 { providers(定義表,條目無 timeoutMs), callAi(prompt, o), runFanout(o) }：
+     *   callAi／runFanout 同 dispatchAiWkf 之產出(不拋錯),另於派送前確保工作目錄、呼叫端之 onEvent 串在本層之後、整鏈皆敗且本機網路不通者標 skipped／netDown
+     * @example
+     * need test in nodejs.
+     *
+     * let ad = createAiAdapter({ ai: resolveSettings({}).ai, workspace: 'c:/kb/tmp/ai-workspace', workflow: true })
+     * let spec = ad.seatSpec({ use: 'oc:opencode/big-pickle' }, 1200)
+     * let { use, fallback, ...rest } = spec
+     * let r = await ad.getWkf().callAi('只回覆 JSON {"ops":[]}', { spec: { use, fallback }, ...rest, check: (j) => Array.isArray(j.ops) })
+     * console.log(r.ok, r.netDown === true)
+     */
+    function getWkf() {
+        if (cachedWkf) return cachedWkf
+        const table = {}
+        for (const [id, e] of Object.entries(resolved.table)) table[id] = Object.fromEntries(Object.entries(e).filter(([k]) => k !== 'timeoutMs'))
+        const wkf = dispatchAiWkf({
+            providers: table,
+            defaults: { cwd: workspace, store, cooldownMs, coolDetect, onEvent, maxRetries: ai.maxRetries ?? 0 },
+        })
+        /**
+         * 單一名額之呼叫(主模型＋遞補鏈;見 w-dispatch-ai callAiWithFallback)
+         *
+         * @param {String} prompt 輸入提示詞(工作流前置防寫前綴)
+         * @param {Object} [o={}] 輸入逐次選項 { spec:{ use, fallback }, check, parse, timeoutMs, budgetMs, minAttemptMs, shouldStop, onEvent, … }，非物件視為 {}
+         * @returns {Promise} 回傳 Promise，resolve 回傳 callAiWithFallback 之結果；整鏈皆敗且本機網路不通者另帶 skipped:true、netDown:true
+         */
+        const callAi = async (prompt, o) => {
+            const oo = isobj(o) ? o : {}
+            ensureWorkspace()
+            const r = await wkf.callAi(prompt, { ...oo, onEvent: chainOnEvent(oo.onEvent) })
+            if (chainFailed(r) && !stopRequested(oo.shouldStop) && await netDownNow()) return markNetDown(r)
+            return r
+        }
+        /**
+         * 多開執行＋整合(見 w-dispatch-ai runFanout)
+         *
+         * @param {Object} [o={}] 輸入 { task, agents, integrate, check, schema, minCandidates, callOpt }，非物件視為 {}
+         * @returns {Promise} 回傳 Promise，resolve 回傳 runFanout 之結果；失敗(各席皆敗,或整合已呼叫而敗)且本機網路不通者另帶 netDown:true,
+         *   其中整鏈皆敗之席位／整合結果各帶 skipped:true、netDown:true
+         */
+        const runFanout = async (o) => {
+            const oo = isobj(o) ? o : {}
+            const callOpt = isobj(oo.callOpt) ? oo.callOpt : {}
+            ensureWorkspace()
+            const r = await wkf.runFanout({
+                ...oo,
+                ...(isarr(oo.agents) ? { agents: oo.agents.map(withChainedOnEvent) } : {}),
+                ...(isobj(oo.integrate) ? { integrate: withChainedOnEvent(oo.integrate) } : {}),
+                callOpt: { ...callOpt, onEvent: chainOnEvent(callOpt.onEvent) },
+            })
+            if (!isobj(r) || r.ok === true || stopRequested(callOpt.shouldStop)) return r
+            // 失敗之所在:整合已呼叫而敗 → 整合;各席皆敗(無候選)→ 各席;其餘(參數不合、缺整合規格)不問網路
+            const agents = isarr(r.agents) ? r.agents : []
+            const integrateFailed = isobj(r.integrateDetail) && r.integrateDetail.ok !== true
+            const blamed = integrateFailed ? [r.integrateDetail] : (agents.length && agents.every((a) => a?.ok !== true) ? agents : [])
+            const down = blamed.filter(chainFailed)
+            if (!down.length || !(await netDownNow())) return r
+            const mark = (x) => (down.includes(x) ? markNetDown(x) : x)
+            return { ...r, agents: agents.map(mark), ...(isobj(r.integrateDetail) ? { integrateDetail: mark(r.integrateDetail) } : {}), netDown: true }
+        }
+        cachedWkf = { providers: wkf.providers, callAi, runFanout }
+        return cachedWkf
+    }
+
+    /**
+     * 席位 → 工作流之名額規格(檔頭【工作流入口】②):依實際提示詞長度預篩遞補鏈(放不下之條目剔除並計入逾長),帶席位逾時與預算
+     *
+     * @param {Object} seat 輸入席位 { use, fallback?, timeoutMs?, minAttemptMs?, budgetMs? }
+     * @param {Number} [promptLen] 輸入提示詞字元數(不含防寫前綴)，非有限數即不預篩
+     * @returns {Object|null} 回傳 { use, fallback, timeoutMs, budgetMs, minAttemptMs? }(minAttemptMs:席位有給即帶;未給而 timeoutMs 低於 40 秒者帶
+     *   timeoutMs 之一半——否則預算不足 20 秒之席位一次都不送出)；整條鏈都放不下回 null
+     * @throws {Error} 席位形狀不合(core/settingsDefault 之 seatProblem)或引用不可用之條目(見 chainFor)時拋出，訊息同 validateSeats 之逐席原因
+     * @example
+     * need test in nodejs.
+     *
+     * let ad = createAiAdapter({ ai: resolveSettings({}).ai, workspace: 'c:/kb/tmp/ai-workspace', workflow: true })
+     * console.log(ad.seatSpec({ use: 'oc:opencode/big-pickle', fallback: ['oc:opencode/mimo-v2.6-flash-free'], timeoutMs: 60000 }, 1200))
+     * // => { use: 'oc:opencode/big-pickle', fallback: [ 'oc:opencode/mimo-v2.6-flash-free' ], timeoutMs: 60000, budgetMs: 120000 }
+     */
+    function seatSpec(seat, promptLen) {
+        const p = seatProblem(seat)
+        if (p) throw new Error(p)
+        const chain = chainFor(seat)
+        let kept = chain
+        if (Number.isFinite(promptLen)) {
+            const len = promptLen + NO_SIDE_EFFECT.length
+            const fit = fitChain(chain, len, providerLimits, fitOpt)
+            for (const d of fit.dropped) noteOversize(d.id, len, d.limit)
+            kept = fit.kept
+        }
+        if (!kept.length) return null
+        const timeoutMs = posNum(seat.timeoutMs) ?? Math.max(...kept.map((e) => posNum(resolved.table[e.id]?.timeoutMs) ?? posNum(ai.timeoutMs) ?? dfTimeoutMs))
+        const budgetMs = posNum(seat.budgetMs) ?? timeoutMs * kept.length
+        const minAttemptMs = minAttemptOf(posNum(seat.minAttemptMs), timeoutMs)
+        return { use: kept[0].id, fallback: kept.slice(1).map((e) => e.id), timeoutMs, budgetMs, ...(minAttemptMs ? { minAttemptMs } : {}) }
+    }
+
+    return {
+        callJson, validateSeats, chainFor, drainStats, recordCall, aiUsageToday, available,
+        ...(health ? { health } : {}),
+        ...(withWorkflow ? { getWkf, seatSpec } : {}),
+    }
+}
+
+export default createAiAdapter

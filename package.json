@@ -1,0 +1,34 @@
+{
+  "name": "w-knowledge-capture",
+  "version": "1.0.1",
+  "main": "dist/w-knowledge-capture.umd.js",
+  "dependencies": {
+    "opencc-js": "^1.4.2",
+    "w-data-pipeline": "^1.0.24",
+    "w-dispatch-ai": "^1.0.64",
+    "w-dwdata-hub": "^1.0.25",
+    "w-fetch-web": "^1.0.30",
+    "w-orm-lmdb": "^1.0.50",
+    "wsemi": "^1.9.39"
+  },
+  "devDependencies": {
+    "w-package-tools": "^1.1.21"
+  },
+  "scripts": {
+    "test": "mocha --parallel \"test/*.test.mjs\" --timeout 180000",
+    "deploy": "gh-pages -d docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuda-lyu/w-knowledge-capture.git"
+  },
+  "keywords": [
+    "package",
+    "tool",
+    "knowledge",
+    "capture",
+    "nodejs"
+  ],
+  "author": "yuda-lyu(semisphere)",
+  "license": "MIT"
+}

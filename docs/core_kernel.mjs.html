@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>core/kernel.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="MwContractError.html">MwContractError</a></li></ul><h3>Global</h3><ul><li><a href="global.html#ABSTRACT_MAX">ABSTRACT_MAX</a></li><li><a href="global.html#AI_ADAPTER_NEED_DEFAULT">AI_ADAPTER_NEED_DEFAULT</a></li><li><a href="global.html#AI_ADAPTER_SIGS">AI_ADAPTER_SIGS</a></li><li><a href="global.html#AI_DEFAULT">AI_DEFAULT</a></li><li><a href="global.html#AI_OPTIONS_KEYS">AI_OPTIONS_KEYS</a></li><li><a href="global.html#AI_ROW_KEYS">AI_ROW_KEYS</a></li><li><a href="global.html#AI_SCHEMA">AI_SCHEMA</a></li><li><a href="global.html#ANSI_RE">ANSI_RE</a></li><li><a href="global.html#AREA_AI_BUDGET_MS">AREA_AI_BUDGET_MS</a></li><li><a href="global.html#AREA_BENCH_BOARD_HEADER">AREA_BENCH_BOARD_HEADER</a></li><li><a href="global.html#AREA_BENCH_ROLE">AREA_BENCH_ROLE</a></li><li><a href="global.html#AREA_BENCH_USAGE">AREA_BENCH_USAGE</a></li><li><a href="global.html#AREA_CASES_FILE">AREA_CASES_FILE</a></li><li><a href="global.html#AREA_CONTRACT">AREA_CONTRACT</a></li><li><a href="global.html#AREA_FAIL_KINDS">AREA_FAIL_KINDS</a></li><li><a href="global.html#AREA_META_ID">AREA_META_ID</a></li><li><a href="global.html#AREA_MIN_REMAINING_MS">AREA_MIN_REMAINING_MS</a></li><li><a href="global.html#AREA_PROMPT_SIGS">AREA_PROMPT_SIGS</a></li><li><a href="global.html#AUDITED_STANDARD_IDS">AUDITED_STANDARD_IDS</a></li><li><a href="global.html#AUTO_ORIGIN_PREFIX">AUTO_ORIGIN_PREFIX</a></li><li><a href="global.html#BASE_CLI_KEYS">BASE_CLI_KEYS</a></li><li><a href="global.html#BASE_CLI_OPTS">BASE_CLI_OPTS</a></li><li><a href="global.html#BASE_DIRS">BASE_DIRS</a></li><li><a href="global.html#BENCH_BOARD_HEADER">BENCH_BOARD_HEADER</a></li><li><a href="global.html#BENCH_FAIL_COLUMNS">BENCH_FAIL_COLUMNS</a></li><li><a href="global.html#BENCH_FAIL_KINDS">BENCH_FAIL_KINDS</a></li><li><a href="global.html#BOM">BOM</a></li><li><a href="global.html#BROWSER_CLASS_LADDER">BROWSER_CLASS_LADDER</a></li><li><a href="global.html#BROWSER_CLI">BROWSER_CLI</a></li><li><a href="global.html#BROWSER_LADDER_CONST">BROWSER_LADDER_CONST</a></li><li><a href="global.html#BROWSER_STEPS">BROWSER_STEPS</a></li><li><a href="global.html#CALL_OPT_RESERVED">CALL_OPT_RESERVED</a></li><li><a href="global.html#CAPTURE_DATA_KEYS">CAPTURE_DATA_KEYS</a></li><li><a href="global.html#CAPTURE_DEFAULT">CAPTURE_DEFAULT</a></li><li><a href="global.html#CAPTURE_LOG_KNOWN">CAPTURE_LOG_KNOWN</a></li><li><a href="global.html#CAPTURE_LOG_MUST_SEE">CAPTURE_LOG_MUST_SEE</a></li><li><a href="global.html#CAPTURE_LOG_PARSE">CAPTURE_LOG_PARSE</a></li><li><a href="global.html#CAPTURE_REPORT_KEYS">CAPTURE_REPORT_KEYS</a></li><li><a href="global.html#CAPTURE_SCHEMA">CAPTURE_SCHEMA</a></li><li><a href="global.html#CAPTURE_SEATS">CAPTURE_SEATS</a></li><li><a href="global.html#CAPTURE_SEAT_LABELS">CAPTURE_SEAT_LABELS</a></li><li><a href="global.html#CAPTURE_STAGE_KEYS">CAPTURE_STAGE_KEYS</a></li><li><a href="global.html#CAPTURE_STANDARDS">CAPTURE_STANDARDS</a></li><li><a href="global.html#CAPTURE_STORE_KEYS">CAPTURE_STORE_KEYS</a></li><li><a href="global.html#CAPTURE_TAP_STAGE_KEYS">CAPTURE_TAP_STAGE_KEYS</a></li><li><a href="global.html#CAPTURE_VOCAB_KEYS">CAPTURE_VOCAB_KEYS</a></li><li><a href="global.html#CASE_RESERVED">CASE_RESERVED</a></li><li><a href="global.html#CFG_KEYS">CFG_KEYS</a></li><li><a href="global.html#CLI_FLAG_RE">CLI_FLAG_RE</a></li><li><a href="global.html#CLUE_DROP_LABELS">CLUE_DROP_LABELS</a></li><li><a href="global.html#CLUE_REFS_MAX">CLUE_REFS_MAX</a></li><li><a href="global.html#CLUE_STATUSES">CLUE_STATUSES</a></li><li><a href="global.html#COLLECTION_KEYS">COLLECTION_KEYS</a></li><li><a href="global.html#COLS">COLS</a></li><li><a href="global.html#CONSENT_MARKERS_DEFAULT">CONSENT_MARKERS_DEFAULT</a></li><li><a href="global.html#CONTENT_DEAD_CLASSES">CONTENT_DEAD_CLASSES</a></li><li><a href="global.html#CONTENT_FAIL_TYPES">CONTENT_FAIL_TYPES</a></li><li><a href="global.html#CONTENT_GATE_V">CONTENT_GATE_V</a></li><li><a href="global.html#CORE_LOG_KNOWN">CORE_LOG_KNOWN</a></li><li><a href="global.html#CORE_LOG_MUST_SEE">CORE_LOG_MUST_SEE</a></li><li><a href="global.html#CS12_HOLD_DEADLINE_DAYS">CS12_HOLD_DEADLINE_DAYS</a></li><li><a href="global.html#CS12_HOLD_NEXT">CS12_HOLD_NEXT</a></li><li><a href="global.html#CS12_HOLD_OBJECT">CS12_HOLD_OBJECT</a></li><li><a href="global.html#CURRENT_PAGE_FROM">CURRENT_PAGE_FROM</a></li><li><a href="global.html#DATA_KEYS">DATA_KEYS</a></li><li><a href="global.html#DAY_MS">DAY_MS</a></li><li><a href="global.html#DEFAULT_CRITERIA">DEFAULT_CRITERIA</a></li><li><a href="global.html#DEFAULT_DEDUP">DEFAULT_DEDUP</a></li><li><a href="global.html#DEFAULT_FREE_MODELS">DEFAULT_FREE_MODELS</a></li><li><a href="global.html#DEFAULT_LANG">DEFAULT_LANG</a></li><li><a href="global.html#DEFAULT_SITE_ADAPTERS">DEFAULT_SITE_ADAPTERS</a></li><li><a href="global.html#DEFINED">DEFINED</a></li><li><a href="global.html#DEPS_COMMON_KEYS">DEPS_COMMON_KEYS</a></li><li><a href="global.html#DISCOVER_RETRY_MS">DISCOVER_RETRY_MS</a></li><li><a href="global.html#DISCOVER_SEAT">DISCOVER_SEAT</a></li><li><a href="global.html#DOC_PENDING_STATUSES">DOC_PENDING_STATUSES</a></li><li><a href="global.html#DOC_STANDARDS">DOC_STANDARDS</a></li><li><a href="global.html#DOC_STATUS">DOC_STATUS</a></li><li><a href="global.html#DOC_STATUSES">DOC_STATUSES</a></li><li><a href="global.html#DOC_TERMINAL_STATUSES">DOC_TERMINAL_STATUSES</a></li><li><a href="global.html#DOC_TEXT_STATUSES">DOC_TEXT_STATUSES</a></li><li><a href="global.html#FINAL_HTTP_CODES">FINAL_HTTP_CODES</a></li><li><a href="global.html#FOREIGN_SPAN_RE">FOREIGN_SPAN_RE</a></li><li><a href="global.html#FORMAT_NOISE_DEFAULT">FORMAT_NOISE_DEFAULT</a></li><li><a href="global.html#FREE_BY_PRICING">FREE_BY_PRICING</a></li><li><a href="global.html#GATE_DEAD_CLASSES">GATE_DEAD_CLASSES</a></li><li><a href="global.html#GATE_DETECTORS_DEFAULT">GATE_DETECTORS_DEFAULT</a></li><li><a href="global.html#GATE_KINDS">GATE_KINDS</a></li><li><a href="global.html#GRID_MIN_CHARS">GRID_MIN_CHARS</a></li><li><a href="global.html#GRID_PER_PAGE">GRID_PER_PAGE</a></li><li><a href="global.html#GROUP_ID_SEP">GROUP_ID_SEP</a></li><li><a href="global.html#GUIDE_TYPES">GUIDE_TYPES</a></li><li><a href="global.html#HEAD_BYTES">HEAD_BYTES</a></li><li><a href="global.html#HEALTH_RECHECK_PER_RUN">HEALTH_RECHECK_PER_RUN</a></li><li><a href="global.html#HOLD_OWNERS">HOLD_OWNERS</a></li><li><a href="global.html#HOLD_STATUSES">HOLD_STATUSES</a></li><li><a href="global.html#HYGIENE_TARGETS_DEFAULT">HYGIENE_TARGETS_DEFAULT</a></li><li><a href="global.html#IGNORE_TYPES">IGNORE_TYPES</a></li><li><a href="global.html#INFO_COMMON_KEYS">INFO_COMMON_KEYS</a></li><li><a href="global.html#KINDS">KINDS</a></li><li><a href="global.html#KIND_MAX_PROMPT_CHARS">KIND_MAX_PROMPT_CHARS</a></li><li><a href="global.html#LABELS">LABELS</a></li><li><a href="global.html#LIMIT_TEXT_RE">LIMIT_TEXT_RE</a></li><li><a href="global.html#LINK_FILTER_LABELS">LINK_FILTER_LABELS</a></li><li><a href="global.html#LIST_MAX">LIST_MAX</a></li><li><a href="global.html#LMDB_DB_DEFAULT">LMDB_DB_DEFAULT</a></li><li><a href="global.html#LMDB_KEYS">LMDB_KEYS</a></li><li><a href="global.html#MECH_KEYS">MECH_KEYS</a></li><li><a href="global.html#MOJIBAKE_DEFAULT">MOJIBAKE_DEFAULT</a></li><li><a href="global.html#NAMESPACES">NAMESPACES</a></li><li><a href="global.html#NON_JUDGING_SKIP_KINDS">NON_JUDGING_SKIP_KINDS</a></li><li><a href="global.html#NON_TEXT_KINDS">NON_TEXT_KINDS</a></li><li><a href="global.html#NOTE_FIELDS">NOTE_FIELDS</a></li><li><a href="global.html#NOT_FOUND_LEAD_CHARS">NOT_FOUND_LEAD_CHARS</a></li><li><a href="global.html#NOT_FOUND_PATTERNS_DEFAULT">NOT_FOUND_PATTERNS_DEFAULT</a></li><li><a href="global.html#OPENALEX_PAGING_MAX">OPENALEX_PAGING_MAX</a></li><li><a href="global.html#PANEL_SEAT_KEYS">PANEL_SEAT_KEYS</a></li><li><a href="global.html#PARA_KEYS_MAX">PARA_KEYS_MAX</a></li><li><a href="global.html#PARA_KEYS_PER_RUN">PARA_KEYS_PER_RUN</a></li><li><a href="global.html#PARA_MIN_CHARS">PARA_MIN_CHARS</a></li><li><a href="global.html#PARA_SHARED_MIN">PARA_SHARED_MIN</a></li><li><a href="global.html#PARA_SHARED_RATIO">PARA_SHARED_RATIO</a></li><li><a href="global.html#PAYWALL_PATTERNS_DEFAULT">PAYWALL_PATTERNS_DEFAULT</a></li><li><a href="global.html#PIPELINE_NAME">PIPELINE_NAME</a></li><li><a href="global.html#PLACEHOLDER_PATTERNS_DEFAULT">PLACEHOLDER_PATTERNS_DEFAULT</a></li><li><a href="global.html#PLAYWRIGHT_PROFILE_PREFIX">PLAYWRIGHT_PROFILE_PREFIX</a></li><li><a href="global.html#PREFIX_RE">PREFIX_RE</a></li><li><a href="global.html#PREVIEW_CHARS">PREVIEW_CHARS</a></li><li><a href="global.html#PROMPT_KEYS">PROMPT_KEYS</a></li><li><a href="global.html#PROMPT_RETURNS_DEFAULT">PROMPT_RETURNS_DEFAULT</a></li><li><a href="global.html#QUOTA_PATTERNS">QUOTA_PATTERNS</a></li><li><a href="global.html#REFETCH_LEDGER_FILE">REFETCH_LEDGER_FILE</a></li><li><a href="global.html#REJECT_OBJECTS">REJECT_OBJECTS</a></li><li><a href="global.html#REPROBE_MAX_BACKOFF">REPROBE_MAX_BACKOFF</a></li><li><a href="global.html#RESET_FIELDS">RESET_FIELDS</a></li><li><a href="global.html#ROLE_ID_RE">ROLE_ID_RE</a></li><li><a href="global.html#ROLE_KEYS">ROLE_KEYS</a></li><li><a href="global.html#ROLE_OPTIONAL_FNS">ROLE_OPTIONAL_FNS</a></li><li><a href="global.html#ROLE_REQUIRED_FNS">ROLE_REQUIRED_FNS</a></li><li><a href="global.html#ROUTE_LABELS">ROUTE_LABELS</a></li><li><a href="global.html#RUNTIME_CFG_KEYS">RUNTIME_CFG_KEYS</a></li><li><a href="global.html#RUN_RESERVED">RUN_RESERVED</a></li><li><a href="global.html#RUN_SUMMARY_VERSION">RUN_SUMMARY_VERSION</a></li><li><a href="global.html#SCRIPT_NA_DETAIL">SCRIPT_NA_DETAIL</a></li><li><a href="global.html#SCRIPT_NONE">SCRIPT_NONE</a></li><li><a href="global.html#SCRIPT_ZH_HANT_TW">SCRIPT_ZH_HANT_TW</a></li><li><a href="global.html#SEAT_KEYS">SEAT_KEYS</a></li><li><a href="global.html#SETTINGS_SECTIONS">SETTINGS_SECTIONS</a></li><li><a href="global.html#SETTING_TYPES">SETTING_TYPES</a></li><li><a href="global.html#SIMPLIFIED_ONLY">SIMPLIFIED_ONLY</a></li><li><a href="global.html#SKIP_KIND_MATERIAL">SKIP_KIND_MATERIAL</a></li><li><a href="global.html#SKIP_TITLE_PATTERNS_DEFAULT">SKIP_TITLE_PATTERNS_DEFAULT</a></li><li><a href="global.html#SLUG_SUFFIX_CHARS">SLUG_SUFFIX_CHARS</a></li><li><a href="global.html#SOURCE_TIME_FIELDS">SOURCE_TIME_FIELDS</a></li><li><a href="global.html#STATUS">STATUS</a></li><li><a href="global.html#STOCK_ERROR_MAX">STOCK_ERROR_MAX</a></li><li><a href="global.html#STOCK_LEDGER_BAD_LINES">STOCK_LEDGER_BAD_LINES</a></li><li><a href="global.html#STOCK_LEDGER_FILE">STOCK_LEDGER_FILE</a></li><li><a href="global.html#TEXT_FROM_LABELS">TEXT_FROM_LABELS</a></li><li><a href="global.html#TIME_ZONE_DEFAULT">TIME_ZONE_DEFAULT</a></li><li><a href="global.html#TRANSPORT_REASONS">TRANSPORT_REASONS</a></li><li><a href="global.html#TRUNC_REJECTED_RE">TRUNC_REJECTED_RE</a></li><li><a href="global.html#TW_MISUSE_CHARS">TW_MISUSE_CHARS</a></li><li><a href="global.html#TW_MISUSE_PHRASES">TW_MISUSE_PHRASES</a></li><li><a href="global.html#TW_SCRIPT_CODES">TW_SCRIPT_CODES</a></li><li><a href="global.html#UPSTREAM_MIN_ATTEMPT_MS">UPSTREAM_MIN_ATTEMPT_MS</a></li><li><a href="global.html#VOCAB_DEFAULT">VOCAB_DEFAULT</a></li><li><a href="global.html#VOCAB_KEYS">VOCAB_KEYS</a></li><li><a href="global.html#VOCAB_NULL_AS">VOCAB_NULL_AS</a></li><li><a href="global.html#WKnowledgeCapture">WKnowledgeCapture</a></li><li><a href="global.html#account">account</a></li><li><a href="global.html#accountSourceOutcome">accountSourceOutcome</a></li><li><a href="global.html#activeAreaCount">activeAreaCount</a></li><li><a href="global.html#adapterSpecsOf">adapterSpecsOf</a></li><li><a href="global.html#admitFeedItems">admitFeedItems</a></li><li><a href="global.html#aggStats">aggStats</a></li><li><a href="global.html#aiAdapterNeedOf">aiAdapterNeedOf</a></li><li><a href="global.html#aiEventLoggersOf">aiEventLoggersOf</a></li><li><a href="global.html#allDocsOf">allDocsOf</a></li><li><a href="global.html#appendJsonlRow">appendJsonlRow</a></li><li><a href="global.html#appendJsonlRows">appendJsonlRows</a></li><li><a href="global.html#appendRollbackRow">appendRollbackRow</a></li><li><a href="global.html#applyConceptFold">applyConceptFold</a></li><li><a href="global.html#applyCs10Fix">applyCs10Fix</a></li><li><a href="global.html#applyCs12Fix">applyCs12Fix</a></li><li><a href="global.html#applyTaps">applyTaps</a></li><li><a href="global.html#archiveDocText">archiveDocText</a></li><li><a href="global.html#archiveIntact">archiveIntact</a></li><li><a href="global.html#archiveNow">archiveNow</a></li><li><a href="global.html#areaBenchCasesCsv">areaBenchCasesCsv</a></li><li><a href="global.html#areaBenchMarkdown">areaBenchMarkdown</a></li><li><a href="global.html#areaBenchModelsCsv">areaBenchModelsCsv</a></li><li><a href="global.html#areaBenchRole">areaBenchRole</a></li><li><a href="global.html#areaCaseProblems">areaCaseProblems</a></li><li><a href="global.html#areaClassOf">areaClassOf</a></li><li><a href="global.html#areaCountsOf">areaCountsOf</a></li><li><a href="global.html#areaFieldsOf">areaFieldsOf</a></li><li><a href="global.html#areaIdOf">areaIdOf</a></li><li><a href="global.html#areaQualityCfgOf">areaQualityCfgOf</a></li><li><a href="global.html#areaQualityIssue">areaQualityIssue</a></li><li><a href="global.html#areaRowOf">areaRowOf</a></li><li><a href="global.html#areaVerdictOf">areaVerdictOf</a></li><li><a href="global.html#arxivSearchUrl">arxivSearchUrl</a></li><li><a href="global.html#assemblyInfoOf">assemblyInfoOf</a></li><li><a href="global.html#attemptsOf">attemptsOf</a></li><li><a href="global.html#auditCaptureStandards">auditCaptureStandards</a></li><li><a href="global.html#autoSourceOrigin">autoSourceOrigin</a></li><li><a href="global.html#backoffUntil">backoffUntil</a></li><li><a href="global.html#batchOption">batchOption</a></li><li><a href="global.html#benchArgPint">benchArgPint</a></li><li><a href="global.html#benchCasesCsv">benchCasesCsv</a></li><li><a href="global.html#benchFailOf">benchFailOf</a></li><li><a href="global.html#benchMarkdown">benchMarkdown</a></li><li><a href="global.html#benchModelsCsv">benchModelsCsv</a></li><li><a href="global.html#benchPintOf">benchPintOf</a></li><li><a href="global.html#benchPromptFpOf">benchPromptFpOf</a></li><li><a href="global.html#benchUsageOf">benchUsageOf</a></li><li><a href="global.html#benchVoteMissingOf">benchVoteMissingOf</a></li><li><a href="global.html#bingNewsSearchUrl">bingNewsSearchUrl</a></li><li><a href="global.html#boardWorkspaceOf">boardWorkspaceOf</a></li><li><a href="global.html#browserQueueFields">browserQueueFields</a></li><li><a href="global.html#browserQueueOn">browserQueueOn</a></li><li><a href="global.html#buildAiAdapter">buildAiAdapter</a></li><li><a href="global.html#buildIndex">buildIndex</a></li><li><a href="global.html#buildRunSummary">buildRunSummary</a></li><li><a href="global.html#builtIndexOf">builtIndexOf</a></li><li><a href="global.html#byRetryTierFifo">byRetryTierFifo</a></li><li><a href="global.html#callJsonShapeOf">callJsonShapeOf</a></li><li><a href="global.html#callPage">callPage</a></li><li><a href="global.html#canStart">canStart</a></li><li><a href="global.html#canonOf">canonOf</a></li><li><a href="global.html#captureAiNoteOf">captureAiNoteOf</a></li><li><a href="global.html#captureCapacityOf">captureCapacityOf</a></li><li><a href="global.html#captureIdentityOf">captureIdentityOf</a></li><li><a href="global.html#captureNetGuardOf">captureNetGuardOf</a></li><li><a href="global.html#captureSeatsOf">captureSeatsOf</a></li><li><a href="global.html#captureSummaryOf">captureSummaryOf</a></li><li><a href="global.html#captureVocabDefaultOf">captureVocabDefaultOf</a></li><li><a href="global.html#casesOf">casesOf</a></li><li><a href="global.html#chainFailed">chainFailed</a></li><li><a href="global.html#check">check</a></li><li><a href="global.html#checkAiAdapter">checkAiAdapter</a></li><li><a href="global.html#checkChain">checkChain</a></li><li><a href="global.html#checkCtxDeps">checkCtxDeps</a></li><li><a href="global.html#checkDataKeys">checkDataKeys</a></li><li><a href="global.html#checkGridTopics">checkGridTopics</a></li><li><a href="global.html#checkKeys">checkKeys</a></li><li><a href="global.html#checkNameMap">checkNameMap</a></li><li><a href="global.html#checkOptionalCollections">checkOptionalCollections</a></li><li><a href="global.html#checkResult">checkResult</a></li><li><a href="global.html#checkSeedSources">checkSeedSources</a></li><li><a href="global.html#checkStageConfig">checkStageConfig</a></li><li><a href="global.html#checkTitleBody">checkTitleBody</a></li><li><a href="global.html#chunk">chunk</a></li><li><a href="global.html#classifyFetch">classifyFetch</a></li><li><a href="global.html#cleanReply">cleanReply</a></li><li><a href="global.html#clearParaKeys">clearParaKeys</a></li><li><a href="global.html#cliTimeZone">cliTimeZone</a></li><li><a href="global.html#cloneSettingsDefault">cloneSettingsDefault</a></li><li><a href="global.html#closeOf">closeOf</a></li><li><a href="global.html#closeStockHold">closeStockHold</a></li><li><a href="global.html#clueDropOf">clueDropOf</a></li><li><a href="global.html#clueKey">clueKey</a></li><li><a href="global.html#cluePriority">cluePriority</a></li><li><a href="global.html#clueRowOf">clueRowOf</a></li><li><a href="global.html#clueRulesOf">clueRulesOf</a></li><li><a href="global.html#cmp">cmp</a></li><li><a href="global.html#cnToTw">cnToTw</a></li><li><a href="global.html#composeChain">composeChain</a></li><li><a href="global.html#composeNamespaces">composeNamespaces</a></li><li><a href="global.html#conceptFoldsOf">conceptFoldsOf</a></li><li><a href="global.html#confirmDown">confirmDown</a></li><li><a href="global.html#contentIndexIfBuilt">contentIndexIfBuilt</a></li><li><a href="global.html#contentIndexOf">contentIndexOf</a></li><li><a href="global.html#contentKeysOfUrl">contentKeysOfUrl</a></li><li><a href="global.html#contentSha1">contentSha1</a></li><li><a href="global.html#coolDetect">coolDetect</a></li><li><a href="global.html#count">count</a></li><li><a href="global.html#countBy">countBy</a></li><li><a href="global.html#countKeyOf">countKeyOf</a></li><li><a href="global.html#coveringArea">coveringArea</a></li><li><a href="global.html#createAiAdapter">createAiAdapter</a></li><li><a href="global.html#createAreaDomain">createAreaDomain</a></li><li><a href="global.html#createBrowserFetcher">createBrowserFetcher</a></li><li><a href="global.html#createBrowserRound">createBrowserRound</a></li><li><a href="global.html#createCaptureObject">createCaptureObject</a></li><li><a href="global.html#createCaptureRuntime">createCaptureRuntime</a></li><li><a href="global.html#createContentGate">createContentGate</a></li><li><a href="global.html#createDefaultFetchers">createDefaultFetchers</a></li><li><a href="global.html#createHealthGates">createHealthGates</a></li><li><a href="global.html#createKnowledgeCapture">createKnowledgeCapture</a></li><li><a href="global.html#createNetGuard">createNetGuard</a></li><li><a href="global.html#createPoolQuota">createPoolQuota</a></li><li><a href="global.html#createProviderHealth">createProviderHealth</a></li><li><a href="global.html#createRoundLog">createRoundLog</a></li><li><a href="global.html#createRoundRunner">createRoundRunner</a></li><li><a href="global.html#createStandardsTally">createStandardsTally</a></li><li><a href="global.html#createStoreOpener">createStoreOpener</a></li><li><a href="global.html#csvCell">csvCell</a></li><li><a href="global.html#cullZeroYieldSources">cullZeroYieldSources</a></li><li><a href="global.html#curlProbe">curlProbe</a></li><li><a href="global.html#cutAtBoundary">cutAtBoundary</a></li><li><a href="global.html#deadMatcher">deadMatcher</a></li><li><a href="global.html#dedupeText">dedupeText</a></li><li><a href="global.html#defaultNet">defaultNet</a></li><li><a href="global.html#defaultOpencodeLog">defaultOpencodeLog</a></li><li><a href="global.html#defaultToLinkedRecord">defaultToLinkedRecord</a></li><li><a href="global.html#defaultToRecord">defaultToRecord</a></li><li><a href="global.html#deferClue">deferClue</a></li><li><a href="global.html#deferToBrowser">deferToBrowser</a></li><li><a href="global.html#defineBenchRole">defineBenchRole</a></li><li><a href="global.html#defineBenchRoles">defineBenchRoles</a></li><li><a href="global.html#defineFirstMw">defineFirstMw</a></li><li><a href="global.html#defineMw">defineMw</a></li><li><a href="global.html#deinvertAbstract">deinvertAbstract</a></li><li><a href="global.html#deps">deps</a></li><li><a href="global.html#describe">describe</a></li><li><a href="global.html#detailOf">detailOf</a></li><li><a href="global.html#discover">discover</a></li><li><a href="global.html#discoverFeed">discoverFeed</a></li><li><a href="global.html#docArchiveOf">docArchiveOf</a></li><li><a href="global.html#docQueueStatsOf">docQueueStatsOf</a></li><li><a href="global.html#docQueuesOf">docQueuesOf</a></li><li><a href="global.html#docRecord">docRecord</a></li><li><a href="global.html#docRowOf">docRowOf</a></li><li><a href="global.html#docStd">docStd</a></li><li><a href="global.html#docTextOf">docTextOf</a></li><li><a href="global.html#docTextRestoreOf">docTextRestoreOf</a></li><li><a href="global.html#domainNeedsOf">domainNeedsOf</a></li><li><a href="global.html#domainProblemOf">domainProblemOf</a></li><li><a href="global.html#domainsOf">domainsOf</a></li><li><a href="global.html#dupPlanOf">dupPlanOf</a></li><li><a href="global.html#duplicateGroups">duplicateGroups</a></li><li><a href="global.html#enforceFrontierCap">enforceFrontierCap</a></li><li><a href="global.html#ensureSeedSources">ensureSeedSources</a></li><li><a href="global.html#entryOf">entryOf</a></li><li><a href="global.html#errorsOf">errorsOf</a></li><li><a href="global.html#expandDirs">expandDirs</a></li><li><a href="global.html#expandSeeds">expandSeeds</a></li><li><a href="global.html#externalDocOf">externalDocOf</a></li><li><a href="global.html#extraOf">extraOf</a></li><li><a href="global.html#extractLinks">extractLinks</a></li><li><a href="global.html#failedNames">failedNames</a></li><li><a href="global.html#featureProblemsOf">featureProblemsOf</a></li><li><a href="global.html#featuresOnOf">featuresOnOf</a></li><li><a href="global.html#feedUsableOf">feedUsableOf</a></li><li><a href="global.html#fetchArticle">fetchArticle</a></li><li><a href="global.html#fetchArticleLinks">fetchArticleLinks</a></li><li><a href="global.html#filterFeedItems">filterFeedItems</a></li><li><a href="global.html#findOrphans">findOrphans</a></li><li><a href="global.html#fitChain">fitChain</a></li><li><a href="global.html#fixOf">fixOf</a></li><li><a href="global.html#formatNoiseOf">formatNoiseOf</a></li><li><a href="global.html#freeModelsOf">freeModelsOf</a></li><li><a href="global.html#freshWindowPatch">freshWindowPatch</a></li><li><a href="global.html#fromProblems">fromProblems</a></li><li><a href="global.html#gateDetectorProblems">gateDetectorProblems</a></li><li><a href="global.html#gateDetectorSpecsOf">gateDetectorSpecsOf</a></li><li><a href="global.html#gateVersionOf">gateVersionOf</a></li><li><a href="global.html#genericSummary">genericSummary</a></li><li><a href="global.html#given">given</a></li><li><a href="global.html#gridAbstractCheck">gridAbstractCheck</a></li><li><a href="global.html#gridSourceOf">gridSourceOf</a></li><li><a href="global.html#gridSourceUrl">gridSourceUrl</a></li><li><a href="global.html#groupBy">groupBy</a></li><li><a href="global.html#healthVOf">healthVOf</a></li><li><a href="global.html#holdDeadlineOf">holdDeadlineOf</a></li><li><a href="global.html#holdKey">holdKey</a></li><li><a href="global.html#holdStockUnfixable">holdStockUnfixable</a></li><li><a href="global.html#hostOf">hostOf</a></li><li><a href="global.html#httpCodeOf">httpCodeOf</a></li><li><a href="global.html#importAdapters">importAdapters</a></li><li><a href="global.html#importGateDetectors">importGateDetectors</a></li><li><a href="global.html#importOne">importOne</a></li><li><a href="global.html#inBackoff">inBackoff</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#ingestFeedItems">ingestFeedItems</a></li><li><a href="global.html#inputVocabProblemsOf">inputVocabProblemsOf</a></li><li><a href="global.html#intersectEntryValidate">intersectEntryValidate</a></li><li><a href="global.html#isContentAnchor">isContentAnchor</a></li><li><a href="global.html#isCs10Row">isCs10Row</a></li><li><a href="global.html#isCs12Row">isCs12Row</a></li><li><a href="global.html#isDirectRun">isDirectRun</a></li><li><a href="global.html#isDown">isDown</a></li><li><a href="global.html#isEnvFailure">isEnvFailure</a></li><li><a href="global.html#isLowYield">isLowYield</a></li><li><a href="global.html#isMojibakeText">isMojibakeText</a></li><li><a href="global.html#isPdfUrl">isPdfUrl</a></li><li><a href="global.html#isRetryHttp">isRetryHttp</a></li><li><a href="global.html#isSoft404">isSoft404</a></li><li><a href="global.html#isTw">isTw</a></li><li><a href="global.html#jsonClone">jsonClone</a></li><li><a href="global.html#jsonFragmentsOf">jsonFragmentsOf</a></li><li><a href="global.html#judgeAbstractRefetch">judgeAbstractRefetch</a></li><li><a href="global.html#judgeArticleRefetch">judgeArticleRefetch</a></li><li><a href="global.html#judgeBenchCase">judgeBenchCase</a></li><li><a href="global.html#judgeFromDocs">judgeFromDocs</a></li><li><a href="global.html#kbLabelOf">kbLabelOf</a></li><li><a href="global.html#keyIdOf">keyIdOf</a></li><li><a href="global.html#keyedObjectsOf">keyedObjectsOf</a></li><li><a href="global.html#kindFnsOf">kindFnsOf</a></li><li><a href="global.html#ladderFor">ladderFor</a></li><li><a href="global.html#ladderTimeoutMs">ladderTimeoutMs</a></li><li><a href="global.html#lastPassing">lastPassing</a></li><li><a href="global.html#later">later</a></li><li><a href="global.html#lengthFor">lengthFor</a></li><li><a href="global.html#limitMinOfDeadline">limitMinOfDeadline</a></li><li><a href="global.html#listHolds">listHolds</a></li><li><a href="global.html#listOf">listOf</a></li><li><a href="global.html#listProcessesWin">listProcessesWin</a></li><li><a href="global.html#loadAreaCases">loadAreaCases</a></li><li><a href="global.html#loadBenchCases">loadBenchCases</a></li><li><a href="global.html#localeProblem">localeProblem</a></li><li><a href="global.html#looksLikeFeed">looksLikeFeed</a></li><li><a href="global.html#main">main</a></li><li><a href="global.html#makeMsg">makeMsg</a></li><li><a href="global.html#markSameContent">markSameContent</a></li><li><a href="global.html#matchSameContent">matchSameContent</a></li><li><a href="global.html#maxPromptCharsOf">maxPromptCharsOf</a></li><li><a href="global.html#mayBeNetFailure">mayBeNetFailure</a></li><li><a href="global.html#mdCell">mdCell</a></li><li><a href="global.html#mdTable">mdTable</a></li><li><a href="global.html#mean">mean</a></li><li><a href="global.html#meaningfulChars">meaningfulChars</a></li><li><a href="global.html#mergeAreaBenchBoard">mergeAreaBenchBoard</a></li><li><a href="global.html#mergeBenchBoard">mergeBenchBoard</a></li><li><a href="global.html#mergeDomains">mergeDomains</a></li><li><a href="global.html#mergeDupGroups">mergeDupGroups</a></li><li><a href="global.html#mergeFetchers">mergeFetchers</a></li><li><a href="global.html#mergeGuideFields">mergeGuideFields</a></li><li><a href="global.html#mergeSettingsGroup">mergeSettingsGroup</a></li><li><a href="global.html#mergeSiteAdapters">mergeSiteAdapters</a></li><li><a href="global.html#mergeTaps">mergeTaps</a></li><li><a href="global.html#minAttemptOf">minAttemptOf</a></li><li><a href="global.html#mojibakeOf">mojibakeOf</a></li><li><a href="global.html#mwAccountSource">mwAccountSource</a></li><li><a href="global.html#mwAdmitPersist">mwAdmitPersist</a></li><li><a href="global.html#mwBrowserRetry">mwBrowserRetry</a></li><li><a href="global.html#mwContentGate">mwContentGate</a></li><li><a href="global.html#mwCullSources">mwCullSources</a></li><li><a href="global.html#mwFeedFallback">mwFeedFallback</a></li><li><a href="global.html#mwFetchDetail">mwFetchDetail</a></li><li><a href="global.html#mwFetchList">mwFetchList</a></li><li><a href="global.html#mwFillParaKeys">mwFillParaKeys</a></li><li><a href="global.html#mwFilterItems">mwFilterItems</a></li><li><a href="global.html#mwNormalizeItems">mwNormalizeItems</a></li><li><a href="global.html#mwPersistOutcome">mwPersistOutcome</a></li><li><a href="global.html#mwProbe">mwProbe</a></li><li><a href="global.html#mwRecheckHealth">mwRecheckHealth</a></li><li><a href="global.html#mwRouteFetcher">mwRouteFetcher</a></li><li><a href="global.html#mwSettleClue">mwSettleClue</a></li><li><a href="global.html#mwSlim">mwSlim</a></li><li><a href="global.html#mwSyncSeeds">mwSyncSeeds</a></li><li><a href="global.html#mwTitleSkip">mwTitleSkip</a></li><li><a href="global.html#mwTranscodeLinks">mwTranscodeLinks</a></li><li><a href="global.html#netDownAtStart">netDownAtStart</a></li><li><a href="global.html#netDownNow">netDownNow</a></li><li><a href="global.html#netProbeUrlsOf">netProbeUrlsOf</a></li><li><a href="global.html#newSource">newSource</a></li><li><a href="global.html#noVerdict">noVerdict</a></li><li><a href="global.html#normalizeClue">normalizeClue</a></li><li><a href="global.html#normalizeConcept">normalizeConcept</a></li><li><a href="global.html#normalizeFeedItems">normalizeFeedItems</a></li><li><a href="global.html#normalizeUrl">normalizeUrl</a></li><li><a href="global.html#normalizeWorkDir">normalizeWorkDir</a></li><li><a href="global.html#notBefore">notBefore</a></li><li><a href="global.html#notRunOf">notRunOf</a></li><li><a href="global.html#noteConceptsOf">noteConceptsOf</a></li><li><a href="global.html#noteConsumedOf">noteConsumedOf</a></li><li><a href="global.html#noteCreatedMsOf">noteCreatedMsOf</a></li><li><a href="global.html#noteDocIdOf">noteDocIdOf</a></li><li><a href="global.html#noteGridDrops">noteGridDrops</a></li><li><a href="global.html#noteLinkFiltered">noteLinkFiltered</a></li><li><a href="global.html#notePrimaryConceptOf">notePrimaryConceptOf</a></li><li><a href="global.html#noteTitleOf">noteTitleOf</a></li><li><a href="global.html#objectReport">objectReport</a></li><li><a href="global.html#openStores">openStores</a></li><li><a href="global.html#overdueHolds">overdueHolds</a></li><li><a href="global.html#overridablePrompt">overridablePrompt</a></li><li><a href="global.html#ownFields">ownFields</a></li><li><a href="global.html#packText">packText</a></li><li><a href="global.html#paginateByVocab">paginateByVocab</a></li><li><a href="global.html#paraKeysOf">paraKeysOf</a></li><li><a href="global.html#parseAreaBenchArgs">parseAreaBenchArgs</a></li><li><a href="global.html#parseArxivFeed">parseArxivFeed</a></li><li><a href="global.html#parseBenchArgs">parseBenchArgs</a></li><li><a href="global.html#parseCsv">parseCsv</a></li><li><a href="global.html#parseQuotaLines">parseQuotaLines</a></li><li><a href="global.html#parseStockLedger">parseStockLedger</a></li><li><a href="global.html#pct">pct</a></li><li><a href="global.html#pendingCluesOf">pendingCluesOf</a></li><li><a href="global.html#pendingDocsOf">pendingDocsOf</a></li><li><a href="global.html#pendingLinesOf">pendingLinesOf</a></li><li><a href="global.html#pendingSourcesOf">pendingSourcesOf</a></li><li><a href="global.html#perRunOf">perRunOf</a></li><li><a href="global.html#pickAreaCandidates">pickAreaCandidates</a></li><li><a href="global.html#pickCaptureVocab">pickCaptureVocab</a></li><li><a href="global.html#pickClues">pickClues</a></li><li><a href="global.html#pickDueSources">pickDueSources</a></li><li><a href="global.html#pickJsonReply">pickJsonReply</a></li><li><a href="global.html#pickKeyedJson">pickKeyedJson</a></li><li><a href="global.html#pickVocabKeys">pickVocabKeys</a></li><li><a href="global.html#pintOpt">pintOpt</a></li><li><a href="global.html#pipelineDueOf">pipelineDueOf</a></li><li><a href="global.html#pipelineNameOf">pipelineNameOf</a></li><li><a href="global.html#planBench">planBench</a></li><li><a href="global.html#planCs10Fix">planCs10Fix</a></li><li><a href="global.html#planCs12Fix">planCs12Fix</a></li><li><a href="global.html#planDeadRecheck">planDeadRecheck</a></li><li><a href="global.html#planHealthRecheck">planHealthRecheck</a></li><li><a href="global.html#poolsProblem">poolsProblem</a></li><li><a href="global.html#posNum">posNum</a></li><li><a href="global.html#positiveNumber">positiveNumber</a></li><li><a href="global.html#preFormOf">preFormOf</a></li><li><a href="global.html#preflight">preflight</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#probeFailText">probeFailText</a></li><li><a href="global.html#probeSearchEndpoints">probeSearchEndpoints</a></li><li><a href="global.html#probeSiteFeed">probeSiteFeed</a></li><li><a href="global.html#probes">probes</a></li><li><a href="global.html#problemsNote">problemsNote</a></li><li><a href="global.html#problemsOf">problemsOf</a></li><li><a href="global.html#profileDirOf">profileDirOf</a></li><li><a href="global.html#promptCtxOf">promptCtxOf</a></li><li><a href="global.html#promptDomainConflicts">promptDomainConflicts</a></li><li><a href="global.html#promptDomainOf">promptDomainOf</a></li><li><a href="global.html#promptOverridesOf">promptOverridesOf</a></li><li><a href="global.html#promptSigText">promptSigText</a></li><li><a href="global.html#promptSigsProblem">promptSigsProblem</a></li><li><a href="global.html#promptTextOf">promptTextOf</a></li><li><a href="global.html#promptsForDomain">promptsForDomain</a></li><li><a href="global.html#putHold">putHold</a></li><li><a href="global.html#queueAge">queueAge</a></li><li><a href="global.html#ranked">ranked</a></li><li><a href="global.html#readBenchVocabFile">readBenchVocabFile</a></li><li><a href="global.html#readCs10Ledger">readCs10Ledger</a></li><li><a href="global.html#readCs12Ledger">readCs12Ledger</a></li><li><a href="global.html#readGrid">readGrid</a></li><li><a href="global.html#readJson">readJson</a></li><li><a href="global.html#readJsonlRows">readJsonlRows</a></li><li><a href="global.html#readLedgerLast">readLedgerLast</a></li><li><a href="global.html#readOnlyOf">readOnlyOf</a></li><li><a href="global.html#readRunStart">readRunStart</a></li><li><a href="global.html#readRunSummary">readRunSummary</a></li><li><a href="global.html#readVocabFile">readVocabFile</a></li><li><a href="global.html#recordOf">recordOf</a></li><li><a href="global.html#recordSourceChainFail">recordSourceChainFail</a></li><li><a href="global.html#recordSourceOutcome">recordSourceOutcome</a></li><li><a href="global.html#refetchMethodOf">refetchMethodOf</a></li><li><a href="global.html#refetchRequestOf">refetchRequestOf</a></li><li><a href="global.html#refetchRowOf">refetchRowOf</a></li><li><a href="global.html#refetchSkipOf">refetchSkipOf</a></li><li><a href="global.html#refetchSources">refetchSources</a></li><li><a href="global.html#rejectChainOpts">rejectChainOpts</a></li><li><a href="global.html#rejectClassOf">rejectClassOf</a></li><li><a href="global.html#rejectListOf">rejectListOf</a></li><li><a href="global.html#renameChainProblems">renameChainProblems</a></li><li><a href="global.html#renderAreasMd">renderAreasMd</a></li><li><a href="global.html#reopenArea">reopenArea</a></li><li><a href="global.html#reopenStockHold">reopenStockHold</a></li><li><a href="global.html#reportRoleOf">reportRoleOf</a></li><li><a href="global.html#reprobeAutoAreas">reprobeAutoAreas</a></li><li><a href="global.html#reprobeDue">reprobeDue</a></li><li><a href="global.html#reprobeFailedClues">reprobeFailedClues</a></li><li><a href="global.html#reprobeSources">reprobeSources</a></li><li><a href="global.html#requestRetry">requestRetry</a></li><li><a href="global.html#resetStartMs">resetStartMs</a></li><li><a href="global.html#resolveAfterRun">resolveAfterRun</a></li><li><a href="global.html#resolveCaptureData">resolveCaptureData</a></li><li><a href="global.html#resolveCaptureSettings">resolveCaptureSettings</a></li><li><a href="global.html#resolveClockCfg">resolveClockCfg</a></li><li><a href="global.html#resolveDataCfg">resolveDataCfg</a></li><li><a href="global.html#resolveDirsCfg">resolveDirsCfg</a></li><li><a href="global.html#resolveHold">resolveHold</a></li><li><a href="global.html#resolveLmdbCfg">resolveLmdbCfg</a></li><li><a href="global.html#resolveLocale">resolveLocale</a></li><li><a href="global.html#resolveLogFactory">resolveLogFactory</a></li><li><a href="global.html#resolvePromptsCfg">resolvePromptsCfg</a></li><li><a href="global.html#resolveRuntime">resolveRuntime</a></li><li><a href="global.html#resolveSettings">resolveSettings</a></li><li><a href="global.html#resolveVocab">resolveVocab</a></li><li><a href="global.html#result">result</a></li><li><a href="global.html#retryRequestedOf">retryRequestedOf</a></li><li><a href="global.html#reviewAutoAreas">reviewAutoAreas</a></li><li><a href="global.html#reviveDeadDocs">reviveDeadDocs</a></li><li><a href="global.html#roleOptOf">roleOptOf</a></li><li><a href="global.html#rollbackCs10Fix">rollbackCs10Fix</a></li><li><a href="global.html#rollbackCs12Fix">rollbackCs12Fix</a></li><li><a href="global.html#rollbackPlanOf">rollbackPlanOf</a></li><li><a href="global.html#rollbackStockHold">rollbackStockHold</a></li><li><a href="global.html#rollbackWriteOf">rollbackWriteOf</a></li><li><a href="global.html#rowsToCsv">rowsToCsv</a></li><li><a href="global.html#rowsToMd">rowsToMd</a></li><li><a href="global.html#runAreaBench">runAreaBench</a></li><li><a href="global.html#runAreaBenchCli">runAreaBenchCli</a></li><li><a href="global.html#runBench">runBench</a></li><li><a href="global.html#runBenchCli">runBenchCli</a></li><li><a href="global.html#runBrowserCli">runBrowserCli</a></li><li><a href="global.html#runBrowserLadder">runBrowserLadder</a></li><li><a href="global.html#runChainOverMsgs">runChainOverMsgs</a></li><li><a href="global.html#runPool">runPool</a></li><li><a href="global.html#runSubStages">runSubStages</a></li><li><a href="global.html#runText">runText</a></li><li><a href="global.html#runtimeCfgOf">runtimeCfgOf</a></li><li><a href="global.html#sameContentOn">sameContentOn</a></li><li><a href="global.html#sameContentPatch">sameContentPatch</a></li><li><a href="global.html#sameValue">sameValue</a></li><li><a href="global.html#sanitize">sanitize</a></li><li><a href="global.html#sanitizeAreaQuery">sanitizeAreaQuery</a></li><li><a href="global.html#saveClues">saveClues</a></li><li><a href="global.html#scriptApplies">scriptApplies</a></li><li><a href="global.html#scriptOf">scriptOf</a></li><li><a href="global.html#scriptProblem">scriptProblem</a></li><li><a href="global.html#scriptProblems">scriptProblems</a></li><li><a href="global.html#seatLabelsFrom">seatLabelsFrom</a></li><li><a href="global.html#seatProblem">seatProblem</a></li><li><a href="global.html#seatsFrom">seatsFrom</a></li><li><a href="global.html#sec">sec</a></li><li><a href="global.html#setAreaStatus">setAreaStatus</a></li><li><a href="global.html#setConceptFold">setConceptFold</a></li><li><a href="global.html#settleClue">settleClue</a></li><li><a href="global.html#sha1">sha1</a></li><li><a href="global.html#sharedParas">sharedParas</a></li><li><a href="global.html#showSettingValue">showSettingValue</a></li><li><a href="global.html#skipDerived">skipDerived</a></li><li><a href="global.html#slimTerminalDocs">slimTerminalDocs</a></li><li><a href="global.html#slugSuffixOf">slugSuffixOf</a></li><li><a href="global.html#slugify">slugify</a></li><li><a href="global.html#sortByEnforce">sortByEnforce</a></li><li><a href="global.html#sourceId">sourceId</a></li><li><a href="global.html#sourceMayBeNetFailure">sourceMayBeNetFailure</a></li><li><a href="global.html#sourceOriginOf">sourceOriginOf</a></li><li><a href="global.html#sourceRecordProblems">sourceRecordProblems</a></li><li><a href="global.html#sourceRowOf">sourceRowOf</a></li><li><a href="global.html#sourceStopReasonOf">sourceStopReasonOf</a></li><li><a href="global.html#specToUrl">specToUrl</a></li><li><a href="global.html#stableKey">stableKey</a></li><li><a href="global.html#stageAreas">stageAreas</a></li><li><a href="global.html#stageDetailFetch">stageDetailFetch</a></li><li><a href="global.html#stageDocMaintain">stageDocMaintain</a></li><li><a href="global.html#stageExpand">stageExpand</a></li><li><a href="global.html#stageFields">stageFields</a></li><li><a href="global.html#stageHygiene">stageHygiene</a></li><li><a href="global.html#stageListFetch">stageListFetch</a></li><li><a href="global.html#stageSeedSync">stageSeedSync</a></li><li><a href="global.html#standardsCountsOf">standardsCountsOf</a></li><li><a href="global.html#standardsScanOf">standardsScanOf</a></li><li><a href="global.html#startupWarningsOf">startupWarningsOf</a></li><li><a href="global.html#state">state</a></li><li><a href="global.html#stdReport">stdReport</a></li><li><a href="global.html#stepOpt">stepOpt</a></li><li><a href="global.html#stepOptsOf">stepOptsOf</a></li><li><a href="global.html#stockAtOf">stockAtOf</a></li><li><a href="global.html#stockErrorOf">stockErrorOf</a></li><li><a href="global.html#stockHoldProblems">stockHoldProblems</a></li><li><a href="global.html#stockLedgerFileOf">stockLedgerFileOf</a></li><li><a href="global.html#stockLedgerRowsOf">stockLedgerRowsOf</a></li><li><a href="global.html#stockLedgerWriter">stockLedgerWriter</a></li><li><a href="global.html#stopRequested">stopRequested</a></li><li><a href="global.html#strOf">strOf</a></li><li><a href="global.html#strictTextOf">strictTextOf</a></li><li><a href="global.html#stripOf">stripOf</a></li><li><a href="global.html#subOpt">subOpt</a></li><li><a href="global.html#subReportOf">subReportOf</a></li><li><a href="global.html#summaryOf">summaryOf</a></li><li><a href="global.html#sweepOrphanBrowsers">sweepOrphanBrowsers</a></li><li><a href="global.html#syncAreaSources">syncAreaSources</a></li><li><a href="global.html#syncIndex">syncIndex</a></li><li><a href="global.html#syncSeedAreas">syncSeedAreas</a></li><li><a href="global.html#tally">tally</a></li><li><a href="global.html#textFromLabelOf">textFromLabelOf</a></li><li><a href="global.html#textListOf">textListOf</a></li><li><a href="global.html#textOf">textOf</a></li><li><a href="global.html#textValueOf">textValueOf</a></li><li><a href="global.html#titleKeyOf">titleKeyOf</a></li><li><a href="global.html#titleMismatchOf">titleMismatchOf</a></li><li><a href="global.html#titleTokens">titleTokens</a></li><li><a href="global.html#toCsv">toCsv</a></li><li><a href="global.html#toPatterns">toPatterns</a></li><li><a href="global.html#toTw">toTw</a></li><li><a href="global.html#toTwKeepLinks">toTwKeepLinks</a></li><li><a href="global.html#toTwOnce">toTwOnce</a></li><li><a href="global.html#tryCall">tryCall</a></li><li><a href="global.html#typeName">typeName</a></li><li><a href="global.html#uniq">uniq</a></li><li><a href="global.html#unknownKeysProblem">unknownKeysProblem</a></li><li><a href="global.html#unpackText">unpackText</a></li><li><a href="global.html#unpackTextStrict">unpackTextStrict</a></li><li><a href="global.html#unwrapNewsUrl">unwrapNewsUrl</a></li><li><a href="global.html#validateAreaCases">validateAreaCases</a></li><li><a href="global.html#validateAreaQuery">validateAreaQuery</a></li><li><a href="global.html#validateBenchCases">validateBenchCases</a></li><li><a href="global.html#valueAtPath">valueAtPath</a></li><li><a href="global.html#verdictSafe">verdictSafe</a></li><li><a href="global.html#verifyCs10Chain">verifyCs10Chain</a></li><li><a href="global.html#verifyCs12Chain">verifyCs12Chain</a></li><li><a href="global.html#vocabHeadOf">vocabHeadOf</a></li><li><a href="global.html#vocabKeyOf">vocabKeyOf</a></li><li><a href="global.html#waiveHold">waiveHold</a></li><li><a href="global.html#watchSeedAreas">watchSeedAreas</a></li><li><a href="global.html#withArg">withArg</a></li><li><a href="global.html#withoutForeignSpans">withoutForeignSpans</a></li><li><a href="global.html#writeAreaBenchReport">writeAreaBenchReport</a></li><li><a href="global.html#writeAreasProjection">writeAreasProjection</a></li><li><a href="global.html#writeBenchReport">writeBenchReport</a></li><li><a href="global.html#writeFileAtomic">writeFileAtomic</a></li><li><a href="global.html#writeRollback">writeRollback</a></li><li><a href="global.html#writeRunStart">writeRunStart</a></li><li><a href="global.html#writeRunSummary">writeRunSummary</a></li><li><a href="global.html#zhLabelOf">zhLabelOf</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">core/kernel.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>// kernel.mjs — middleware 核心:訊息信封、洋蔥組合、emit、first 錨點、認名掛載
+//
+// ════════════════ 全套件動作層的唯一契約════════════════
+//
+// 【訊息信封 msg】{ topic, data, meta, stats } 是動作鏈上唯一流通物;
+//   data=正準記錄＋執行期附掛欄位(_ 前綴),stats=鏈上累計計數。
+// 【洋蔥組合(Koa compose)】mw 簽名 (msg, ctx, next):await next(msg) 前=下行、
+//   後=上行;不呼叫 next=短路(該 msg 就此完結,halted 記錄短路者)。
+// 【first 錨點(Rollup resolveId 語意)】候選依序試,第一個回非空值者勝出;
+//   掛載以 add 追加候選(enforce:'pre' 插頭)。
+// 【認名掛載(tapable tap 語意)】applyTaps(chain, taps):before/after/replace/add
+//   認 mw 名定位;錨點不存在、名稱重複、對非 first 錨點 add——一律定義期拋錯,
+//   不默默失效(與 w-data-pipeline defineStage 同一哲學)。
+// 【enforce(Vite 語意)】use 追加時 pre → normal → post 分帶排序。
+
+import isobj from 'wsemi/src/isobj.mjs'
+import isarr from 'wsemi/src/isarr.mjs'
+import isnum from 'wsemi/src/isnum.mjs'
+import cint from 'wsemi/src/cint.mjs'
+
+/** 定義期錯誤(設定寫錯要在啟動期爆,不是跑到一半) */
+export class MwContractError extends Error {
+    constructor(msg) {
+        super(msg); this.name = 'MwContractError'; this.code = 'MW_CONTRACT'
+    }
+}
+
+const ENFORCE = new Set(['pre', 'post', ''])
+
+/**
+ * 定義一顆 middleware(洋蔥鏈之基本單元;mw 工廠,opt 省略 @example)
+ *
+ * @param {Object} spec 輸入定義物件
+ * @param {String} spec.name 輸入 mw 名稱，鏈內須唯一(認名掛載之錨點)
+ * @param {Function} spec.handle 輸入處理函數，簽名 async (msg, ctx, next) => any，不呼叫 next 即短路
+ * @param {Array} [spec.topics] 輸入僅接受之 topic 字串陣列，未給則不限，不合者原樣放行(transparent pass)
+ * @param {Function} [spec.when] 輸入細過濾函數 (msg, ctx) => Boolean，未給則不限，不合者原樣放行
+ * @param {String} [spec.enforce=''] 輸入排序帶，'pre'／'post'／''(一般帶)，以 use 追加時據此排序，預設''
+ * @returns {Object} 回傳 mw 物件 { __kind:'mw', name, handle, topics, when, enforce, mode, candidates }
+ * @throws {MwContractError} spec 缺 name、handle 非函數、topics 非字串陣列、when 非函數、enforce 不合法時拋出
+ */
+export function defineMw(spec) {
+    const name = String(spec?.name || '').trim()
+    if (!name) throw new MwContractError('middleware 缺少 name')
+    if (typeof spec.handle !== 'function') throw new MwContractError(`middleware[${name}] 缺少 handle 函數`)
+    if (spec.topics !== undefined &amp;&amp; (!Array.isArray(spec.topics) || spec.topics.some((t) => typeof t !== 'string'))) {
+        throw new MwContractError(`middleware[${name}] 的 topics 須為字串陣列`)
+    }
+    if (spec.when !== undefined &amp;&amp; typeof spec.when !== 'function') throw new MwContractError(`middleware[${name}] 的 when 須為函數`)
+    const enforce = spec.enforce || ''
+    if (!ENFORCE.has(enforce)) throw new MwContractError(`middleware[${name}] 的 enforce 只能是 pre／post,收到:${spec.enforce}`)
+    return {
+        __kind: 'mw',
+        name,
+        handle: spec.handle,
+        topics: spec.topics || null,
+        when: spec.when || null,
+        enforce,
+        mode: '',
+        candidates: null,
+    }
+}
+
+/**
+ * 定義 first 錨點:候選依序試,第一個回非空值者勝出(同 Rollup resolveId 語意;mw 工廠,省略 @example)
+ *
+ * @param {Object} spec 輸入定義物件
+ * @param {String} spec.name 輸入錨點名稱，鏈內須唯一(tap add 對此名追加候選)
+ * @param {Array} spec.candidates 輸入非空候選陣列，各項為 { name, probe(msg, ctx) => 結果|null, when?, enforce? }
+ * @param {Function} [spec.apply] 輸入結果套用函數 (msg, result, ctx, winnerName) => void，未給時預設寫入 msg.data._first[name] 與 msg.data._first[name+'By']
+ * @param {Array} [spec.topics] 同 defineMw
+ * @param {Function} [spec.when] 同 defineMw
+ * @param {String} [spec.enforce] 同 defineMw
+ * @returns {Object} 回傳 mw 物件(mode:'first',帶 candidates 陣列)
+ * @throws {MwContractError} spec 缺 name、candidates 非非空陣列、候選形狀非 { name, probe } 時拋出
+ */
+export function defineFirstMw(spec) {
+    const name = String(spec?.name || '').trim()
+    if (!name) throw new MwContractError('first 錨點缺少 name')
+    const cands = spec.candidates
+    if (!Array.isArray(cands) || cands.length === 0) throw new MwContractError(`first 錨點[${name}] 需要非空 candidates`)
+    for (const c of cands) {
+        if (!c?.name || typeof c.probe !== 'function') throw new MwContractError(`first 錨點[${name}] 的候選須為 { name, probe(msg,ctx) }`)
+    }
+    const apply = spec.apply || ((msg, result, _ctx, winner) => {
+        msg.data._first = { ...(msg.data._first || {}), [name]: result, [`${name}By`]: winner }
+    })
+    const mw = defineMw({
+        name,
+        topics: spec.topics,
+        when: spec.when,
+        enforce: spec.enforce,
+        // 一般函數而非箭頭:composeChain 以 mw.handle(...) 方法呼叫,this=所屬 mw 實例——
+        // applyTaps 之 add 會複製錨點換 candidates 陣列,閉包寫法會讓 clone 仍讀原陣列
+        handle: async function (msg, ctx, next) {
+            let result = null
+            let winner = ''
+            for (const c of this.candidates) {
+                if (c.when &amp;&amp; !c.when(msg, ctx)) continue
+                const r = await c.probe(msg, ctx)
+                if (r !== null &amp;&amp; r !== undefined) {
+                    result = r; winner = c.name; break
+                }
+            }
+            apply(msg, result, ctx, winner)
+            return next(msg)
+        },
+    })
+    mw.mode = 'first'
+    mw.candidates = cands.slice()
+    return mw
+}
+
+/**
+ * 內部:鏈的定義期檢查(元素契約＋名稱唯一)
+ *
+ * @param {Array} chain 輸入鏈(defineMw／defineFirstMw 產物陣列)
+ * @param {String} chainName 輸入鏈名稱字串，供錯誤訊息使用
+ * @returns {Array} 回傳同一陣列(通過檢查即原樣回傳)
+ * @throws {MwContractError} chain 非非空陣列、含非 defineMw 產物之元素、mw 名重複時拋出
+ */
+function checkChain(chain, chainName) {
+    if (!Array.isArray(chain) || chain.length === 0) throw new MwContractError(`鏈[${chainName}] 須為非空陣列`)
+    const seen = new Set()
+    for (const m of chain) {
+        if (!m || m.__kind !== 'mw') throw new MwContractError(`鏈[${chainName}] 含非 defineMw 產物之元素`)
+        if (seen.has(m.name)) throw new MwContractError(`鏈[${chainName}] 有重複的 mw 名:${m.name}`)
+        seen.add(m.name)
+    }
+    return chain
+}
+
+/**
+ * enforce 分帶排序(pre → 無 → post;帶內保持原順序)
+ *
+ * @param {Array} list 輸入 mw 陣列
+ * @returns {Array} 回傳排序後之新陣列
+ */
+function sortByEnforce(list) {
+    const pre = list.filter((m) => m.enforce === 'pre')
+    const normal = list.filter((m) => !m.enforce)
+    const post = list.filter((m) => m.enforce === 'post')
+    return [...pre, ...normal, ...post]
+}
+
+/**
+ * 認名掛載:對預設鏈套用 taps,回傳新鏈(原鏈不動)。
+ *
+ * @param {Array} chain 輸入預設鏈(defineMw 產物陣列)
+ * @param {Object} taps 輸入掛載規格，格式為 { [錨點名]: { before?, after?, replace?, add? } }；before／after／add 給了須為陣列，replace 須為 defineMw 產物
+ * @param {Object} [opt={}] 輸入設定物件，非物件時視為{}
+ * @param {String} [opt.chainName='(未名鏈)'] 輸入鏈名稱字串，供錯誤訊息使用
+ * @returns {Array} 回傳套用 taps 後之新鏈
+ * @throws {MwContractError} 錨點不存在(附可用錨點)、掛載鍵不認得、before/after/add 給了但非陣列、replace 非 defineMw 產物、對非 first 錨點 add 候選時拋出
+ * @example
+ * let mw = defineMw({ name: 'b', handle: (m, c, n) => n(m) })
+ * let chain = applyTaps([mw], { b: { after: [defineMw({ name: 'log', handle: (m, c, n) => n(m) })] } })
+ * console.log(chain.map((m) => m.name))
+ * // => [ 'b', 'log' ]
+ */
+export function applyTaps(chain, taps, opt = {}) {
+
+    //check
+    if (!isobj(opt)) {
+        opt = {}
+    }
+
+    const chainName = opt.chainName || '(未名鏈)'
+    checkChain(chain, chainName)
+    if (!taps) return chain.slice()
+    const byName = new Map(chain.map((m) => [m.name, m]))
+    const KNOWN = new Set(['before', 'after', 'replace', 'add'])
+    for (const [anchor, t] of Object.entries(taps)) {
+        if (!byName.has(anchor)) {
+            throw new MwContractError(`鏈[${chainName}] 無錨點「${anchor}」(可用:${[...byName.keys()].join('/')})`)
+        }
+        for (const k of Object.keys(t || {})) {
+            if (!KNOWN.has(k)) throw new MwContractError(`鏈[${chainName}] 錨點[${anchor}] 不認得的掛載鍵「${k}」(可用:before/after/replace/add)`)
+        }
+        // before/after/add 給了但非陣列 → 定義期拋錯(否則 for...of 對非陣列值迭代會拋出語意不明之「not iterable」TypeError)
+        for (const k of ['before', 'after', 'add']) {
+            if (t?.[k] !== undefined &amp;&amp; !isarr(t[k])) {
+                throw new MwContractError(`鏈[${chainName}] 錨點[${anchor}] 之「${k}」須為陣列`)
+            }
+        }
+    }
+    let out = []
+    for (const m of chain) {
+        const t = taps[m.name]
+        if (!t) {
+            out.push(m); continue
+        }
+        let center = m
+        if (t.replace) {
+            if (t.replace.__kind !== 'mw') throw new MwContractError(`鏈[${chainName}] 錨點[${m.name}] 之 replace 須為 defineMw 產物`)
+            center = t.replace
+        }
+        if (t.add) {
+            if (center.mode !== 'first') throw new MwContractError(`鏈[${chainName}] 錨點[${m.name}] 非 first 錨點,不可 add 候選(改用 before/after/replace)`)
+            // 對 first 錨點追加候選:複製一顆免污染預設鏈;enforce:'pre' 之候選插頭
+            const clone = { ...center, candidates: center.candidates.slice() }
+            for (const c of t.add) {
+                if (!c?.name || typeof c.probe !== 'function') throw new MwContractError(`鏈[${chainName}] 錨點[${m.name}] 之 add 候選須為 { name, probe }`)
+                if (c.enforce === 'pre') clone.candidates.unshift(c)
+                else clone.candidates.push(c)
+            }
+            center = clone
+        }
+        for (const b of t.before || []) {
+            if (b.__kind !== 'mw') throw new MwContractError(`鏈[${chainName}] 錨點[${m.name}] 之 before 含非 defineMw 產物`)
+        }
+        for (const a of t.after || []) {
+            if (a.__kind !== 'mw') throw new MwContractError(`鏈[${chainName}] 錨點[${m.name}] 之 after 含非 defineMw 產物`)
+        }
+        out.push(...sortByEnforce(t.before || []), center, ...sortByEnforce(t.after || []))
+    }
+    return checkChain(out, chainName)
+}
+
+/**
+ * 無動作鏈(hook 錨點)之子階段拒收 tap／chain:其工廠不建動作鏈,給了不會生效——靜默接受即「掛得上卻永不生效」
+ *
+ * @param {String} stageName 輸入子階段名(錯誤訊息用)
+ * @param {Object} opt 輸入子階段工廠之 opt(已正規化為物件)
+ * @returns {undefined} 無回傳值(通過檢查即靜默返回，不通過則拋錯)
+ * @throws {MwContractError} opt.tap 或 opt.chain 給了(非 undefined／null)時拋出
+ * @example
+ * rejectChainOpts('hygiene', { enabled: true })
+ * // 不拋錯；rejectChainOpts('hygiene', { tap: {} }) 拋 MwContractError
+ */
+export function rejectChainOpts(stageName, opt) {
+    for (const k of ['tap', 'chain']) {
+        if (opt?.[k] !== undefined &amp;&amp; opt?.[k] !== null) throw new MwContractError(`子階段[${stageName}] 無動作鏈(hook 錨點),不可給 ${k}`)
+    }
+}
+
+/**
+ * 合併兩份 taps(如物件層平鋪之 tap 與子階段之 tap、執行端之 tap 與插件展開之 tap)
+ *
+ * before/after/add 依序串接,replace 雙方皆給時拋錯(兩方搶同一錨點之置換沒有合理之合併語意,靜默後者蓋前者最難查);
+ * 任一方未給(非物件)即原樣回傳另一方
+ *
+ * @param {Object} [a] 輸入第一份 taps 物件，格式為 { '&lt;環名>': { before, after, replace, add } }，未給代表無
+ * @param {Object} [b] 輸入第二份 taps 物件，格式同 a，未給代表無
+ * @param {String} [label=''] 輸入錯誤訊息用之標籤字串，例如 '&lt;物件>.&lt;子階段>'，預設''
+ * @returns {Object} 回傳合併後 taps 物件
+ * @throws {MwContractError} 同一錨點雙方皆給 replace 時拋出
+ * @example
+ * let mwA = defineMw({ name: 'mwA', handle: (m, c, n) => n(m) })
+ * let mwB = defineMw({ name: 'mwB', handle: (m, c, n) => n(m) })
+ * let merged = mergeTaps({ x: { before: [mwA] } }, { x: { before: [mwB], after: [mwB] } })
+ * console.log(merged.x.before.length, merged.x.after.length)
+ * // => 2 1
+ */
+export function mergeTaps(a, b, label = '') {
+
+    //check
+    if (!isobj(a)) {
+        return b
+    }
+    if (!isobj(b)) {
+        return a
+    }
+    if (typeof label !== 'string') {
+        label = ''
+    }
+
+    const out = { ...a }
+    for (const [anchor, t] of Object.entries(b)) {
+        if (!out[anchor]) {
+            out[anchor] = t; continue
+        }
+        const x = { ...out[anchor] }
+        if (t.before) x.before = [...(x.before || []), ...t.before]
+        if (t.after) x.after = [...(x.after || []), ...t.after]
+        if (t.add) x.add = [...(x.add || []), ...t.add]
+        if (t.replace) {
+            if (x.replace) throw new MwContractError(`${label} 錨點[${anchor}] 之 replace 衝突（雙方同時置換）`)
+            x.replace = t.replace
+        }
+        out[anchor] = x
+    }
+    return out
+}
+
+/**
+ * 建立訊息信封
+ *
+ * @param {String} topic 輸入 topic 字串(如 'doc'／'source')
+ * @param {Object} data 輸入正準記錄物件(執行期附掛欄位以 _ 前綴)
+ * @param {Object} [meta={}] 輸入附加中繼資料物件，非物件時視為{}
+ * @returns {Object} 回傳訊息信封 { topic, data, meta, stats }
+ * @throws {MwContractError} topic 為空、data 非物件時拋出
+ * @example
+ * let msg = makeMsg('doc', { id: 'd1' })
+ * console.log(msg.topic, msg.data, msg.meta, msg.stats)
+ * // => doc { id: 'd1' } {} {}
+ */
+export function makeMsg(topic, data, meta = {}) {
+    const t = String(topic || '').trim()
+    if (!t) throw new MwContractError('msg 缺少 topic')
+    if (!data || typeof data !== 'object') throw new MwContractError(`msg[${t}] 的 data 須為物件`)
+
+    //check
+    if (!isobj(meta)) {
+        meta = {}
+    }
+
+    return { topic: t, data, meta: { ...meta }, stats: {} }
+}
+
+/**
+ * 鏈上累計計數(mw 內慣用寫法:count(msg, 'docs'))
+ *
+ * @param {Object} msg 輸入訊息信封(makeMsg 產物)
+ * @param {String} key 輸入統計鍵名
+ * @param {Number} [n=1] 輸入本次累加量，非數字時視為1
+ * @returns {Object} 回傳同一 msg(已更新 msg.stats[key])
+ * @example
+ * let msg = makeMsg('doc', {})
+ * count(msg, 'docs')
+ * count(msg, 'docs', 3)
+ * console.log(msg.stats)
+ * // => { docs: 4 }
+ */
+export function count(msg, key, n = 1) {
+
+    //check
+    if (!isnum(n)) {
+        n = 1
+    }
+    n = cint(n)
+
+    msg.stats[key] = (msg.stats[key] || 0) + n
+    return msg
+}
+
+/**
+ * 組合一條鏈為執行器(Koa compose 洋蔥)
+ *
+ * @param {Array} chain 輸入鏈(defineMw／defineFirstMw 產物陣列)
+ * @param {Object} [opt={}] 輸入設定物件(非物件時以選擇性串連讀取,不拋錯)
+ * @param {String} [opt.chainName='(未名鏈)'] 輸入鏈名稱字串，供錯誤訊息使用
+ * @returns {Function} 回傳執行器 async (msg, ctx) => {msg, halted}，halted 為短路者 mw 名(未短路為空字串)
+ * @throws {MwContractError} chain 非非空陣列、含非 defineMw 產物、mw 名重複、同一環重複呼叫 next 時拋出
+ * @example
+ * let mwCount = defineMw({ name: 'mwCount', handle: async (m, c, next) => { count(m, 'seen'); return next(m) } })
+ * let mwStop = defineMw({ name: 'mwStop', handle: async (m) => m })
+ * let run = composeChain([mwCount, mwStop], { chainName: 'demo' })
+ * let { msg, halted } = await run(makeMsg('doc', { id: 'd1' }), {})
+ * console.log(msg.stats, halted)
+ * // => { seen: 1 } mwStop
+ */
+export function composeChain(chain, opt = {}) {
+    const chainName = opt?.chainName || '(未名鏈)'
+    checkChain(chain, chainName)
+    return async function run(msg, ctx) {
+        let halted = ''
+        const dispatch = async (i, m) => {
+            if (i >= chain.length) return m
+            const mw = chain[i]
+            // topic/when 不合 → 原樣放行(透明):掛載通用 mw 於混合 topic 鏈時不需自防
+            if ((mw.topics &amp;&amp; !mw.topics.includes(m.topic)) || (mw.when &amp;&amp; !mw.when(m, ctx))) {
+                return dispatch(i + 1, m)
+            }
+            let called = false
+            const next = (m2) => {
+                // 同一環重複呼叫 next 會讓下游整段再跑一次(重複落庫/重複寫檔);Koa compose 同樣拒絕(next() called multiple times)
+                if (called) throw new MwContractError(`鏈[${chainName}] 之 mw[${mw.name}] 重複呼叫 next(每環只可呼叫一次)`)
+                called = true; return dispatch(i + 1, m2 || m)
+            }
+            const r = await mw.handle(m, ctx, next)
+            if (!called) halted = mw.name
+            return r === undefined ? m : r
+        }
+        const out = await dispatch(0, msg)
+        return { msg: out, halted }
+    }
+}
+
+/**
+ * 以鏈逐項處理(含 emit 佇列):初始項目跑完後,ctx.emit 衍生的訊息從鏈頭續跑。
+ *
+ * 【emit 語意】1→N 衍生(如一篇文拆多筆):emit 的 msg 進本階段佇列、
+ *   同一條鏈從頭流過;mw 以 topics/when 自行忽略不相干訊息。
+ * 【逐項隔離】單一 msg 拋錯記 fail、不中斷整段(與 w-data-pipeline 逐來源隔離同一哲學);
+ *   錯誤樣本留 errors(截斷),供階段 report 與日誌。
+ *
+ * 【shouldStop:時間預算守門】每取一筆 msg 前詢問;回 true 即停止取件(不中斷進行中的那一筆),
+ *   未處理者原樣留在佇列(記錄未動,下輪自然接手)並計入 left。逐篇抓取／逐項套用皆可
+ *   接 ctx.expired,使整輪的軟性截止對逐項迴圈同樣生效(不只階段之間檢查)。
+ *
+ * @param {Object} opt 輸入設定物件
+ * @param {Array} opt.chain 輸入鏈(defineMw 產物陣列)
+ * @param {Object} opt.ctx 輸入管道脈絡，逐項執行時併入 emit 後交予各 mw
+ * @param {Array} [opt.msgs=[]] 輸入初始訊息陣列(makeMsg 產物)，給了須為陣列
+ * @param {String} [opt.chainName] 輸入鏈名稱字串，供錯誤訊息使用
+ * @param {Integer} [opt.maxEmits=10000] 輸入 emit 衍生總數上限(疑似無限衍生之保險絲)
+ * @param {Function} [opt.shouldStop] 輸入 ()=>Boolean，每取一筆 msg 前詢問，回 true 即停止取件
+ * @param {Function} [opt.onFail] 輸入 async (msg, error) => void，單筆拋錯時呼叫供呼叫端落帳(如記 tries)
+ * @param {Integer} [opt.concurrency=1] 輸入同時處理之筆數:>1 時以波次並行(每波至多 N 筆,一波全部結束才取下一波;shouldStop 於波次間詢問;
+ *   emit 衍生之訊息入佇列於後續波次處理;stats／fails／errors 之加總語意不變),1 或未給即逐筆串行
+ * @returns {Promise} 回傳 Promise，resolve 回傳 {stats, halts, fails, errors, left}；stats=各 msg.stats 加總，left=因 shouldStop 未處理之筆數
+ * @throws {MwContractError} opt 非物件、opt.msgs 給了但非陣列、opt.concurrency 給了但非正整數時拋出
+ * @example
+ * let mwDo = defineMw({
+ *     name: 'mwDo',
+ *     handle: async (m, c, next) => {
+ *         if (m.data.bad) throw new Error('壞資料')
+ *         count(m, 'done')
+ *         return next(m)
+ *     },
+ * })
+ * let r = await runChainOverMsgs({
+ *     chain: [mwDo],
+ *     ctx: {},
+ *     msgs: [makeMsg('doc', { id: 1 }), makeMsg('doc', { id: 2, bad: true }), makeMsg('doc', { id: 3 })],
+ *     chainName: 'demo',
+ * })
+ * console.log(r)
+ * // => {
+ * // =>   stats: { done: 2 },
+ * // =>   halts: {},
+ * // =>   fails: 1,
+ * // =>   errors: [ 'doc:壞資料' ],
+ * // =>   left: 0
+ * // => }
+ */
+export async function runChainOverMsgs(opt) {
+
+    //check
+    if (!isobj(opt)) {
+        throw new MwContractError('runChainOverMsgs 需要 opt 物件')
+    }
+    if (opt.msgs !== undefined &amp;&amp; !isarr(opt.msgs)) {
+        throw new MwContractError('runChainOverMsgs 之 opt.msgs 須為陣列')
+    }
+    if (opt.concurrency !== undefined &amp;&amp; !(Number.isInteger(opt.concurrency) &amp;&amp; opt.concurrency >= 1)) {
+        throw new MwContractError('runChainOverMsgs 之 opt.concurrency 須為正整數')
+    }
+
+    const { chain, ctx } = opt
+    const runner = composeChain(chain, { chainName: opt.chainName })
+    const queue = [...(opt.msgs || [])]
+    const maxEmits = opt.maxEmits ?? 10_000 // runaway 保險絲,遠大於實務量
+    const shouldStop = typeof opt.shouldStop === 'function' ? opt.shouldStop : null
+    const concurrency = opt.concurrency ?? 1
+    let emitted = 0
+    const chainCtx = {
+        ...ctx,
+        emit: (m) => {
+            if (!m || !m.topic) throw new MwContractError('ctx.emit 需要 makeMsg 產物')
+            emitted++
+            if (emitted > maxEmits) throw new MwContractError(`鏈[${opt.chainName}] emit 超過上限 ${maxEmits}(疑似無限衍生)`)
+            queue.push(m)
+        },
+    }
+    const agg = { stats: {}, halts: {}, fails: 0, errors: [], left: 0 }
+    /**
+     * 處理一筆(逐項隔離:拋錯記 fails、交 onFail 落帳,不中斷整段)
+     * @param {Object} m 輸入訊息
+     */
+    const runOne = async (m) => {
+        try {
+            const { msg, halted } = await runner(m, chainCtx)
+            if (halted) agg.halts[halted] = (agg.halts[halted] || 0) + 1
+            for (const [k, v] of Object.entries(msg.stats)) agg.stats[k] = (agg.stats[k] || 0) + v
+        }
+        catch (e) {
+            agg.fails++
+            if (agg.errors.length &lt; 5) agg.errors.push(`${m.topic}:${String(e?.message || e).slice(0, 160)}`)
+            // 例外仍落帳之接縫:呼叫端據此記 tries(不記則該項永遠停在原排序位置、每輪佔一個名額)
+            if (typeof opt.onFail === 'function') {
+                try {
+                    await opt.onFail(m, e)
+                }
+                catch { /* 落帳失敗不覆蓋原錯誤 */ }
+            }
+        }
+    }
+    while (queue.length > 0) {
+        if (shouldStop &amp;&amp; shouldStop() === true) {
+            agg.left = queue.length; break
+        }
+        // 並行(concurrency > 1):一波取至多 N 筆同時跑,整波結束才取下一波(emit 衍生者入佇列於後續波次);串行即逐筆
+        if (concurrency > 1) await Promise.all(queue.splice(0, concurrency).map(runOne))
+        else await runOne(queue.shift())
+    }
+    return agg
+}
+
+/**
+ * 階段契約欄位之透傳(name／onError 給預設;when／enabled／timeoutMs／always 只在給了時原樣透傳):子階段與物件之工廠皆以此組回傳物件,
+ *   使 `cfg.stageOpts.&lt;子階段>.enabled:false`／`when(ctx)` 對每個子階段一體適用(runSubStages 據以略過)
+ *
+ * @param {Object} opt 輸入呼叫端之工廠 opt(已正規化為物件)
+ * @param {Object} defaults 輸入預設值物件
+ * @param {String} defaults.name 輸入 name 之預設值
+ * @returns {Object} 回傳階段契約欄位物件 { name, onError, when?, enabled?, timeoutMs?, always? }
+ * @example
+ * console.log(stageFields({ enabled: false }, { name: 'n' }))
+ * // => { name: 'n', onError: 'continue', enabled: false }
+ */
+export function stageFields(opt, defaults) {
+    const o = isobj(opt) ? opt : {}
+    return {
+        name: o.name || defaults.name,
+        onError: o.onError || 'continue',
+        ...(o.when !== undefined &amp;&amp; { when: o.when }),
+        ...(o.enabled !== undefined &amp;&amp; { enabled: o.enabled }),
+        ...(o.timeoutMs !== undefined &amp;&amp; { timeoutMs: o.timeoutMs }),
+        ...(o.always !== undefined &amp;&amp; { always: o.always }),
+    }
+}
+
+/**
+ * 統一階段 report:核心統計鍵補零,外部監控只認這組
+ *
+ * @param {Object} [part={}] 輸入部分欄位物件，非物件時視為{}
+ * @param {Boolean} [part.ok] 輸入是否成功，預設由 part.ok!==false 推得(未給即 true)
+ * @param {Object} [part.stats] 輸入統計物件，逐鍵覆寫核心統計鍵(in/out/skip/fail/aiCalls 皆補零)
+ * @param {Object} [part.detail] 輸入細節物件，預設{}
+ * @param {String} [part.summary] 輸入摘要字串，預設''
+ * @param {Boolean} [part.stop] 輸入是否為守門停止，true 時附加 stop/reason 欄位
+ * @param {String} [part.reason] 輸入停止原因字串(part.stop 為 true 時使用)，預設''
+ * @returns {Object} 回傳統一 report 物件 { ok, stats, detail, summary, stop?, reason? }
+ * @example
+ * console.log(stdReport({ stats: { in: 3 }, summary: 'x' }))
+ * // => { ok: true, stats: { in: 3, out: 0, skip: 0, fail: 0, aiCalls: 0 }, detail: {}, summary: 'x' }
+ */
+export function stdReport(part = {}) {
+
+    //check
+    if (!isobj(part)) {
+        part = {}
+    }
+
+    return {
+        ok: part.ok !== false,
+        stats: { in: 0, out: 0, skip: 0, fail: 0, aiCalls: 0, ...(part.stats || {}) },
+        detail: part.detail || {},
+        summary: part.summary || '',
+        ...(part.stop ? { stop: true, reason: part.reason || '' } : {}),
+    }
+}
+
+export default { defineMw, defineFirstMw, applyTaps, rejectChainOpts, mergeTaps, makeMsg, count, composeChain, runChainOverMsgs, stdReport, MwContractError }
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sun Nov 01 2026 20:24:39 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
