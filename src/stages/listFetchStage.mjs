@@ -58,6 +58,8 @@ export const mwFetchList = () => defineMw({
             // 逾時:抓取器自宣告者優先,未宣告者用 settings.capture.sources.listTimeoutMs(與 detail 之 capture.articles.timeoutMs 退路對稱;兩者皆無才為 0＝無逾時)
             msg.data._raw = await attemptFetch(src._fetcher, src, ctx, src._fetcher.timeoutMs || ctx.deps.settings?.capture?.sources?.listTimeoutMs || 0)
             for (const [k, n] of Object.entries(isobj(src._dropped) ? src._dropped : {})) if (Number(n) > 0) count(msg, `dropped_${k}`, Number(n))
+            // grid 因 OpenAlex 429(額度用盡或每秒超限)而改走 arXiv:計入 gridOaQuota(使「這輪改走 arXiv」可歸因於額度而非站台故障)
+            if (src._oaQuota === true) count(msg, 'gridOaQuota')
         }
         catch (e) {
             msg.data._outcome = { ok: false, reason: isTimeoutError(e) ? 'timeout' : 'fetch-error', error: oneline(e?.message, 300) }
@@ -406,6 +408,8 @@ export function stageListFetch(opt = {}) {
                     invalid: r.stats.itemsInvalid || 0,
                     filtered: r.stats.itemsFiltered || 0,
                     sameContent: r.stats.sameContent || 0,
+                    // 網格因 OpenAlex 429(額度用盡或每秒超限)而改走 arXiv 之來源數(僅發生時才有此欄,report 欄集於平時不變)
+                    ...(r.stats.gridOaQuota ? { gridOaQuota: r.stats.gridOaQuota } : {}),
                     ...(newIds ? { newIds } : {}),
                 },
             })

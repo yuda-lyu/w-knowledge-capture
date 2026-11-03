@@ -195,6 +195,17 @@ npm i w-knowledge-capture
 
 金鑰(付費或 REST 供應商)放 `<workDir>/.env`(或 `cfg.envFile`),不寫在設定裡。
 
+### OpenAlex API 金鑰與 429
+
+OpenAlex 自 2026 年起,**不帶金鑰之請求共用同一網路 IP 每日 US$0.10 額度**(回應 `meta.notice`),超額回 HTTP 429;免費金鑰(不需付款方式)每日 US$1、UTC 00:00 重置([官方文件](https://help.openalex.org/api/authentication/))。本套件連 OpenAlex 的三處(網格來源、領域發現之驗證、原文回溯之 DOI 批次與題名搜尋)共用同一把金鑰:
+
+- **設定只放環境變數名,值放金鑰檔**:`capture.services.openAlex.apiKeyEnv`(預設 `'OPENALEX_API_KEY'`)所指之變數,自 `cfg.envFile`(預設 `<workDir>/.env`,與 AI 金鑰同一檔)讀入,不污染 `process.env`、不入設定與 `info()`。金鑰檔不存在、檔內無該變數或值為空 → **不帶金鑰,請求與加入金鑰支援前逐字相同**;`apiKeyEnv: ''` 明確不使用(即使檔內有該變數)。
+- **帶法**:`api_key=` 查詢參數(官方:與 `Authorization: Bearer` 標頭「Both work identically」;內建抓取函數 `fetchWebByCurl` 不提供自訂標頭,故用查詢參數)。金鑰不入日誌、處置帳、事件、拋出之錯誤與 stderr:請求結果之訊息一律遮罩(wsemi `maskDiagText`),並自行重試以避開 `fetchWebByCurl` 重試時把網址寫到 stderr。已知限制:`curl` 執行期間金鑰在本機行程清單的命令列可見(標頭亦同)。自訂 `fetchWebByCurl`(各階段 `opt` 注入者)收到含金鑰的網址,其記錄須自行遮罩。
+- **`netGuard` 本機網路探測不帶金鑰**(只看可達,429 亦算可達)。
+- **429 的訊息固定**:`OpenAlex HTTP 429：每日額度用盡或每秒請求超限（每日額度於 UTC 00:00 重置）`(官方:429 有兩因——超出每日額度,或超出每秒上限〔無金鑰 10、有金鑰 30 次/秒〕;後者等一下重試即過)。網格遇 429 仍切 arXiv,另記一行同字樣之警告、來源標 `_oaQuota`、report 的 `detail.gridOaQuota` 計其數;領域驗證遇 429 之 `reason` 為此字樣(暫時性,不冷卻)。
+- **原文回溯連續 3 次 429 即停止 OpenAlex 回溯**(DOI 批次與題名搜尋;各次已含一次重試,每秒上限之 429 不會連續三次):回傳 `quotaStop: { after, unprocessed, byMethod, message }` 列明原因與未處理篇數;遭 429 與尚未發出請求者皆**不入處置帳**,額度恢復後不加 `retry` 直接續跑。arXiv 與網頁回溯不受影響;非連續之 429(中間夾其他結果)不停止,該批／篇照舊記 `fetch-failed`(訊息為上列固定字樣)。
+- 使用端:`refetchSources(deps, …)` 的金鑰自 `deps.envFile` 讀(傳 `flow.info().envFile`),或直接給 `deps.openAlexAuth`(`createOpenAlexAuth(金鑰)` 之產物)。
+
 ---
 
 ## 3. 快速開始
@@ -297,6 +308,7 @@ createKnowledgeCapture({
 | | `candidatesPerCall`／`rejectCooldownDays` | 8／30 | 每次交 AI 判定之候選數上限／驗證未過之冷卻天數 |
 | | `ai` | 見 §8 | 領域發現之席位;`null`＝無席位、不發現(不用 AI 時) |
 | `services` | `openAlex.base`／`openAlex.mailto` | 公開服務／`''` | OpenAlex 端點基底與禮貌池信箱(網格、領域驗證、原文回溯共用;`''` 不帶) |
+| | `openAlex.apiKeyEnv` | `'OPENALEX_API_KEY'` | OpenAlex API 金鑰之**環境變數名**(非金鑰值;值自 `cfg.envFile` 讀);檔內無該變數或值為空 → 不帶金鑰;`''` 明確不使用。見 §2「OpenAlex API 金鑰與 429」 |
 | | `arxiv.base`／`bingNews.base` | 公開服務 | 測試可指向本機假站台 |
 | `standards` | `minTextChars`／`minFallbackChars` | 300／300 | 正文最少字數(curl 與瀏覽器同一把尺)／feed 摘要退路之最少字數 |
 | | `maxSaneChars` | 300000 | 正文合理上限(逾之判格式雜訊) |
@@ -440,7 +452,7 @@ createKnowledgeCapture({
 | `planCs10Fix` → `applyCs10Fix` → `verifyCs10Chain` → `rollbackCs10Fix` | apply／rollback | 同一內容重複入庫之存量處置:預演 → 套用(逐件記帳於存量處置帳 `STOCK_LEDGER_FILE`;失敗之件逐件隔離、記 `stockErrorOf` 之列)→ 連鎖斷言 → 依帳回退(讀帳遇無法解析之列即拒,`allowBad` 才略過;回退＝撤銷該次處置之效果:逐欄三態 `rollbackPlanOf`——現值＝處置後者寫回、已回到處置前者為已完成、其後被改動或文件已不在者報 `conflicts` 不覆寫,`acceptCurrent` 記取代列;處置前不存在之鍵刪除);只改文件,筆記之處置回傳 `notesToHandle` 由呼叫端做 |
 | `planCs12Fix` → `applyCs12Fix` → `verifyCs12Chain` → `rollbackCs12Fix` | apply／rollback | 領域標籤與線索值轉正體之存量處置(同上之帳、斷言與回退);種子領域、轉換後仍違反、轉換會改變線索鍵者列 `unfixable` 不寫——開 `holds` 時由套用自行登錄待判(負責者使用者),已不再違反之未結登錄由預演列 `resolvable`、套用結案 |
 | `reviveDeadDocs(stores, { match, nowIso, dryRun, fetchTries, patchOf })` | 是(dryRun 否) | 抓取能力升級後把 `dead` 放回佇列;`deadMatcher` 組篩選 |
-| `refetchSources(deps, { apply, limit, methods, retry })` | apply 時 | 已消化而無原文之文件,以 arXiv／OpenAlex／原網址回溯正文並另存 |
+| `refetchSources(deps, { apply, limit, methods, retry })` | apply 時 | 已消化而無原文之文件,以 arXiv／OpenAlex／原網址回溯正文並另存;OpenAlex 金鑰取自 `deps.envFile`(或 `deps.openAlexAuth`);OpenAlex 連續 3 次 429 即停止 OpenAlex 回溯(`quotaStop` 列未處理篇數,未入處置帳,可直接續跑) |
 | `sweepOrphanBrowsers` | 殺行程 | 孤兒瀏覽器回收(同 `hygiene` 子階段) |
 
 ---

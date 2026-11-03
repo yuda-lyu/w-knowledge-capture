@@ -24,6 +24,7 @@ import { resolveVocab } from './core/vocab/vocabDefault.mjs'
 import { DEFAULT_DEDUP } from './core/util/records.mjs'
 import { gateDetectorProblems, adapterSpecsOf } from './core/util/injectables.mjs'
 import { createDefaultFetchers, mergeFetchers } from './fetchers/defaultFetchers.mjs'
+import { createOpenAlexAuth, openAlexApiKeyOf } from './fetchers/openAlexNet.mjs'
 import { checkSeedSources, checkGridTopics } from './fetchers/endpoints.mjs'
 import { DEFAULT_SITE_ADAPTERS, mergeSiteAdapters } from './fetchers/siteAdapters.mjs'
 import { createContentGate } from './stores/contentGate.mjs'
@@ -162,8 +163,10 @@ export function captureNetGuardOf(netGuardCfg, capture) {
  * @param {Object} [opt={}] 輸入設定物件
  * @param {Object} [opt.vocab] 輸入交本套件之詞彙(只含本套件所讀之鍵,見 core/vocab/vocabDefault 之 pickCaptureVocab);未給即用 cfg.data.vocab
  * @param {Function} [opt.buildAreaPrompt] 輸入領域發現之提示詞覆寫 (candidates, areas, ctx) => 字串(輸出契約固定,見 domain/areaDomain)
+ * @param {String} [opt.envFile] 輸入金鑰檔路徑(解析後之路徑;OpenAlex 金鑰取自此檔中 capture.services.openAlex.apiKeyEnv 所指之變數)，未給或檔內無該變數則不帶金鑰
  * @returns {Object} 回傳 { data, vocab(已解析), locale(語言設定:core/locale 之 resolveLocale 產物;各工作之執行期件同讀 cfg.lang), folds:{ fold, clueFold },
- *   fetchers, registry, identity, netGuard(null＝不判斷), isNetDown(交 AI 調度層之函數;netGuard 無 confirmDown 時為 null), areaDomain, deps(stores, log) }
+ *   fetchers, registry, identity, netGuard(null＝不判斷), isNetDown(交 AI 調度層之函數;netGuard 無 confirmDown 時為 null), areaDomain,
+ *   openAlexAuth(OpenAlex 金鑰載體,不含金鑰值之可見欄位), deps(stores, log) }
  *   ——deps 回傳抓取子階段每輪所需之 { seen, registry, netGuard, locale }(seen 依 stores.docs 與去重身分每輪建立),由呼叫端併入其每輪依賴
  * @throws {Error} cfg.lang 不合、cfg.data 形狀不合(resolveCaptureData)、抓取樣式或健全閘之追加樣式無法編譯、cfg.conceptFold 型別不合、
  *   抓取器／站台 adapter 不合契約、去重身分設定不合、cfg.netGuard 非物件、詞彙不合規格時拋出
@@ -201,12 +204,18 @@ export function createCaptureRuntime(cfg, settings, opt = {}) {
     const siteAdapters = mergeSiteAdapters(DEFAULT_SITE_ADAPTERS, cfg.siteAdapters)
     const siteAdapterSpecs = adapterSpecsOf(siteAdapters)
 
+    // ── OpenAlex 金鑰載體(fetchers/openAlexNet):變數名取 capture.services.openAlex.apiKeyEnv,值取 opt.envFile(金鑰檔;與 AI 金鑰同檔);
+    //   無金鑰檔／無此變數 → 不帶金鑰。載體只在閉包內持金鑰值:rt、deps 被輸出時不帶出金鑰。網格抓取器與每輪依賴(領域發現之驗證)共用同一個 ──
+    const openAlexAuth = createOpenAlexAuth(openAlexApiKeyOf(cap, opt.envFile))
+
     // ── 抓取器與去重身分 ──
     const fetchers = mergeFetchers(
         createDefaultFetchers({
             articleTimeoutMs: cap.articles.timeoutMs,
             // OpenAlex 禮貌池信箱(網格查詢、領域發現之驗證、原文回溯共用同一個 capture.services.openAlex.mailto)
             openAlexMailto: cap.services.openAlex.mailto,
+            // OpenAlex API 金鑰載體(同上)
+            openAlexAuth,
             // 網格來源之領域過濾(OpenAlex field id／arXiv 類別):預設不限,主題範圍由安裝方以 capture.areas 給
             openAlexFields: cap.areas.openAlexFields,
             arxivCategories: cap.areas.arxivCategories,
@@ -238,13 +247,15 @@ export function createCaptureRuntime(cfg, settings, opt = {}) {
         isNetDown,
         areaDomain,
         siteAdapterSpecs,
+        openAlexAuth,
         /**
          * 抓取子階段每輪所需之依賴(只放可列舉之普通屬性:w-data-pipeline 以 spread 複製 deps)
          *
          * @param {Object} stores 輸入該輪開啟之集合(取 docs)
          * @param {Object} log 輸入該輪日誌
          * @returns {Object} 回傳 { seen(去重身分查詢,依 stores.docs 建立), registry, netGuard, locale(語言設定;子階段交純函數之字形政策),
-         *   siteAdapterSpecs(帶 module 之站台 adapter 之跨行程規格;瀏覽器階梯之子行程據以載入) }
+         *   siteAdapterSpecs(帶 module 之站台 adapter 之跨行程規格;瀏覽器階梯之子行程據以載入), openAlexAuth?(OpenAlex 金鑰載體;領域發現之驗證取用。
+         *   【僅在帶金鑰時才有此欄】未設金鑰者之 deps 欄集與加入金鑰支援前相同——下游總組裝(展開本函數之產物)與其測試所釘之欄集不因本套件加入此欄而變) }
          */
         deps: (stores, log) => ({
             seen: W.createSeenStore({ collection: stores.docs, identity, log }),
@@ -252,6 +263,7 @@ export function createCaptureRuntime(cfg, settings, opt = {}) {
             netGuard,
             locale,
             siteAdapterSpecs,
+            ...(openAlexAuth.enabled ? { openAlexAuth } : {}),
         }),
     }
 }

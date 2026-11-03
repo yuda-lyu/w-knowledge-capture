@@ -166,7 +166,10 @@ export const CAPTURE_DEFAULT = {
 
     // ── 外部查詢服務(要點 2、3 共用;測試指向本機假站台)──
     services: {
-        openAlex: { base: 'https://api.openalex.org', mailto: '' }, // mailto:OpenAlex 禮貌池信箱(網格查詢、領域驗證、來源重抓共用;'' 不帶)
+        // mailto:OpenAlex 禮貌池信箱(網格查詢、領域驗證、來源重抓共用;'' 不帶)。
+        // apiKeyEnv:OpenAlex API 金鑰之「環境變數名」(非金鑰值;值只放金鑰檔 cfg.envFile〔預設 <workDir>/.env〕,與 AI 金鑰同法),三處請求共用(fetchers/openAlexNet);
+        //   金鑰檔無此變數或值為空 → 不帶金鑰(行為同無金鑰:無金鑰之請求共用同一 IP 每日 US$0.10 額度,易 429);'' 明確不使用(即使金鑰檔有該變數)
+        openAlex: { base: 'https://api.openalex.org', mailto: '', apiKeyEnv: 'OPENALEX_API_KEY' },
         arxiv: { base: 'https://export.arxiv.org' },
         bingNews: { base: 'https://www.bing.com' },
     },
@@ -260,6 +263,9 @@ export const SETTING_TYPES = Object.freeze({
     ratio: { test: (v) => typeof v === 'number' && v >= 0 && v <= 1, desc: '0～1 之數' },
     bool: { test: (v) => typeof v === 'boolean', desc: '布林值' },
     str: { test: (v) => typeof v === 'string', desc: '字串' },
+    // 環境變數名(金鑰檔 .env 之 KEY=value 之 KEY;readEnvFile 只認英數與底線):設定只放名,值只在金鑰檔;空字串＝不使用。
+    //   noEcho:不合格時錯誤訊息不回顯所收到之值——把金鑰「值」誤貼進「變數名」欄是最可能的錯誤,回顯即把金鑰寫進啟動錯誤與日誌(診斷輸出與遮罩規格 D3)
+    envName: { test: (v) => typeof v === 'string' && /^[A-Za-z0-9_]*$/.test(v), desc: '環境變數名（英數與底線；空字串＝不使用）', noEcho: true },
     strArr: { test: (v) => isarr(v) && v.every((x) => typeof x === 'string'), desc: '字串陣列' },
     strArrOrNull: { test: (v) => v === null || (isarr(v) && v.every((x) => typeof x === 'string')), desc: '字串陣列或 null' },
     objArr: { test: (v) => isarr(v) && v.every(isobj), desc: '物件陣列' },
@@ -300,7 +306,7 @@ export const CAPTURE_SCHEMA = {
         everyHours: 'p0num', windowDays: 'pint', minSupport: 'pint', minClueDocs: 'pint', candidatesPerCall: 'pint', minHits: 'pint',
         newPerDay: 'p0int', rejectCooldownDays: 'p0num', ai: 'seatOrNull',
     },
-    services: { openAlex: { base: 'str', mailto: 'str' }, arxiv: { base: 'str' }, bingNews: { base: 'str' } },
+    services: { openAlex: { base: 'str', mailto: 'str', apiKeyEnv: 'envName' }, arxiv: { base: 'str' }, bingNews: { base: 'str' } },
     standards: {
         minTextChars: 'p0int', minFallbackChars: 'p0int', maxSaneChars: 'pint', placeholderPatterns: 'patterns', paywallPatterns: 'patterns', detectors: 'detectorsOrNull',
         sameContent: 'bool', titleMismatch: 'bool',
@@ -383,7 +389,7 @@ export function mergeSettingsGroup(where, given, schema, dflt, opt = {}) {
         }
         const t = types[node]
         if (!t) throw new Error(`settings schema 錯誤：${where}.${k} 之型別「${node}」不存在（可用：${Object.keys(types).join('、')}）`)
-        if (!t.test(v)) throw new Error(`settings.${where}.${k} 須為${t.desc}，收到 ${show(v)}${t.why ? `（${t.why(v)}）` : ''}`)
+        if (!t.test(v)) throw new Error(`settings.${where}.${k} 須為${t.desc}，收到 ${t.noEcho ? '（值不顯示）' : show(v)}${t.why ? `（${t.why(v)}）` : ''}`)
         out[k] = v
     }
     return out

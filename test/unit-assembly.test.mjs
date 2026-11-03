@@ -329,7 +329,9 @@ describe('unit-assembly', function() {
 
         it('回傳之件與每輪依賴:deps(stores, log) 恰為 { seen, registry, netGuard }(seen 依 stores.docs 與去重身分);總組裝之每輪依賴含此三者且為同一實體', async () => {
             const rt = createCaptureRuntime({ netGuard: null }, S0)
-            assert.deepEqual(Object.keys(rt).sort(), ['areaDomain', 'data', 'deps', 'fetchers', 'folds', 'identity', 'isNetDown', 'locale', 'netGuard', 'registry', 'siteAdapterSpecs', 'vocab'])
+            // openAlexAuth:OpenAlex 金鑰載體(CAP-16;不含金鑰值);deps 之 openAlexAuth 僅帶金鑰時才有(下方 deps 恰為三者＋語言設定與 adapter 規格)
+            assert.deepEqual(Object.keys(rt).sort(), ['areaDomain', 'data', 'deps', 'fetchers', 'folds', 'identity', 'isNetDown', 'locale', 'netGuard', 'openAlexAuth', 'registry', 'siteAdapterSpecs', 'vocab'])
+            assert.equal(rt.openAlexAuth.enabled, false, '未給金鑰檔 → 不帶金鑰')
             const docs = W.openCollection({ WOrm: WOrmLmdb, path: `${dirOf('rt')}/db`, db: 'knowledge', cl: 'docs' })
             try {
                 const d = rt.deps({ docs }, silentLog)

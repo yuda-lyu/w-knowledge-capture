@@ -41,6 +41,7 @@ import * as fetchPolicyNs from './stores/fetchPolicy.mjs'
 import * as ingestGateNs from './stores/ingestGate.mjs'
 // ── 抓取器與端點 ──
 import * as defaultFetchersNs from './fetchers/defaultFetchers.mjs'
+import * as openAlexNetNs from './fetchers/openAlexNet.mjs'
 import * as siteAdaptersNs from './fetchers/siteAdapters.mjs'
 import * as articleParseNs from './fetchers/articleParse.mjs'
 import * as endpointsNs from './fetchers/endpoints.mjs'
@@ -125,6 +126,7 @@ export * from './stores/contentIndex.mjs'
 export * from './stores/fetchPolicy.mjs'
 export * from './stores/ingestGate.mjs'
 export * from './fetchers/defaultFetchers.mjs'
+export * from './fetchers/openAlexNet.mjs'
 export * from './fetchers/siteAdapters.mjs'
 export * from './fetchers/articleParse.mjs'
 export * from './fetchers/endpoints.mjs'
@@ -187,7 +189,7 @@ const NAMESPACES = [
     hygieneStageNs, seedSyncStageNs, listFetchStageNs, detailFetchStageNs, docMaintainStageNs, expandStageNs, areaStageNs, collectHelpersNs,
     areaDomainNs,
     sourcePolicyNs, areaPolicyNs, contentGateNs, healthRecheckNs, contentIndexNs, fetchPolicyNs, ingestGateNs,
-    defaultFetchersNs, siteAdaptersNs, articleParseNs, endpointsNs, browserLadderNs, browserFetcherNs,
+    defaultFetchersNs, openAlexNetNs, siteAdaptersNs, articleParseNs, endpointsNs, browserLadderNs, browserFetcherNs,
     docStandardsNs, registryNs, auditNs, cs10FixNs, cs12FixNs, verdictNs, textFormsNs, localeNs,
     benchKitNs, benchRolesNs, areaBenchNs,
     reviveDocsNs, refetchSourcesNs, docStockFixNs, rejectsNs, logContractNs, browserHygieneNs, runSummaryNs, runnerPackageNs,

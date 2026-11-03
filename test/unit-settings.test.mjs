@@ -103,6 +103,8 @@ const SAMPLES = {
     ratio: { valid: [0.5, 0.3], invalid: [1.5, -0.1, '0.5', NaN, null] },
     bool: { valid: [true, false], invalid: ['true', 1, 0, null] },
     str: { valid: ['custom', 'custom2'], invalid: [1, null, ['x']] },
+    // 環境變數名(金鑰檔之 KEY=value 之 KEY;只認英數與底線):空字串合格(＝不使用);非字串、含連字號／空白／點者不合
+    envName: { valid: ['CUSTOM_KEY', 'KEY2'], invalid: [1, null, ['x'], 'a-b', 'a b', 'a.b'] },
     strArr: { valid: [['a'], ['b', 'c']], invalid: ['a', [1], [null], null, {}] },
     strArrOrNull: { valid: [['a'], null], invalid: ['a', [1], {}, 0] },
     // 健全閘偵測器陣列或 null:非空陣列、每項 { id 唯一, kind 為健全閘類別, test 函數 };空陣列不合(整組取代之語意)、kind 不在類別不合、缺 test 不合
@@ -282,7 +284,7 @@ describe('unit-settings', function() {
             assert.equal(r.capture.browser.perRun, CAPTURE_DEFAULT.browser.perRun)
             assert.equal(r.capture.browser.hygiene, CAPTURE_DEFAULT.browser.hygiene)
             const s = resolveSettings({ capture: { services: { openAlex: { mailto: 'me@example.com' } } } })
-            assert.deepEqual(s.capture.services.openAlex, { base: CAPTURE_DEFAULT.services.openAlex.base, mailto: 'me@example.com' })
+            assert.deepEqual(s.capture.services.openAlex, { base: CAPTURE_DEFAULT.services.openAlex.base, mailto: 'me@example.com', apiKeyEnv: CAPTURE_DEFAULT.services.openAlex.apiKeyEnv })
             assert.deepEqual(s.capture.services.arxiv, CAPTURE_DEFAULT.services.arxiv)
         })
 

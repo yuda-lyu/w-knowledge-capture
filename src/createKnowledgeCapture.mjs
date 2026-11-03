@@ -154,10 +154,12 @@ export function createKnowledgeCapture(cfg = {}) {
     //   captureRuntime 之 resolveCaptureData(與下游之總組裝同一份)
     checkDataKeys(cfg.data, DATA_KEYS)
     const prompts = resolvePromptsCfg(cfg.prompts, AREA_PROMPT_SIGS)
+    // ── 執行期生效值(core/runtime:排程上限/時間預算/鎖/路徑之單一來源;管線與 info() 同取此份;先於抓取執行期件:OpenAlex 金鑰自 runtime.envFile 讀)──
+    const runtime = resolveRuntime(runtimeCfgOf(cfg), { workDir, dirs })
     // 抓取執行期件(captureRuntime;與下游之總組裝同一份):資料檢核、健全閘與標題預篩樣式於建構期編譯、詞彙解析、文字折疊
     //   (線索鍵與概念鍵;內建 opencc,cfg.conceptFold 可停用或自訂)、抓取器＋cfg.fetchers、去重身分、網路判斷、領域發現之 domain
-    //   (cfg.prompts.area 覆寫提示詞)——設定錯誤一律於此拋
-    const rt = createCaptureRuntime(cfg, settings, { buildAreaPrompt: prompts.area })
+    //   (cfg.prompts.area 覆寫提示詞)、OpenAlex 金鑰載體(capture.services.openAlex.apiKeyEnv 所指之變數自金鑰檔讀)——設定錯誤一律於此拋
+    const rt = createCaptureRuntime(cfg, settings, { buildAreaPrompt: prompts.area, envFile: runtime.envFile })
     const { data, registry, identity } = rt
     const vocabResolved = rt.vocab
 
@@ -176,9 +178,6 @@ export function createKnowledgeCapture(cfg = {}) {
 
     // ── 領域發現之 domain(captureRuntime 已依詞彙與 cfg.prompts.area 建立)──
     const domains = { area: rt.areaDomain }
-
-    // ── 執行期生效值(core/runtime:排程上限/時間預算/鎖/路徑之單一來源;管線與 info() 同取此份)──
-    const runtime = resolveRuntime(runtimeCfgOf(cfg), { workDir, dirs })
 
     // ── AI 調度層(內建;cfg.aiAdapter 整組置換——測試替身／自建調度皆走這裡);網路判斷經 captureRuntime 之 isNetDown 詢問同一份 netGuard;
     //    調度層之事件(額度／健康／能力)寫入當輪日誌 ──

@@ -23,6 +23,7 @@ import { sha1 } from '../core/util/text.mjs'
 import { ensureSeedSources } from '../stores/sourcePolicy.mjs'
 import { AREA_META_ID, areaIdOf, syncAreaSources, pickAreaCandidates, areaQualityCfgOf, reviewAutoAreas, reprobeAutoAreas, reopenArea, activeAreaCount, renderAreasMd } from '../stores/areaPolicy.mjs'
 import { createAreaDomain } from '../domain/areaDomain.mjs'
+import { openAlexGet, openAlexAuthOf, isOpenAlexQuota, OPENALEX_QUOTA_MESSAGE } from '../fetchers/openAlexNet.mjs'
 import { scriptOf } from '../core/locale.mjs'
 import { netDownAtStart } from '../core/util/netGuard.mjs'
 
@@ -64,10 +65,12 @@ export async function writeAreasProjection(stores, dirs, opt = {}) {
  * 以 OpenAlex 驗證候選查詢:計數(同 field 白名單)、首頁有摘要者、首頁已在庫比例(冗餘)
  *
  * @param {String} query 輸入查詢
- * @param {Object} ctx 輸入管道脈絡(取 deps.settings.capture 之 services.openAlex〔base、mailto〕、areas.openAlexFields、discover.minHits，與 deps.stores.docs、deps.seen)
+ * @param {Object} ctx 輸入管道脈絡(取 deps.settings.capture 之 services.openAlex〔base、mailto〕、areas.openAlexFields、discover.minHits，與 deps.stores.docs、deps.seen、deps.openAlexAuth〔OpenAlex 金鑰載體,可缺〕)
  * @param {Object} [opt={}] 輸入設定物件
  * @param {Function} [opt.fetchWebByCurl] 輸入 curl 抓取函數 (url, { timeoutMs, maxRetries }) => Promise<{ status, html, message }>(測試注入)，未給則用 w-fetch-web 之 fetchWebByCurl
- * @returns {Promise} 回傳 Promise，resolve 回傳 { ok, count, abstracts, overlap, reason }；OpenAlex 呼叫失敗或回應格式不符時另帶 transient:true(暫時性失敗，不應冷卻)
+ * @param {Object} [opt.openAlexAuth] 輸入 OpenAlex 金鑰載體(createOpenAlexAuth 之產物)，優先於 ctx.deps.openAlexAuth；皆未給則不帶金鑰
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { ok, count, abstracts, overlap, reason }；OpenAlex 呼叫失敗或回應格式不符時另帶 transient:true(暫時性失敗，不應冷卻)；
+ *   OpenAlex 回 429 時 reason 為固定訊息 OPENALEX_QUOTA_MESSAGE 並另帶 quota:true
  * @example
  * // 以替身抓取函數回傳 8 筆皆有摘要之結果(不連網)
  * let words = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`w${i}`, [i]]))
@@ -98,7 +101,10 @@ export async function validateAreaQuery(query, ctx, opt = {}) {
     const mailto = oa.mailto ? `&mailto=${encodeURIComponent(oa.mailto)}` : ''
     const u = `${base}/works?search=${encodeURIComponent(query)}&per-page=8&select=id,doi,primary_location,abstract_inverted_index` +
         (fields ? `&filter=${encodeURIComponent(`primary_topic.field.id:${fields}`)}` : '') + mailto
-    const r = await fetchFn(u, { timeoutMs: 15_000, maxRetries: 1 })
+    // 金鑰:opt.openAlexAuth(測試或自訂注入)優先,否則取每輪依賴 deps.openAlexAuth(總組裝依 capture.services.openAlex.apiKeyEnv 與金鑰檔建立);都沒有＝不帶金鑰
+    const r = await openAlexGet(fetchFn, u, { auth: openAlexAuthOf(opt.openAlexAuth ?? ctx.deps.openAlexAuth), timeoutMs: 15_000, maxRetries: 1 })
+    // 429 以固定字樣為原因(OPENALEX_QUOTA_MESSAGE:額度用盡或每秒超限)並標 quota:true;仍屬暫時性失敗(不冷卻)
+    if (isOpenAlexQuota(r)) return { ok: false, count: 0, abstracts: 0, overlap: 0, reason: OPENALEX_QUOTA_MESSAGE, transient: true, quota: true }
     if (r?.status !== 'success') return { ok: false, count: 0, abstracts: 0, overlap: 0, reason: `OpenAlex 驗證失敗：${oneline(r?.message || r?.reason, 80)}`, transient: true }
     let j = null
     try {

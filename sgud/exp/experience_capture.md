@@ -39,3 +39,13 @@
 - **實網測試不可用靜默日誌**:瀏覽器階梯之逐階軌跡只在日誌(「瀏覽器亦失敗（…；camofox:…→playwright:…）」),測試原用靜默日誌,第一次不符時看不到那一輪 Camofox 回了什麼;改為照錄並印出(第二次即看到 `camofox:too-short`、`camofox:placeholder` 等逐階原因)。
 - **驗收判準要逐字對照規則之適用範圍**:判準寫「本輪落 raw 者皆已另存」,複本實跑報 7 篇未另存——全是 grid 摘要(輪抓入庫即 raw;另存只限正文落盤與 feed 退路之終態,grid 於終態瘦身時才另存,見 `stages/docMaintainStage.mjs` 檔頭)。判準寬於規則會把設計判成缺陷,窄於規則會漏。**判準寫完先標它對應規則哪一條、範圍是否相同**;判準錯就更正判準並留痕,不是改產品遷就。
 - **複本實跑才看得到兩件事**:①存量資料有舊形狀(缺欄),單元測試之資料不會有——舊 skip 缺 `skipKind` 會被算作「已判定」,首輪對複本即停用一批「已判定 6～8 篇、產出 0」之來源(補欄可校正);②長文 `rawGz` 確實存全長(庫內截 20,000 字、另存 5 萬餘字)——這是「存解析全文」決策能否成立之唯一實證。
+
+## 34. 抓取:OpenAlex 金鑰與 429(規則 CAP-16)
+
+- **「issue 說 429＝額度用盡」要先對官方文件**:官方 [Authentication〈Rate limits〉](https://help.openalex.org/api/authentication/)寫明 429 有兩因——超出每日額度,或超出每秒上限(無金鑰 10、有金鑰 30 次/秒),後者「costs nothing; wait a moment and retry」。故單次 429 之固定訊息兩因並列(`OPENALEX_QUOTA_MESSAGE`),只有「連續三次(各次已含 `fetchWebByCurl` 的一次 3 秒重試)」才判定每日額度用盡而停止。`X-RateLimit-Reset` 為「Seconds until reset (midnight UTC)」,重置時間寫 UTC 00:00。不帶金鑰時 `GET /rate-limit` 回 401(「You must provide a valid API key」),帶金鑰才可查——啟動時查剩餘額度(issue 列為可選)本輪未做。
+- **query 帶金鑰＝金鑰進網址,漏出路徑要逐一堵**:官方兩種帶法等價,`fetchWebByCurl`(w-fetch-web)無自訂標頭選項,故用 `api_key=`。實測(`withRetry` 預設輸出)重試時 stderr 會印「`[fetchWebByCurl] HTTP 503 <含 api_key 之完整網址>，等 3000ms 後重試`」,且結果物件的 `url` 欄、curl 失敗之 `message`(含完整命令列)都帶金鑰。處置:帶金鑰之請求以 `maxRetries:0` 呼叫、重試自己做(`openAlexGet`),失敗結果之 `message／reason／url／finalUrl` 與自組之回應片段一律經 wsemi `maskDiagText`(遮罩規格 D1:不自寫);測試以真 curl 打本機假站台,在五種失敗(503、429、非 JSON、站方回顯金鑰、連線被拒)下斷言輸出與 stderr 皆不含金鑰原形與 URL 編碼形,並含「遮罩確實發生」的非空洞斷言(連線被拒之訊息應見 `api_key=***`)。改用標頭需 w-fetch-web 增 `headers` 與 `useShowLog`,屆時可簡化。
+- **新增設定欄若會被誤填成機密,錯誤訊息不得回顯所收到之值**:`apiKeyEnv` 是變數「名」,最可能的錯誤是把金鑰「值」貼進去;設定錯誤訊息原樣回顯 `收到 "…"`,會把金鑰寫進啟動錯誤與日誌。`envName` 型別加 `noEcho`(訊息寫「值不顯示」)。
+- **新增每輪依賴欄會破壞下游釘死欄集之測試**:`createCaptureRuntime().deps` 被下游總組裝展開,其測試多釘死欄集;`openAlexAuth` 因此只在帶金鑰時才放入 deps(未設金鑰者欄集同修前);`rt` 回傳物件則新增 `openAlexAuth`(本套件 `unit-assembly` 釘住,已更新)。
+- **連續計數要與「入帳」一起設計**:只在連續 N 次時停止還不夠——前 N−1 次已各自記了 `fetch-failed`,續跑仍須 `retry`。作法:遭 429 者先暫存(pending),被其他結果打斷才記 `fetch-failed`,達門檻則與未發出請求者同為「未處理」不入帳。停止只及 OpenAlex(DOI 批次、題名),arXiv 與網頁不受額度影響、照常。
+- **429 訊息保留「HTTP 429」字樣**:下游以訊息取狀態碼(`fetchPolicy.httpCodeOf` 之 `\bHTTP (\d{3})\b`)、日誌契約之已知常態 WARN 以 `HTTP (…|429)` 辨識;訊息改為 `OpenAlex HTTP 429：…` 而非 `OpenAlex 429：…`,既有判讀不變。
+- **未設金鑰時要證明「與修前相同」,不是宣稱**:`tmp` 下以 `git archive` 取修前 `src`,同一組情境(混合 404／非 JSON／健康)對新舊各跑一次,請求網址、處置帳、結果、日誌逐字比對;另在測試內釘住四處請求網址之逐字格式。

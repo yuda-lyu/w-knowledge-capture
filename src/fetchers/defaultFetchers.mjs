@@ -18,6 +18,7 @@ import fetchRSS from 'w-dwdata-hub/src/fetchRSS.mjs'
 import W from 'w-data-pipeline/src/WDataPipeline.mjs'
 import { fetchArticle, fetchArticleLinks } from './articleParse.mjs'
 import { createBrowserFetcher } from './browserFetcher.mjs'
+import { openAlexGet, openAlexAuthOf, isOpenAlexQuota, OPENALEX_QUOTA_MESSAGE } from './openAlexNet.mjs'
 import { gridAbstractCheck } from '../stores/contentGate.mjs'
 import { oneline } from '../core/runnerPackage.mjs'
 const { defineFetcher } = W
@@ -66,8 +67,11 @@ function noteGridDrops(src, drops, log, via) {
  *
  * @param {Object} src 輸入 grid 來源記錄，需含 query，可含 cursor(頁碼)；本函數於其上標 _fetchedVia('openalex'｜'arxiv'),
  *   供來源政策判 cursor 是否前進(arXiv 遞補不用 cursor,前進會漏頁);另標 _dropped({ short, mojibake, noUrl })
- * @param {Object} opt 輸入設定物件，可含 openAlexMailto、openAlexFields、arxivCategories、openAlexBase、arxivApiBase、fetchWebByCurl
- * @param {Object} [ctx] 輸入管道脈絡(取 ctx.log 記略過計數;未給不記)
+ * 【OpenAlex 金鑰與 429】opt.openAlexAuth(createOpenAlexAuth 之產物)有金鑰時請求附 api_key(見 openAlexNet);OpenAlex 回 429 仍切 arXiv,
+ *   但於來源物件標 _oaQuota:true、記一行固定字樣之警告(OPENALEX_QUOTA_MESSAGE,寫明是 OpenAlex 額度而非站台故障)
+ *
+ * @param {Object} opt 輸入設定物件，可含 openAlexMailto、openAlexAuth、openAlexFields、arxivCategories、openAlexBase、arxivApiBase、fetchWebByCurl
+ * @param {Object} [ctx] 輸入管道脈絡(取 ctx.log 記略過計數與 429 事件;未給不記)
  * @returns {Promise} 回傳 Promise，resolve 回傳原始項目陣列 [{ url, time, title, summary, text }]，雙供應商皆失敗時 reject
  */
 async function readGrid(src, opt, ctx) {
@@ -87,7 +91,9 @@ async function readGrid(src, opt, ctx) {
     (fresh ? '&sort=publication_date:desc' : '') +
     (fields ? `&filter=${encodeURIComponent(`primary_topic.field.id:${fields}`)}` : '') +
     `&select=title,publication_year,doi,abstract_inverted_index,primary_location${mailto}`
-    const r = await fetchByCurl(u, { timeoutMs: 15_000, maxRetries: 1 })
+    // 金鑰(opt.openAlexAuth;未給＝不帶)與 429 之整理一律經 openAlexNet 的 openAlexGet(金鑰附帶、失敗訊息遮罩、429 固定訊息)
+    const auth = openAlexAuthOf(opt.openAlexAuth)
+    const r = await openAlexGet(fetchByCurl, u, { auth, timeoutMs: 15_000, maxRetries: 1 })
     let openAlexWhy = r.message || r.reason || ''
     if (r.status === 'success') {
         let j = null
@@ -99,11 +105,14 @@ async function readGrid(src, opt, ctx) {
         }
         // 結構驗證:須有 results 陣列——錯誤 JSON(如 { error })不可被當成「空頁」而誤判耗盡,改走遞補
         if (j && typeof j === 'object' && !isarr(j.results)) {
-            openAlexWhy = `回應缺 results（${oneline(JSON.stringify(j).slice(0, 80), 80)}）`
+            openAlexWhy = `回應缺 results（${auth.mask(oneline(JSON.stringify(j).slice(0, 80), 80))}）`
             j = null
         }
         if (j && typeof j === 'object') {
-            if (isobj(src)) src._fetchedVia = 'openalex'
+            if (isobj(src)) {
+                src._fetchedVia = 'openalex'
+                src._oaQuota = false
+            }
             // 耗盡:回補模式遇空頁,或頁碼已達 OpenAlex 頁碼分頁之上限(前 10,000 筆)或其回報之總數 → 標記交 extraPatchOf 轉 fresh 模式。
             //   耗盡須明確標記:否則空結果仍標 openalex 而 cursor 照加,翻到上限後每輪改落 arXiv 遞補、恆拿同 8 筆
             const results = j.results
@@ -136,8 +145,13 @@ async function readGrid(src, opt, ctx) {
     // 遞補亦依 cursor 分頁(start＝(頁−1)×每頁):若固定取相關度前 8 篇,OpenAlex 一壞即恆拿同 8 篇
     const u2 = `${axBase}/api/query?search_query=${encodeURIComponent(q2)}&sortBy=${fresh ? 'submittedDate&sortOrder=descending' : 'relevance'}&start=${(page - 1) * GRID_PER_PAGE}&max_results=${GRID_PER_PAGE}`
     const r2 = await fetchByCurl(u2, { timeoutMs: 15_000, maxRetries: 1 })
-    if (r2.status !== 'success') throw new Error(`網格雙供應商皆失敗：OpenAlex ${openAlexWhy}；arXiv ${r2.message || r2.reason}`)
-    if (isobj(src)) src._fetchedVia = 'arxiv'
+    if (r2.status !== 'success') throw new Error(`網格雙供應商皆失敗：${isOpenAlexQuota(r) ? openAlexWhy : `OpenAlex ${openAlexWhy}`}；arXiv ${r2.message || r2.reason}`)
+    if (isobj(src)) {
+        src._fetchedVia = 'arxiv'
+        // OpenAlex 429(額度用盡或每秒超限):仍切 arXiv,但事件寫明是 OpenAlex 額度而非站台故障(listFetch 計入 report 之 gridOaQuota)
+        src._oaQuota = isOpenAlexQuota(r)
+    }
+    if (isOpenAlexQuota(r)) ctx?.log?.warn?.(`網格[${oneline(src?.name || src?.query, 40)}] ${OPENALEX_QUOTA_MESSAGE}；本次改走 arXiv（此來源之 cursor 不前進）`)
     const items = []
     const drops = { short: 0, mojibake: 0, noUrl: 0 }
     for (const [, e] of String(r2.html || '').matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
@@ -170,6 +184,7 @@ async function readGrid(src, opt, ctx) {
  * @param {Object} [opt={}] 輸入設定物件
  * @param {Integer} [opt.articleTimeoutMs=30000] 輸入單篇正文抓取逾時毫秒正整數(總組裝傳 capture.articles.timeoutMs)，預設30000
  * @param {String} [opt.openAlexMailto=''] 輸入 OpenAlex polite pool 聯絡信箱字串(總組裝傳 capture.services.openAlex.mailto)，預設''
+ * @param {Object} [opt.openAlexAuth] 輸入 OpenAlex 金鑰載體(openAlexNet 之 createOpenAlexAuth 產物;總組裝依 capture.services.openAlex.apiKeyEnv 與金鑰檔建立)，未給則不帶金鑰
  * @param {String} [opt.openAlexFields=''] 輸入 OpenAlex primary_topic.field.id 白名單字串(以 | 串接，如 '17|26')，預設''代表不限領域
  * @param {Array} [opt.arxivCategories=[]] 輸入 grid 遞補查 arXiv 時之類別過濾字串陣列(如 ['cs.LG', 'stat.ML'];總組裝傳 capture.areas.arxivCategories)，預設[]代表不限類別
  * @param {Array} [opt.siteAdapters] 輸入站台 adapter 陣列(排於 w-fetch-web 內建清單之前)，未給則用本套件自帶清單

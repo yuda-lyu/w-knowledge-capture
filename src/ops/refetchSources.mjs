@@ -23,6 +23,12 @@
 // 【取得的是「現在的頁面」】回溯物不能證明為摘要當時之材料:網頁(textFrom 'refetch:article')不可作為筆記內容之紮根材料(下游應視同無材料,
 //   未能判定;寧缺勿錯),只供 CS10 段落比對與留存;API 依編號取得者(arXiv 編號〔原網址帶版本者保留版本〕、DOI)為同一記錄。
 // 【回應形狀須驗】OpenAlex 無 results 陣列、arXiv 非 Atom feed → 端點錯誤(fetch-failed,可重試),不得當成「查無」。
+// 【OpenAlex 金鑰】capture.services.openAlex.apiKeyEnv 所指之變數自 deps.envFile(金鑰檔;使用端傳 flow.info().envFile)讀入(deps.openAlexAuth 可直接給載體),
+//   DOI 批次與題名搜尋附 api_key(fetchers/openAlexNet);未給或金鑰檔無該變數 → 不帶金鑰,請求同無金鑰時。金鑰不入日誌、處置帳、錯誤訊息(openAlexNet 遮罩)。
+// 【OpenAlex 額度】429 之訊息為固定字樣 OPENALEX_QUOTA_MESSAGE(每日額度用盡或每秒請求超限;官方:兩者皆回 429、每日額度 UTC 00:00 重置)。OpenAlex 之請求
+//   (DOI 批次、題名搜尋,不含 arXiv、網頁)連續 OPENALEX_QUOTA_STOP_AFTER(3)次 429(各次已含 w-fetch-web 之一次重試,每秒上限之 429 不會連續)→ 判定每日額度用盡,
+//   停止 OpenAlex 之回溯(arXiv、網頁照常):out.quotaStop 列明原因與未處理篇數;遭 429 之批次／篇與未發出請求者皆「未處理」——不入處置帳,下次不必 retry 即可續跑。
+//   非連續之 429(中間夾其他結果)不停止,該批／篇照舊記 fetch-failed(訊息換固定字樣,retry 重試)。
 // 【呼叫端負責】取執行鎖;大量回溯會產生大量網路請求(OpenAlex polite pool 帶 mailto、arXiv 每次請求間隔 ≥3 秒、網頁同主機間隔 ≥2 秒),
 //   是否執行由呼叫端決定。
 
@@ -40,6 +46,7 @@ import { readJsonlRows, appendJsonlRow } from '../core/util/jsonl.mjs'
 import { STATUS } from '../core/standards/verdict.mjs'
 import { oneline } from '../core/runnerPackage.mjs'
 import { deinvertAbstract } from '../fetchers/defaultFetchers.mjs'
+import { openAlexGet, openAlexAuthOf, createOpenAlexAuth, openAlexApiKeyOf, isOpenAlexQuota, OpenAlexQuotaError, OPENALEX_QUOTA_MESSAGE, OPENALEX_QUOTA_STOP_AFTER, openAlexQuotaStopText } from '../fetchers/openAlexNet.mjs'
 import { fetchArticle } from '../fetchers/articleParse.mjs'
 import { createHealthGates } from '../stores/healthRecheck.mjs'
 import { dedupeText, gridAbstractCheck } from '../stores/contentGate.mjs'
@@ -156,25 +163,37 @@ export function judgeAbstractRefetch(doc, rec, o = {}) {
  * 內建之網路層(可由 deps.refetch 注入替身;測試不發網路)
  *
  * @param {Object} cap 輸入 settings.capture(取 services.openAlex〔base、mailto〕、services.arxiv.base、articles.timeoutMs)
+ * @param {Object} [o={}] 輸入 { openAlexAuth:OpenAlex 金鑰載體〔openAlexNet 之 createOpenAlexAuth 產物;未給不帶金鑰〕, fetchWebByCurl:curl 抓取函數〔測試注入;預設 w-fetch-web〕 }
  * @returns {Object} 回傳 { arxiv(ids)→Map(id → {title,abstract}), openalexDoi(dois)→Map(doi → {title,abstract}), openalexTitle(title)→Array({title,abstract,url}), article(url)→fetchArticle 結果, pause(method) }
  */
-function defaultNet(cap = {}) {
+function defaultNet(cap = {}, o = {}) {
+    const fetchFn = isfun(o.fetchWebByCurl) ? o.fetchWebByCurl : fetchWebByCurl
+    const auth = openAlexAuthOf(o.openAlexAuth)
     const oaBase = String(cap.services?.openAlex?.base || 'https://api.openalex.org').replace(/\/+$/, '')
     const axBase = String(cap.services?.arxiv?.base || 'https://export.arxiv.org').replace(/\/+$/, '')
     const mailto = cap.services?.openAlex?.mailto ? `&mailto=${encodeURIComponent(cap.services.openAlex.mailto)}` : ''
     // OpenAlex 回應須有 results 陣列:錯誤回應(額度、參數錯)解析成功卻無 results 時,不可當「查無」而永久記 not-found
+    //   請求經 openAlexGet(附金鑰、失敗訊息遮罩);429 拋 OpenAlexQuotaError(固定訊息,帶 quota:true 供連續計數);回應片段入錯誤訊息前亦遮罩
     const getResults = async (u) => {
-        const r = await fetchWebByCurl(u, { timeoutMs: 20_000, maxRetries: 1 })
+        const r = await openAlexGet(fetchFn, u, { auth, timeoutMs: 20_000, maxRetries: 1 })
+        if (isOpenAlexQuota(r)) throw new OpenAlexQuotaError()
         if (r.status !== 'success') throw new Error(`HTTP 失敗：${oneline(r.message || r.reason, 120)}`)
-        const j = JSON.parse(r.html)
-        if (!isarr(j?.results)) throw new Error(`OpenAlex 回應無 results（${oneline(JSON.stringify(j).slice(0, 160), 160)}）`)
+        let j
+        try {
+            j = JSON.parse(r.html)
+        }
+        catch (e) {
+            if (!auth.enabled) throw e
+            throw new Error(auth.mask(String(e?.message)))
+        }
+        if (!isarr(j?.results)) throw new Error(`OpenAlex 回應無 results（${auth.mask(oneline(JSON.stringify(j).slice(0, 160), 160))}）`)
         return j.results
     }
     const oaRec = (p) => ({ title: decodeEntities(String(p?.title || '')).trim(), abstract: deinvertAbstract(p?.abstract_inverted_index), url: p?.doi || p?.primary_location?.landing_page_url || '' })
     const lastByHost = new Map()
     return {
         async arxiv(ids) {
-            const r = await fetchWebByCurl(`${axBase}/api/query?id_list=${ids.map(encodeURIComponent).join(',')}&max_results=${ids.length}`, { timeoutMs: 30_000, maxRetries: 1 })
+            const r = await fetchFn(`${axBase}/api/query?id_list=${ids.map(encodeURIComponent).join(',')}&max_results=${ids.length}`, { timeoutMs: 30_000, maxRetries: 1 })
             if (r.status !== 'success') throw new Error(`arXiv 失敗：${oneline(r.message || r.reason, 120)}`)
             return parseArxivFeed(r.html)
         },
@@ -235,11 +254,13 @@ export function parseArxivFeed(xml) {
 /**
  * 已消化文件之原文回溯(檔頭)
  *
- * @param {Object} deps 輸入 { stores:{ docs, docTexts, notes? }, dirs:{ state }, clock, log, settings:{ capture }, refetch?(網路層替身) };
- *   stores.notes 可缺(缺則對象為全部無原文之 noted 文件)
+ * @param {Object} deps 輸入 { stores:{ docs, docTexts, notes? }, dirs:{ state }, clock, log, settings:{ capture }, refetch?(網路層替身), envFile?(金鑰檔路徑:
+ *   OpenAlex 金鑰取自此檔之 capture.services.openAlex.apiKeyEnv 變數;使用端傳 flow.info().envFile), openAlexAuth?(金鑰載體,優先於 envFile),
+ *   fetchWebByCurl?(curl 抓取函數,測試注入) };stores.notes 可缺(缺則對象為全部無原文之 noted 文件)
  * @param {Object} [opt={}] 輸入 { apply:Boolean, limit:Integer(本次至多幾篇;預設全部), ids:Array(只處理這些文件), methods:Array('arxiv'|'openalex-doi'|'openalex-title'|'article'),
  *   retry:Boolean|'all'(true＝帳上結論為 fetch-failed 者重試;'all'＝連同內容判定之結論〔identity-mismatch／not-found／gate-failed〕) }
- * @returns {Promise} 回傳 Promise，resolve 回傳 { candidates, byMethod:{ 方法: 篇數 }, processed, outcomes:{ 結論: 篇數 }, sample:Array, ledgerFile }
+ * @returns {Promise} 回傳 Promise，resolve 回傳 { candidates, byMethod:{ 方法: 篇數 }, processed, outcomes:{ 結論: 篇數 }, sample:Array, ledgerFile,
+ *   quotaStop?:{ after:連續幾次 429 即停, unprocessed:未處理篇數〔遭 429 者與未發出請求者〕, byMethod:{ 'openalex-doi'|'openalex-title': 篇數 }, message } }(quotaStop 僅在額度用盡而停止時有)
  * @throws {Error} deps.stores 缺 docTexts 集合時拋出
  * @example
  * // 以記憶體替身集合與替身網路層示範，不連網；只預演不給 apply 時不寫任何檔
@@ -263,7 +284,11 @@ export async function refetchSources(deps, opt = {}) {
     const { stores, dirs, clock, log } = deps
     if (!stores?.docTexts) throw new Error('refetchSources 需要 docTexts 集合(另存原文之處)')
     const cap = deps.settings?.capture || {}
-    const net = isobj(deps.refetch) ? deps.refetch : defaultNet(cap)
+    // 網路層:deps.refetch 整組置換(測試替身);否則內建——OpenAlex 金鑰取 deps.openAlexAuth,未給則依 capture.services.openAlex.apiKeyEnv 自 deps.envFile(金鑰檔)讀
+    //   (使用端以 flow.info().envFile 傳入;皆未給＝不帶金鑰)
+    const net = isobj(deps.refetch)
+        ? deps.refetch
+        : defaultNet(cap, { openAlexAuth: deps.openAlexAuth ?? createOpenAlexAuth(openAlexApiKeyOf(cap, deps.envFile)), fetchWebByCurl: deps.fetchWebByCurl })
     const ledgerFile = path.join(dirs.state, REFETCH_LEDGER_FILE)
     const seen = new Map() // 帳上各文件之最後結論(缺檔空、壞行略過:JSONL 共用件)
     for (const r of readJsonlRows(ledgerFile)) if (isestr(r.id)) seen.set(r.id, r.outcome)
@@ -298,7 +323,9 @@ export async function refetchSources(deps, opt = {}) {
     fs.mkdirSync(dirs.state, { recursive: true })
     const gates = createHealthGates(cap.standards)
     const maxTextChars = Number(cap.articles?.maxTextChars) || 20_000
+    const handled = new Set() // 已入處置帳之文件 id
     const record = async (c, j) => {
+        handled.add(c.d.id)
         const at = clock.iso8()
         if (j.outcome === 'archived') {
             const a = await archiveDocText(stores.docTexts, { id: c.d.id, text: j.text, feedText: '', textFrom: `refetch:${c.method === 'article' ? 'article' : c.method.split('-')[0]}`, status: c.d.status, fullLength: j.fullLength, title: c.d.title, url: c.d.url }, at)
@@ -310,24 +337,53 @@ export async function refetchSources(deps, opt = {}) {
         out.outcomes[j.outcome] = (out.outcomes[j.outcome] || 0) + 1
         out.processed++
     }
+    // ── OpenAlex 額度(檔頭【OpenAlex 額度】):連續 OPENALEX_QUOTA_STOP_AFTER 次請求(DOI 批次或題名搜尋)皆 429 → 判定每日額度用盡而停止 OpenAlex 回溯(arXiv、網頁照常)。
+    //   遭 429 而未定論者先存 pending:被其他結果打斷(未達門檻)→ 照舊記 fetch-failed(訊息換固定字樣);達門檻 → 與未發出請求者同為「未處理」,不入處置帳 ──
+    const oaMethods = new Set(['openalex-doi', 'openalex-title'])
+    let streak = 0
+    let pending = []
+    let quotaStopped = false
+    const hitQuota = (cs, label) => {
+        streak++
+        pending.push(...cs)
+        log?.warn?.(`原文回溯：${label} ${OPENALEX_QUOTA_MESSAGE}（連續第 ${streak} 次，連續 ${OPENALEX_QUOTA_STOP_AFTER} 次即停止 OpenAlex 回溯）`)
+        return streak >= OPENALEX_QUOTA_STOP_AFTER
+    }
+    const clearQuota = async () => {
+        if (!streak) return
+        streak = 0
+        const list = pending
+        pending = []
+        for (const c of list) await record(c, { outcome: 'fetch-failed', why: OPENALEX_QUOTA_MESSAGE })
+    }
     // ① API 批次(arXiv、OpenAlex DOI)
     for (const [method, fetchBatch] of [['arxiv', net.arxiv], ['openalex-doi', net.openalexDoi]]) {
         const list = todo.filter((c) => c.method === method)
         for (let i = 0; i < list.length; i += BATCH) {
+            if (quotaStopped) break
             const page = list.slice(i, i + BATCH)
             let got = null
+            let quota = false
             try {
                 got = await fetchBatch(page.map((c) => c.key))
             }
             catch (e) {
-                log?.warn?.(`原文回溯：${method} 批次失敗（${oneline(e?.message, 120)}），本批 ${page.length} 篇記 fetch-failed`)
+                if (oaMethods.has(method) && isOpenAlexQuota(e)) quota = true
+                else log?.warn?.(`原文回溯：${method} 批次失敗（${oneline(e?.message, 120)}），本批 ${page.length} 篇記 fetch-failed`)
             }
+            if (quota) {
+                quotaStopped = hitQuota(page, method)
+                if (!quotaStopped) await net.pause?.(method)
+                continue
+            }
+            if (oaMethods.has(method)) await clearQuota()
             for (const c of page) await record(c, got ? judgeAbstractRefetch(c.d, got.get(c.key) || null, { byId: true }) : { outcome: 'fetch-failed', why: `${method} 批次失敗` })
             await net.pause?.(method)
         }
     }
     // ② OpenAlex 依題名(只收題名相同且網址相同者;多筆同名取網址相符者)
     for (const c of todo.filter((x) => x.method === 'openalex-title')) {
+        if (quotaStopped) break
         let j
         try {
             const recs = await net.openalexTitle(c.d.title)
@@ -335,10 +391,28 @@ export async function refetchSources(deps, opt = {}) {
             j = judgeAbstractRefetch(c.d, hit)
         }
         catch (e) {
+            if (isOpenAlexQuota(e)) {
+                quotaStopped = hitQuota([c], 'openalex-title')
+                if (!quotaStopped) await net.pause?.('openalex-title')
+                continue
+            }
             j = { outcome: 'fetch-failed', why: oneline(e?.message, 120) }
         }
+        await clearQuota()
         await record(c, j)
         await net.pause?.('openalex-title')
+    }
+    // OpenAlex 段結束:額度用盡停止者,遭 429 之 pending 與未發出請求者皆為未處理(不入處置帳,下次直接續跑);否則未達門檻之 429 殘餘照舊記 fetch-failed
+    if (quotaStopped) {
+        pending = []
+        const left = todo.filter((c) => oaMethods.has(c.method) && !handled.has(c.d.id))
+        const byLeft = {}
+        for (const c of left) byLeft[c.method] = (byLeft[c.method] || 0) + 1
+        out.quotaStop = { after: OPENALEX_QUOTA_STOP_AFTER, unprocessed: left.length, byMethod: byLeft, message: openAlexQuotaStopText(left.length) }
+        log?.warn?.(`原文回溯：${out.quotaStop.message}（${Object.entries(byLeft).map(([k, v]) => `${k} ${v}`).join('、')}）`)
+    }
+    else {
+        await clearQuota()
     }
     // ③ 網頁(內建正文抓取器)
     for (const c of todo.filter((x) => x.method === 'article')) {
@@ -352,7 +426,7 @@ export async function refetchSources(deps, opt = {}) {
         }
         await record(c, j)
     }
-    log?.info?.(`原文回溯：處理 ${out.processed} 篇（${Object.entries(out.outcomes).map(([k, v]) => `${k} ${v}`).join('、')}）；對象共 ${out.candidates} 篇`)
+    log?.info?.(`原文回溯：處理 ${out.processed} 篇（${Object.entries(out.outcomes).map(([k, v]) => `${k} ${v}`).join('、')}）；對象共 ${out.candidates} 篇${out.quotaStop ? `；OpenAlex 額度用盡而停止，未處理 ${out.quotaStop.unprocessed} 篇` : ''}`)
     return out
 }
 

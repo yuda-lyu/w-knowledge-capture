@@ -50,7 +50,8 @@ describe('unit-fetchers', function() {
             urls.push(u)
             return u.includes('openalex') ? { status: 'error', message: 'HTTP 429' } : { status: 'error', message: 'timeout' }
         }
-        await assert.rejects(() => gridOf(stub).fetch({ query: 'memory' }), /網格雙供應商皆失敗：OpenAlex HTTP 429；arXiv timeout/)
+        // OpenAlex 429 為固定訊息(兩因並列:每日額度用盡或每秒請求超限;CAP-16;原為「OpenAlex HTTP 429」)
+        await assert.rejects(() => gridOf(stub).fetch({ query: 'memory' }), /網格雙供應商皆失敗：OpenAlex HTTP 429：每日額度用盡或每秒請求超限（每日額度於 UTC 00:00 重置）；arXiv timeout/)
         assert.doesNotMatch(decodeURIComponent(urls[1]), /cat:/)
         const stub2 = async (u) => (u.includes('openalex') ? { status: 'success', html: 'not json' } : { status: 'error', message: 'timeout' })
         await assert.rejects(() => gridOf(stub2).fetch({ query: 'memory' }), /OpenAlex 回應非 JSON；arXiv timeout/)

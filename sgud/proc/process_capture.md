@@ -19,7 +19,7 @@
 | 詞彙表 | `data.vocab` 只取 `domain`、`kbLabel`、`conceptRenames`、`conceptAliases` | 其他鍵拋錯;取子集用 `pickCaptureVocab`(`src/core/vocab/vocabDefault.mjs`) |
 | 種子來源、網格主題 | `data.seedSources`、`data.gridTopics` | 標題預篩在 `capture.articles.skipTitlePatterns` |
 | 既有 `notes` 集合 | `notes: true` | 領域發現與原文回溯與原管線同口徑 |
-| 金鑰檔、時間上限、時區 | `envFile`、`scheduleLimitMin`、`timeZone` | OpenAlex 信箱在 `capture.services.openAlex.mailto` |
+| 金鑰檔、時間上限、時區 | `envFile`、`scheduleLimitMin`、`timeZone` | OpenAlex 信箱在 `capture.services.openAlex.mailto`;OpenAlex API 金鑰放金鑰檔(變數名由 `capture.services.openAlex.apiKeyEnv` 指,預設 `OPENALEX_API_KEY`;檔內無此變數則不帶金鑰,易 429) |
 
 - **線索來源**:本套件只消化線索,不從文章產生線索(由下游以 `saveClues` 寫入,見 `README.md` §1)。單獨使用時沒有自我擴充之輸入。
 
@@ -32,7 +32,7 @@
   - **領域**:`setAreaStatus(stores, idOrLabel, 'active'|'paused', { reason, nowIso })`(`src/stores/areaPolicy.mjs`);手動狀態記 `statusBy:'manual'`,種子同步與自動回饋不覆寫(CS7)。新增領域＝改 `data.gridTopics`(下一輪種子同步生效);刪種子＝退役(可逆)。
   - **死件回收**:`reviveDeadDocs(stores, { match, nowIso, dryRun, limit, fetchTries, capture, patchOf })` 與篩選產生器 `deadMatcher({ host, error, cls, untriedBrowser })`(`src/ops/reviveDocs.mjs`)。**`dryRun` 預設 false,呼叫端須自行先以 `dryRun: true` 預演**(列數量、類別分布、樣本)再實寫。回填 `fetchTries` 在給了 `capture` 時預設 `maxTries−1`(只剩一次機會、排隊尾,不以整批舊件壓住隊頭);清當前類別欄、留歷史(`revivedFrom`／`revivedFromClass`／`revives`);現行規則屬瀏覽器類且瀏覽器佇列開啟者直入瀏覽器佇列。判死類別 `deadClass` 見 CAP-04;舊記錄無結構化欄位者類別顯示 `unclassified`,補欄屬使用端之一次性資料遷移(套件不含,GEN-04)。
   - **剔除清單與待辦總表**:`rejectListOf(stores, opt)`(純讀、不取鎖;`src/rejects.mjs`);`rowsToCsv` 轉出帶 BOM(Excel 直接開啟)、`rowsToMd`。類別只讀結構化欄位,缺欄者歸 `unclassified`、不猜——補欄後才有分類。
-  - **原文回溯**:`refetchSources(deps, { apply, limit, methods, retry })`(`src/ops/refetchSources.mjs`)。預設只預演(列對象與方法分布),`apply` 才抓與寫;處置帳 `<state>/refetch-sources.jsonl`,重跑略過已處理者。**API 類(`arxiv`、`openalex-doi`)先做**,再 `openalex-title`;**網頁類(article)回溯物是「現在的頁面」,不能證明為當時之材料,下游以原文為材料之判定(如筆記紮根)不得採用**,只供 CS10 段落比對與留存,是否做另議。大量回溯會產生大量網路請求(OpenAlex 帶信箱進禮貌池、arXiv 每次請求間隔 ≥ 3 秒、網頁同主機間隔 ≥ 2 秒),是否執行由呼叫端決定。
+  - **原文回溯**:`refetchSources(deps, { apply, limit, methods, retry })`(`src/ops/refetchSources.mjs`)。預設只預演(列對象與方法分布),`apply` 才抓與寫;處置帳 `<state>/refetch-sources.jsonl`,重跑略過已處理者。**API 類(`arxiv`、`openalex-doi`)先做**,再 `openalex-title`;**網頁類(article)回溯物是「現在的頁面」,不能證明為當時之材料,下游以原文為材料之判定(如筆記紮根)不得採用**,只供 CS10 段落比對與留存,是否做另議。大量回溯會產生大量網路請求(OpenAlex 帶信箱進禮貌池、arXiv 每次請求間隔 ≥ 3 秒、網頁同主機間隔 ≥ 2 秒),是否執行由呼叫端決定。**OpenAlex 金鑰與額度**:呼叫端傳 `deps.envFile`(`flow.info().envFile`)使 `openalex-doi`／`openalex-title` 帶金鑰;OpenAlex 連續 3 次 429 即停止 OpenAlex 回溯(結果 `quotaStop` 列未處理篇數;遭 429 與未發出請求者不入處置帳,額度於 UTC 00:00 重置後不加 `retry` 直接續跑,見 CAP-16)。
   - **孤兒瀏覽器**:`sweepOrphanBrowsers({ dryRun: true })` 只列不殺(判準同 hygiene 子階段:自家瀏覽器目標且父行程已死;`filter` 可限只回收特定時窗誕生者)。
   - **存量處置(CS10、CS12)**:見 `process_standards.md`。
 - **本機網路不通**(CAP-12):每輪抓取開工前探測 `capture.network.probeUrls`(預設取 `capture.services` 三個端點基底之原點;`[]` 不探測),不通 → 輪抓／補全文／擴充略過、領域只略過發現,WARN「<段>：本機網路不通（…），本段略過（不計任何對象之失敗）」;執行中失敗而確認不通 → 該對象不計、本段停止;AI 呼叫整鏈皆敗而確認不通 → 該批不計 tries。**連續多輪出現即查本機網路／代理**;探測端點本身故障時亦會出現此 WARN(少抓,不誤判對象),可暫以 `capture.network.probeUrls` 改指其他端點。
