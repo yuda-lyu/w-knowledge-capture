@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>fetchers/openAlexNet.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="MwContractError.html">MwContractError</a></li><li><a href="OpenAlexQuotaError.html">OpenAlexQuotaError</a></li></ul><h3>Global</h3><ul><li><a href="global.html#ABSTRACT_MAX">ABSTRACT_MAX</a></li><li><a href="global.html#AI_ADAPTER_NEED_DEFAULT">AI_ADAPTER_NEED_DEFAULT</a></li><li><a href="global.html#AI_ADAPTER_SIGS">AI_ADAPTER_SIGS</a></li><li><a href="global.html#AI_DEFAULT">AI_DEFAULT</a></li><li><a href="global.html#AI_OPTIONS_KEYS">AI_OPTIONS_KEYS</a></li><li><a href="global.html#AI_ROW_KEYS">AI_ROW_KEYS</a></li><li><a href="global.html#AI_SCHEMA">AI_SCHEMA</a></li><li><a href="global.html#ANSI_RE">ANSI_RE</a></li><li><a href="global.html#AREA_AI_BUDGET_MS">AREA_AI_BUDGET_MS</a></li><li><a href="global.html#AREA_BENCH_BOARD_HEADER">AREA_BENCH_BOARD_HEADER</a></li><li><a href="global.html#AREA_BENCH_ROLE">AREA_BENCH_ROLE</a></li><li><a href="global.html#AREA_BENCH_USAGE">AREA_BENCH_USAGE</a></li><li><a href="global.html#AREA_CASES_FILE">AREA_CASES_FILE</a></li><li><a href="global.html#AREA_CONTRACT">AREA_CONTRACT</a></li><li><a href="global.html#AREA_FAIL_KINDS">AREA_FAIL_KINDS</a></li><li><a href="global.html#AREA_META_ID">AREA_META_ID</a></li><li><a href="global.html#AREA_MIN_REMAINING_MS">AREA_MIN_REMAINING_MS</a></li><li><a href="global.html#AREA_PROMPT_SIGS">AREA_PROMPT_SIGS</a></li><li><a href="global.html#AUDITED_STANDARD_IDS">AUDITED_STANDARD_IDS</a></li><li><a href="global.html#AUTO_ORIGIN_PREFIX">AUTO_ORIGIN_PREFIX</a></li><li><a href="global.html#BASE_CLI_KEYS">BASE_CLI_KEYS</a></li><li><a href="global.html#BASE_CLI_OPTS">BASE_CLI_OPTS</a></li><li><a href="global.html#BASE_DIRS">BASE_DIRS</a></li><li><a href="global.html#BENCH_BOARD_HEADER">BENCH_BOARD_HEADER</a></li><li><a href="global.html#BENCH_FAIL_COLUMNS">BENCH_FAIL_COLUMNS</a></li><li><a href="global.html#BENCH_FAIL_KINDS">BENCH_FAIL_KINDS</a></li><li><a href="global.html#BOM">BOM</a></li><li><a href="global.html#BROWSER_CLASS_LADDER">BROWSER_CLASS_LADDER</a></li><li><a href="global.html#BROWSER_CLI">BROWSER_CLI</a></li><li><a href="global.html#BROWSER_LADDER_CONST">BROWSER_LADDER_CONST</a></li><li><a href="global.html#BROWSER_STEPS">BROWSER_STEPS</a></li><li><a href="global.html#CALL_OPT_RESERVED">CALL_OPT_RESERVED</a></li><li><a href="global.html#CAPTURE_DATA_KEYS">CAPTURE_DATA_KEYS</a></li><li><a href="global.html#CAPTURE_DEFAULT">CAPTURE_DEFAULT</a></li><li><a href="global.html#CAPTURE_LOG_KNOWN">CAPTURE_LOG_KNOWN</a></li><li><a href="global.html#CAPTURE_LOG_MUST_SEE">CAPTURE_LOG_MUST_SEE</a></li><li><a href="global.html#CAPTURE_LOG_PARSE">CAPTURE_LOG_PARSE</a></li><li><a href="global.html#CAPTURE_REPORT_KEYS">CAPTURE_REPORT_KEYS</a></li><li><a href="global.html#CAPTURE_SCHEMA">CAPTURE_SCHEMA</a></li><li><a href="global.html#CAPTURE_SEATS">CAPTURE_SEATS</a></li><li><a href="global.html#CAPTURE_SEAT_LABELS">CAPTURE_SEAT_LABELS</a></li><li><a href="global.html#CAPTURE_STAGE_KEYS">CAPTURE_STAGE_KEYS</a></li><li><a href="global.html#CAPTURE_STANDARDS">CAPTURE_STANDARDS</a></li><li><a href="global.html#CAPTURE_STORE_KEYS">CAPTURE_STORE_KEYS</a></li><li><a href="global.html#CAPTURE_TAP_STAGE_KEYS">CAPTURE_TAP_STAGE_KEYS</a></li><li><a href="global.html#CAPTURE_VOCAB_KEYS">CAPTURE_VOCAB_KEYS</a></li><li><a href="global.html#CASE_RESERVED">CASE_RESERVED</a></li><li><a href="global.html#CFG_KEYS">CFG_KEYS</a></li><li><a href="global.html#CLI_FLAG_RE">CLI_FLAG_RE</a></li><li><a href="global.html#CLUE_DROP_LABELS">CLUE_DROP_LABELS</a></li><li><a href="global.html#CLUE_REFS_MAX">CLUE_REFS_MAX</a></li><li><a href="global.html#CLUE_STATUSES">CLUE_STATUSES</a></li><li><a href="global.html#COLLECTION_KEYS">COLLECTION_KEYS</a></li><li><a href="global.html#COLS">COLS</a></li><li><a href="global.html#CONSENT_MARKERS_DEFAULT">CONSENT_MARKERS_DEFAULT</a></li><li><a href="global.html#CONTENT_DEAD_CLASSES">CONTENT_DEAD_CLASSES</a></li><li><a href="global.html#CONTENT_FAIL_TYPES">CONTENT_FAIL_TYPES</a></li><li><a href="global.html#CONTENT_GATE_V">CONTENT_GATE_V</a></li><li><a href="global.html#CORE_LOG_KNOWN">CORE_LOG_KNOWN</a></li><li><a href="global.html#CORE_LOG_MUST_SEE">CORE_LOG_MUST_SEE</a></li><li><a href="global.html#CS12_HOLD_DEADLINE_DAYS">CS12_HOLD_DEADLINE_DAYS</a></li><li><a href="global.html#CS12_HOLD_NEXT">CS12_HOLD_NEXT</a></li><li><a href="global.html#CS12_HOLD_OBJECT">CS12_HOLD_OBJECT</a></li><li><a href="global.html#CURRENT_PAGE_FROM">CURRENT_PAGE_FROM</a></li><li><a href="global.html#DATA_KEYS">DATA_KEYS</a></li><li><a href="global.html#DAY_MS">DAY_MS</a></li><li><a href="global.html#DEFAULT_CRITERIA">DEFAULT_CRITERIA</a></li><li><a href="global.html#DEFAULT_DEDUP">DEFAULT_DEDUP</a></li><li><a href="global.html#DEFAULT_FREE_MODELS">DEFAULT_FREE_MODELS</a></li><li><a href="global.html#DEFAULT_LANG">DEFAULT_LANG</a></li><li><a href="global.html#DEFAULT_SITE_ADAPTERS">DEFAULT_SITE_ADAPTERS</a></li><li><a href="global.html#DEFINED">DEFINED</a></li><li><a href="global.html#DEPS_COMMON_KEYS">DEPS_COMMON_KEYS</a></li><li><a href="global.html#DISCOVER_RETRY_MS">DISCOVER_RETRY_MS</a></li><li><a href="global.html#DISCOVER_SEAT">DISCOVER_SEAT</a></li><li><a href="global.html#DOC_PENDING_STATUSES">DOC_PENDING_STATUSES</a></li><li><a href="global.html#DOC_STANDARDS">DOC_STANDARDS</a></li><li><a href="global.html#DOC_STATUS">DOC_STATUS</a></li><li><a href="global.html#DOC_STATUSES">DOC_STATUSES</a></li><li><a href="global.html#DOC_TERMINAL_STATUSES">DOC_TERMINAL_STATUSES</a></li><li><a href="global.html#DOC_TEXT_STATUSES">DOC_TEXT_STATUSES</a></li><li><a href="global.html#FINAL_HTTP_CODES">FINAL_HTTP_CODES</a></li><li><a href="global.html#FOREIGN_SPAN_RE">FOREIGN_SPAN_RE</a></li><li><a href="global.html#FORMAT_NOISE_DEFAULT">FORMAT_NOISE_DEFAULT</a></li><li><a href="global.html#FREE_BY_PRICING">FREE_BY_PRICING</a></li><li><a href="global.html#GATE_DEAD_CLASSES">GATE_DEAD_CLASSES</a></li><li><a href="global.html#GATE_DETECTORS_DEFAULT">GATE_DETECTORS_DEFAULT</a></li><li><a href="global.html#GATE_KINDS">GATE_KINDS</a></li><li><a href="global.html#GRID_MIN_CHARS">GRID_MIN_CHARS</a></li><li><a href="global.html#GRID_PER_PAGE">GRID_PER_PAGE</a></li><li><a href="global.html#GROUP_ID_SEP">GROUP_ID_SEP</a></li><li><a href="global.html#GUIDE_TYPES">GUIDE_TYPES</a></li><li><a href="global.html#HEAD_BYTES">HEAD_BYTES</a></li><li><a href="global.html#HEALTH_RECHECK_PER_RUN">HEALTH_RECHECK_PER_RUN</a></li><li><a href="global.html#HOLD_OWNERS">HOLD_OWNERS</a></li><li><a href="global.html#HOLD_STATUSES">HOLD_STATUSES</a></li><li><a href="global.html#HYGIENE_TARGETS_DEFAULT">HYGIENE_TARGETS_DEFAULT</a></li><li><a href="global.html#IGNORE_TYPES">IGNORE_TYPES</a></li><li><a href="global.html#INFO_COMMON_KEYS">INFO_COMMON_KEYS</a></li><li><a href="global.html#KINDS">KINDS</a></li><li><a href="global.html#KIND_MAX_PROMPT_CHARS">KIND_MAX_PROMPT_CHARS</a></li><li><a href="global.html#LABELS">LABELS</a></li><li><a href="global.html#LIMIT_TEXT_RE">LIMIT_TEXT_RE</a></li><li><a href="global.html#LINK_FILTER_LABELS">LINK_FILTER_LABELS</a></li><li><a href="global.html#LIST_MAX">LIST_MAX</a></li><li><a href="global.html#LMDB_DB_DEFAULT">LMDB_DB_DEFAULT</a></li><li><a href="global.html#LMDB_KEYS">LMDB_KEYS</a></li><li><a href="global.html#MECH_KEYS">MECH_KEYS</a></li><li><a href="global.html#MOJIBAKE_DEFAULT">MOJIBAKE_DEFAULT</a></li><li><a href="global.html#NAMESPACES">NAMESPACES</a></li><li><a href="global.html#NON_JUDGING_SKIP_KINDS">NON_JUDGING_SKIP_KINDS</a></li><li><a href="global.html#NON_TEXT_KINDS">NON_TEXT_KINDS</a></li><li><a href="global.html#NOTE_FIELDS">NOTE_FIELDS</a></li><li><a href="global.html#NOT_FOUND_LEAD_CHARS">NOT_FOUND_LEAD_CHARS</a></li><li><a href="global.html#NOT_FOUND_PATTERNS_DEFAULT">NOT_FOUND_PATTERNS_DEFAULT</a></li><li><a href="global.html#NO_OPENALEX_AUTH">NO_OPENALEX_AUTH</a></li><li><a href="global.html#OPENALEX_KEY_ENV_DEFAULT">OPENALEX_KEY_ENV_DEFAULT</a></li><li><a href="global.html#OPENALEX_PAGING_MAX">OPENALEX_PAGING_MAX</a></li><li><a href="global.html#OPENALEX_QUOTA_MESSAGE">OPENALEX_QUOTA_MESSAGE</a></li><li><a href="global.html#OPENALEX_QUOTA_STOP_AFTER">OPENALEX_QUOTA_STOP_AFTER</a></li><li><a href="global.html#PANEL_SEAT_KEYS">PANEL_SEAT_KEYS</a></li><li><a href="global.html#PARA_KEYS_MAX">PARA_KEYS_MAX</a></li><li><a href="global.html#PARA_KEYS_PER_RUN">PARA_KEYS_PER_RUN</a></li><li><a href="global.html#PARA_MIN_CHARS">PARA_MIN_CHARS</a></li><li><a href="global.html#PARA_SHARED_MIN">PARA_SHARED_MIN</a></li><li><a href="global.html#PARA_SHARED_RATIO">PARA_SHARED_RATIO</a></li><li><a href="global.html#PAYWALL_PATTERNS_DEFAULT">PAYWALL_PATTERNS_DEFAULT</a></li><li><a href="global.html#PIPELINE_NAME">PIPELINE_NAME</a></li><li><a href="global.html#PLACEHOLDER_PATTERNS_DEFAULT">PLACEHOLDER_PATTERNS_DEFAULT</a></li><li><a href="global.html#PLAYWRIGHT_PROFILE_PREFIX">PLAYWRIGHT_PROFILE_PREFIX</a></li><li><a href="global.html#PREFIX_RE">PREFIX_RE</a></li><li><a href="global.html#PREVIEW_CHARS">PREVIEW_CHARS</a></li><li><a href="global.html#PROMPT_KEYS">PROMPT_KEYS</a></li><li><a href="global.html#PROMPT_RETURNS_DEFAULT">PROMPT_RETURNS_DEFAULT</a></li><li><a href="global.html#QUOTA_PATTERNS">QUOTA_PATTERNS</a></li><li><a href="global.html#REFETCH_LEDGER_FILE">REFETCH_LEDGER_FILE</a></li><li><a href="global.html#REJECT_OBJECTS">REJECT_OBJECTS</a></li><li><a href="global.html#REPROBE_MAX_BACKOFF">REPROBE_MAX_BACKOFF</a></li><li><a href="global.html#RESET_FIELDS">RESET_FIELDS</a></li><li><a href="global.html#RETRY_WAIT_MS">RETRY_WAIT_MS</a></li><li><a href="global.html#ROLE_ID_RE">ROLE_ID_RE</a></li><li><a href="global.html#ROLE_KEYS">ROLE_KEYS</a></li><li><a href="global.html#ROLE_OPTIONAL_FNS">ROLE_OPTIONAL_FNS</a></li><li><a href="global.html#ROLE_REQUIRED_FNS">ROLE_REQUIRED_FNS</a></li><li><a href="global.html#ROUTE_LABELS">ROUTE_LABELS</a></li><li><a href="global.html#RUNTIME_CFG_KEYS">RUNTIME_CFG_KEYS</a></li><li><a href="global.html#RUN_RESERVED">RUN_RESERVED</a></li><li><a href="global.html#RUN_SUMMARY_VERSION">RUN_SUMMARY_VERSION</a></li><li><a href="global.html#SCRIPT_NA_DETAIL">SCRIPT_NA_DETAIL</a></li><li><a href="global.html#SCRIPT_NONE">SCRIPT_NONE</a></li><li><a href="global.html#SCRIPT_ZH_HANT_TW">SCRIPT_ZH_HANT_TW</a></li><li><a href="global.html#SEAT_KEYS">SEAT_KEYS</a></li><li><a href="global.html#SETTINGS_SECTIONS">SETTINGS_SECTIONS</a></li><li><a href="global.html#SETTING_TYPES">SETTING_TYPES</a></li><li><a href="global.html#SIMPLIFIED_ONLY">SIMPLIFIED_ONLY</a></li><li><a href="global.html#SKIP_KIND_MATERIAL">SKIP_KIND_MATERIAL</a></li><li><a href="global.html#SKIP_TITLE_PATTERNS_DEFAULT">SKIP_TITLE_PATTERNS_DEFAULT</a></li><li><a href="global.html#SLUG_SUFFIX_CHARS">SLUG_SUFFIX_CHARS</a></li><li><a href="global.html#SOURCE_TIME_FIELDS">SOURCE_TIME_FIELDS</a></li><li><a href="global.html#STATUS">STATUS</a></li><li><a href="global.html#STOCK_ERROR_MAX">STOCK_ERROR_MAX</a></li><li><a href="global.html#STOCK_LEDGER_BAD_LINES">STOCK_LEDGER_BAD_LINES</a></li><li><a href="global.html#STOCK_LEDGER_FILE">STOCK_LEDGER_FILE</a></li><li><a href="global.html#TEXT_FROM_LABELS">TEXT_FROM_LABELS</a></li><li><a href="global.html#TIME_ZONE_DEFAULT">TIME_ZONE_DEFAULT</a></li><li><a href="global.html#TRANSPORT_REASONS">TRANSPORT_REASONS</a></li><li><a href="global.html#TRUNC_REJECTED_RE">TRUNC_REJECTED_RE</a></li><li><a href="global.html#TW_MISUSE_CHARS">TW_MISUSE_CHARS</a></li><li><a href="global.html#TW_MISUSE_PHRASES">TW_MISUSE_PHRASES</a></li><li><a href="global.html#TW_SCRIPT_CODES">TW_SCRIPT_CODES</a></li><li><a href="global.html#UPSTREAM_MIN_ATTEMPT_MS">UPSTREAM_MIN_ATTEMPT_MS</a></li><li><a href="global.html#VOCAB_DEFAULT">VOCAB_DEFAULT</a></li><li><a href="global.html#VOCAB_KEYS">VOCAB_KEYS</a></li><li><a href="global.html#VOCAB_NULL_AS">VOCAB_NULL_AS</a></li><li><a href="global.html#WKnowledgeCapture">WKnowledgeCapture</a></li><li><a href="global.html#account">account</a></li><li><a href="global.html#accountSourceOutcome">accountSourceOutcome</a></li><li><a href="global.html#activeAreaCount">activeAreaCount</a></li><li><a href="global.html#adapterSpecsOf">adapterSpecsOf</a></li><li><a href="global.html#admitFeedItems">admitFeedItems</a></li><li><a href="global.html#aggStats">aggStats</a></li><li><a href="global.html#aiAdapterNeedOf">aiAdapterNeedOf</a></li><li><a href="global.html#aiEventLoggersOf">aiEventLoggersOf</a></li><li><a href="global.html#allDocsOf">allDocsOf</a></li><li><a href="global.html#appendJsonlRow">appendJsonlRow</a></li><li><a href="global.html#appendJsonlRows">appendJsonlRows</a></li><li><a href="global.html#appendRollbackRow">appendRollbackRow</a></li><li><a href="global.html#applyConceptFold">applyConceptFold</a></li><li><a href="global.html#applyCs10Fix">applyCs10Fix</a></li><li><a href="global.html#applyCs12Fix">applyCs12Fix</a></li><li><a href="global.html#applyTaps">applyTaps</a></li><li><a href="global.html#archiveDocText">archiveDocText</a></li><li><a href="global.html#archiveIntact">archiveIntact</a></li><li><a href="global.html#archiveNow">archiveNow</a></li><li><a href="global.html#areaBenchCasesCsv">areaBenchCasesCsv</a></li><li><a href="global.html#areaBenchMarkdown">areaBenchMarkdown</a></li><li><a href="global.html#areaBenchModelsCsv">areaBenchModelsCsv</a></li><li><a href="global.html#areaBenchRole">areaBenchRole</a></li><li><a href="global.html#areaCaseProblems">areaCaseProblems</a></li><li><a href="global.html#areaClassOf">areaClassOf</a></li><li><a href="global.html#areaCountsOf">areaCountsOf</a></li><li><a href="global.html#areaFieldsOf">areaFieldsOf</a></li><li><a href="global.html#areaIdOf">areaIdOf</a></li><li><a href="global.html#areaQualityCfgOf">areaQualityCfgOf</a></li><li><a href="global.html#areaQualityIssue">areaQualityIssue</a></li><li><a href="global.html#areaRowOf">areaRowOf</a></li><li><a href="global.html#areaVerdictOf">areaVerdictOf</a></li><li><a href="global.html#arxivSearchUrl">arxivSearchUrl</a></li><li><a href="global.html#assemblyInfoOf">assemblyInfoOf</a></li><li><a href="global.html#attemptsOf">attemptsOf</a></li><li><a href="global.html#auditCaptureStandards">auditCaptureStandards</a></li><li><a href="global.html#autoSourceOrigin">autoSourceOrigin</a></li><li><a href="global.html#backoffUntil">backoffUntil</a></li><li><a href="global.html#batchOption">batchOption</a></li><li><a href="global.html#benchArgPint">benchArgPint</a></li><li><a href="global.html#benchCasesCsv">benchCasesCsv</a></li><li><a href="global.html#benchFailOf">benchFailOf</a></li><li><a href="global.html#benchMarkdown">benchMarkdown</a></li><li><a href="global.html#benchModelsCsv">benchModelsCsv</a></li><li><a href="global.html#benchPintOf">benchPintOf</a></li><li><a href="global.html#benchPromptFpOf">benchPromptFpOf</a></li><li><a href="global.html#benchUsageOf">benchUsageOf</a></li><li><a href="global.html#benchVoteMissingOf">benchVoteMissingOf</a></li><li><a href="global.html#bingNewsSearchUrl">bingNewsSearchUrl</a></li><li><a href="global.html#boardWorkspaceOf">boardWorkspaceOf</a></li><li><a href="global.html#browserQueueFields">browserQueueFields</a></li><li><a href="global.html#browserQueueOn">browserQueueOn</a></li><li><a href="global.html#buildAiAdapter">buildAiAdapter</a></li><li><a href="global.html#buildIndex">buildIndex</a></li><li><a href="global.html#buildRunSummary">buildRunSummary</a></li><li><a href="global.html#builtIndexOf">builtIndexOf</a></li><li><a href="global.html#byRetryTierFifo">byRetryTierFifo</a></li><li><a href="global.html#callJsonShapeOf">callJsonShapeOf</a></li><li><a href="global.html#callPage">callPage</a></li><li><a href="global.html#canStart">canStart</a></li><li><a href="global.html#canonOf">canonOf</a></li><li><a href="global.html#captureAiNoteOf">captureAiNoteOf</a></li><li><a href="global.html#captureCapacityOf">captureCapacityOf</a></li><li><a href="global.html#captureIdentityOf">captureIdentityOf</a></li><li><a href="global.html#captureNetGuardOf">captureNetGuardOf</a></li><li><a href="global.html#captureSeatsOf">captureSeatsOf</a></li><li><a href="global.html#captureSummaryOf">captureSummaryOf</a></li><li><a href="global.html#captureVocabDefaultOf">captureVocabDefaultOf</a></li><li><a href="global.html#casesOf">casesOf</a></li><li><a href="global.html#chainFailed">chainFailed</a></li><li><a href="global.html#check">check</a></li><li><a href="global.html#checkAiAdapter">checkAiAdapter</a></li><li><a href="global.html#checkChain">checkChain</a></li><li><a href="global.html#checkCtxDeps">checkCtxDeps</a></li><li><a href="global.html#checkDataKeys">checkDataKeys</a></li><li><a href="global.html#checkGridTopics">checkGridTopics</a></li><li><a href="global.html#checkKeys">checkKeys</a></li><li><a href="global.html#checkNameMap">checkNameMap</a></li><li><a href="global.html#checkOptionalCollections">checkOptionalCollections</a></li><li><a href="global.html#checkResult">checkResult</a></li><li><a href="global.html#checkSeedSources">checkSeedSources</a></li><li><a href="global.html#checkStageConfig">checkStageConfig</a></li><li><a href="global.html#checkTitleBody">checkTitleBody</a></li><li><a href="global.html#chunk">chunk</a></li><li><a href="global.html#classifyFetch">classifyFetch</a></li><li><a href="global.html#cleanReply">cleanReply</a></li><li><a href="global.html#clearParaKeys">clearParaKeys</a></li><li><a href="global.html#cliTimeZone">cliTimeZone</a></li><li><a href="global.html#cloneSettingsDefault">cloneSettingsDefault</a></li><li><a href="global.html#closeOf">closeOf</a></li><li><a href="global.html#closeStockHold">closeStockHold</a></li><li><a href="global.html#clueDropOf">clueDropOf</a></li><li><a href="global.html#clueKey">clueKey</a></li><li><a href="global.html#cluePriority">cluePriority</a></li><li><a href="global.html#clueRowOf">clueRowOf</a></li><li><a href="global.html#clueRulesOf">clueRulesOf</a></li><li><a href="global.html#cmp">cmp</a></li><li><a href="global.html#cnToTw">cnToTw</a></li><li><a href="global.html#composeChain">composeChain</a></li><li><a href="global.html#composeNamespaces">composeNamespaces</a></li><li><a href="global.html#conceptFoldsOf">conceptFoldsOf</a></li><li><a href="global.html#confirmDown">confirmDown</a></li><li><a href="global.html#contentIndexIfBuilt">contentIndexIfBuilt</a></li><li><a href="global.html#contentIndexOf">contentIndexOf</a></li><li><a href="global.html#contentKeysOfUrl">contentKeysOfUrl</a></li><li><a href="global.html#contentSha1">contentSha1</a></li><li><a href="global.html#coolDetect">coolDetect</a></li><li><a href="global.html#count">count</a></li><li><a href="global.html#countBy">countBy</a></li><li><a href="global.html#countKeyOf">countKeyOf</a></li><li><a href="global.html#coveringArea">coveringArea</a></li><li><a href="global.html#createAiAdapter">createAiAdapter</a></li><li><a href="global.html#createAreaDomain">createAreaDomain</a></li><li><a href="global.html#createBrowserFetcher">createBrowserFetcher</a></li><li><a href="global.html#createBrowserRound">createBrowserRound</a></li><li><a href="global.html#createCaptureObject">createCaptureObject</a></li><li><a href="global.html#createCaptureRuntime">createCaptureRuntime</a></li><li><a href="global.html#createContentGate">createContentGate</a></li><li><a href="global.html#createDefaultFetchers">createDefaultFetchers</a></li><li><a href="global.html#createHealthGates">createHealthGates</a></li><li><a href="global.html#createKnowledgeCapture">createKnowledgeCapture</a></li><li><a href="global.html#createNetGuard">createNetGuard</a></li><li><a href="global.html#createOpenAlexAuth">createOpenAlexAuth</a></li><li><a href="global.html#createPoolQuota">createPoolQuota</a></li><li><a href="global.html#createProviderHealth">createProviderHealth</a></li><li><a href="global.html#createRoundLog">createRoundLog</a></li><li><a href="global.html#createRoundRunner">createRoundRunner</a></li><li><a href="global.html#createStandardsTally">createStandardsTally</a></li><li><a href="global.html#createStoreOpener">createStoreOpener</a></li><li><a href="global.html#csvCell">csvCell</a></li><li><a href="global.html#cullZeroYieldSources">cullZeroYieldSources</a></li><li><a href="global.html#curlProbe">curlProbe</a></li><li><a href="global.html#cutAtBoundary">cutAtBoundary</a></li><li><a href="global.html#deadMatcher">deadMatcher</a></li><li><a href="global.html#dedupeText">dedupeText</a></li><li><a href="global.html#defaultNet">defaultNet</a></li><li><a href="global.html#defaultOpencodeLog">defaultOpencodeLog</a></li><li><a href="global.html#defaultToLinkedRecord">defaultToLinkedRecord</a></li><li><a href="global.html#defaultToRecord">defaultToRecord</a></li><li><a href="global.html#deferClue">deferClue</a></li><li><a href="global.html#deferToBrowser">deferToBrowser</a></li><li><a href="global.html#defineBenchRole">defineBenchRole</a></li><li><a href="global.html#defineBenchRoles">defineBenchRoles</a></li><li><a href="global.html#defineFirstMw">defineFirstMw</a></li><li><a href="global.html#defineMw">defineMw</a></li><li><a href="global.html#deinvertAbstract">deinvertAbstract</a></li><li><a href="global.html#deps">deps</a></li><li><a href="global.html#describe">describe</a></li><li><a href="global.html#detailOf">detailOf</a></li><li><a href="global.html#discover">discover</a></li><li><a href="global.html#discoverFeed">discoverFeed</a></li><li><a href="global.html#docArchiveOf">docArchiveOf</a></li><li><a href="global.html#docQueueStatsOf">docQueueStatsOf</a></li><li><a href="global.html#docQueuesOf">docQueuesOf</a></li><li><a href="global.html#docRecord">docRecord</a></li><li><a href="global.html#docRowOf">docRowOf</a></li><li><a href="global.html#docStd">docStd</a></li><li><a href="global.html#docTextOf">docTextOf</a></li><li><a href="global.html#docTextRestoreOf">docTextRestoreOf</a></li><li><a href="global.html#domainNeedsOf">domainNeedsOf</a></li><li><a href="global.html#domainProblemOf">domainProblemOf</a></li><li><a href="global.html#domainsOf">domainsOf</a></li><li><a href="global.html#dupPlanOf">dupPlanOf</a></li><li><a href="global.html#duplicateGroups">duplicateGroups</a></li><li><a href="global.html#enforceFrontierCap">enforceFrontierCap</a></li><li><a href="global.html#ensureSeedSources">ensureSeedSources</a></li><li><a href="global.html#entryOf">entryOf</a></li><li><a href="global.html#errorsOf">errorsOf</a></li><li><a href="global.html#expandDirs">expandDirs</a></li><li><a href="global.html#expandSeeds">expandSeeds</a></li><li><a href="global.html#externalDocOf">externalDocOf</a></li><li><a href="global.html#extraOf">extraOf</a></li><li><a href="global.html#extractLinks">extractLinks</a></li><li><a href="global.html#failedNames">failedNames</a></li><li><a href="global.html#featureProblemsOf">featureProblemsOf</a></li><li><a href="global.html#featuresOnOf">featuresOnOf</a></li><li><a href="global.html#feedUsableOf">feedUsableOf</a></li><li><a href="global.html#fetchArticle">fetchArticle</a></li><li><a href="global.html#fetchArticleLinks">fetchArticleLinks</a></li><li><a href="global.html#filterFeedItems">filterFeedItems</a></li><li><a href="global.html#findOrphans">findOrphans</a></li><li><a href="global.html#fitChain">fitChain</a></li><li><a href="global.html#fixOf">fixOf</a></li><li><a href="global.html#formatNoiseOf">formatNoiseOf</a></li><li><a href="global.html#freeModelsOf">freeModelsOf</a></li><li><a href="global.html#freshWindowPatch">freshWindowPatch</a></li><li><a href="global.html#fromProblems">fromProblems</a></li><li><a href="global.html#gateDetectorProblems">gateDetectorProblems</a></li><li><a href="global.html#gateDetectorSpecsOf">gateDetectorSpecsOf</a></li><li><a href="global.html#gateVersionOf">gateVersionOf</a></li><li><a href="global.html#genericSummary">genericSummary</a></li><li><a href="global.html#given">given</a></li><li><a href="global.html#gridAbstractCheck">gridAbstractCheck</a></li><li><a href="global.html#gridSourceOf">gridSourceOf</a></li><li><a href="global.html#gridSourceUrl">gridSourceUrl</a></li><li><a href="global.html#groupBy">groupBy</a></li><li><a href="global.html#healthVOf">healthVOf</a></li><li><a href="global.html#holdDeadlineOf">holdDeadlineOf</a></li><li><a href="global.html#holdKey">holdKey</a></li><li><a href="global.html#holdStockUnfixable">holdStockUnfixable</a></li><li><a href="global.html#hostOf">hostOf</a></li><li><a href="global.html#httpCodeOf">httpCodeOf</a></li><li><a href="global.html#importAdapters">importAdapters</a></li><li><a href="global.html#importGateDetectors">importGateDetectors</a></li><li><a href="global.html#importOne">importOne</a></li><li><a href="global.html#inBackoff">inBackoff</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#ingestFeedItems">ingestFeedItems</a></li><li><a href="global.html#inputVocabProblemsOf">inputVocabProblemsOf</a></li><li><a href="global.html#intersectEntryValidate">intersectEntryValidate</a></li><li><a href="global.html#isContentAnchor">isContentAnchor</a></li><li><a href="global.html#isCs10Row">isCs10Row</a></li><li><a href="global.html#isCs12Row">isCs12Row</a></li><li><a href="global.html#isDirectRun">isDirectRun</a></li><li><a href="global.html#isDown">isDown</a></li><li><a href="global.html#isEnvFailure">isEnvFailure</a></li><li><a href="global.html#isLowYield">isLowYield</a></li><li><a href="global.html#isMojibakeText">isMojibakeText</a></li><li><a href="global.html#isOpenAlexQuota">isOpenAlexQuota</a></li><li><a href="global.html#isPdfUrl">isPdfUrl</a></li><li><a href="global.html#isRetryHttp">isRetryHttp</a></li><li><a href="global.html#isSoft404">isSoft404</a></li><li><a href="global.html#isTw">isTw</a></li><li><a href="global.html#jsonClone">jsonClone</a></li><li><a href="global.html#jsonFragmentsOf">jsonFragmentsOf</a></li><li><a href="global.html#judgeAbstractRefetch">judgeAbstractRefetch</a></li><li><a href="global.html#judgeArticleRefetch">judgeArticleRefetch</a></li><li><a href="global.html#judgeBenchCase">judgeBenchCase</a></li><li><a href="global.html#judgeFromDocs">judgeFromDocs</a></li><li><a href="global.html#kbLabelOf">kbLabelOf</a></li><li><a href="global.html#keyIdOf">keyIdOf</a></li><li><a href="global.html#keyedObjectsOf">keyedObjectsOf</a></li><li><a href="global.html#kindFnsOf">kindFnsOf</a></li><li><a href="global.html#ladderFor">ladderFor</a></li><li><a href="global.html#ladderTimeoutMs">ladderTimeoutMs</a></li><li><a href="global.html#lastPassing">lastPassing</a></li><li><a href="global.html#later">later</a></li><li><a href="global.html#lengthFor">lengthFor</a></li><li><a href="global.html#limitMinOfDeadline">limitMinOfDeadline</a></li><li><a href="global.html#listHolds">listHolds</a></li><li><a href="global.html#listOf">listOf</a></li><li><a href="global.html#listProcessesWin">listProcessesWin</a></li><li><a href="global.html#loadAreaCases">loadAreaCases</a></li><li><a href="global.html#loadBenchCases">loadBenchCases</a></li><li><a href="global.html#localeProblem">localeProblem</a></li><li><a href="global.html#looksLikeFeed">looksLikeFeed</a></li><li><a href="global.html#main">main</a></li><li><a href="global.html#makeMsg">makeMsg</a></li><li><a href="global.html#markSameContent">markSameContent</a></li><li><a href="global.html#matchSameContent">matchSameContent</a></li><li><a href="global.html#maxPromptCharsOf">maxPromptCharsOf</a></li><li><a href="global.html#mayBeNetFailure">mayBeNetFailure</a></li><li><a href="global.html#mdCell">mdCell</a></li><li><a href="global.html#mdTable">mdTable</a></li><li><a href="global.html#mean">mean</a></li><li><a href="global.html#meaningfulChars">meaningfulChars</a></li><li><a href="global.html#mergeAreaBenchBoard">mergeAreaBenchBoard</a></li><li><a href="global.html#mergeBenchBoard">mergeBenchBoard</a></li><li><a href="global.html#mergeDomains">mergeDomains</a></li><li><a href="global.html#mergeDupGroups">mergeDupGroups</a></li><li><a href="global.html#mergeFetchers">mergeFetchers</a></li><li><a href="global.html#mergeGuideFields">mergeGuideFields</a></li><li><a href="global.html#mergeSettingsGroup">mergeSettingsGroup</a></li><li><a href="global.html#mergeSiteAdapters">mergeSiteAdapters</a></li><li><a href="global.html#mergeTaps">mergeTaps</a></li><li><a href="global.html#minAttemptOf">minAttemptOf</a></li><li><a href="global.html#mojibakeOf">mojibakeOf</a></li><li><a href="global.html#mwAccountSource">mwAccountSource</a></li><li><a href="global.html#mwAdmitPersist">mwAdmitPersist</a></li><li><a href="global.html#mwBrowserRetry">mwBrowserRetry</a></li><li><a href="global.html#mwContentGate">mwContentGate</a></li><li><a href="global.html#mwCullSources">mwCullSources</a></li><li><a href="global.html#mwFeedFallback">mwFeedFallback</a></li><li><a href="global.html#mwFetchDetail">mwFetchDetail</a></li><li><a href="global.html#mwFetchList">mwFetchList</a></li><li><a href="global.html#mwFillParaKeys">mwFillParaKeys</a></li><li><a href="global.html#mwFilterItems">mwFilterItems</a></li><li><a href="global.html#mwNormalizeItems">mwNormalizeItems</a></li><li><a href="global.html#mwPersistOutcome">mwPersistOutcome</a></li><li><a href="global.html#mwProbe">mwProbe</a></li><li><a href="global.html#mwRecheckHealth">mwRecheckHealth</a></li><li><a href="global.html#mwRouteFetcher">mwRouteFetcher</a></li><li><a href="global.html#mwSettleClue">mwSettleClue</a></li><li><a href="global.html#mwSlim">mwSlim</a></li><li><a href="global.html#mwSyncSeeds">mwSyncSeeds</a></li><li><a href="global.html#mwTitleSkip">mwTitleSkip</a></li><li><a href="global.html#mwTranscodeLinks">mwTranscodeLinks</a></li><li><a href="global.html#netDownAtStart">netDownAtStart</a></li><li><a href="global.html#netDownNow">netDownNow</a></li><li><a href="global.html#netProbeUrlsOf">netProbeUrlsOf</a></li><li><a href="global.html#newSource">newSource</a></li><li><a href="global.html#noVerdict">noVerdict</a></li><li><a href="global.html#normalizeClue">normalizeClue</a></li><li><a href="global.html#normalizeConcept">normalizeConcept</a></li><li><a href="global.html#normalizeFeedItems">normalizeFeedItems</a></li><li><a href="global.html#normalizeUrl">normalizeUrl</a></li><li><a href="global.html#normalizeWorkDir">normalizeWorkDir</a></li><li><a href="global.html#notBefore">notBefore</a></li><li><a href="global.html#notRunOf">notRunOf</a></li><li><a href="global.html#noteConceptsOf">noteConceptsOf</a></li><li><a href="global.html#noteConsumedOf">noteConsumedOf</a></li><li><a href="global.html#noteCreatedMsOf">noteCreatedMsOf</a></li><li><a href="global.html#noteDocIdOf">noteDocIdOf</a></li><li><a href="global.html#noteGridDrops">noteGridDrops</a></li><li><a href="global.html#noteLinkFiltered">noteLinkFiltered</a></li><li><a href="global.html#notePrimaryConceptOf">notePrimaryConceptOf</a></li><li><a href="global.html#noteTitleOf">noteTitleOf</a></li><li><a href="global.html#objectReport">objectReport</a></li><li><a href="global.html#openAlexApiKeyOf">openAlexApiKeyOf</a></li><li><a href="global.html#openAlexAuthOf">openAlexAuthOf</a></li><li><a href="global.html#openAlexGet">openAlexGet</a></li><li><a href="global.html#openAlexQuotaStopText">openAlexQuotaStopText</a></li><li><a href="global.html#openStores">openStores</a></li><li><a href="global.html#overdueHolds">overdueHolds</a></li><li><a href="global.html#overridablePrompt">overridablePrompt</a></li><li><a href="global.html#ownFields">ownFields</a></li><li><a href="global.html#packText">packText</a></li><li><a href="global.html#paginateByVocab">paginateByVocab</a></li><li><a href="global.html#paraKeysOf">paraKeysOf</a></li><li><a href="global.html#parseAreaBenchArgs">parseAreaBenchArgs</a></li><li><a href="global.html#parseArxivFeed">parseArxivFeed</a></li><li><a href="global.html#parseBenchArgs">parseBenchArgs</a></li><li><a href="global.html#parseCsv">parseCsv</a></li><li><a href="global.html#parseQuotaLines">parseQuotaLines</a></li><li><a href="global.html#parseStockLedger">parseStockLedger</a></li><li><a href="global.html#pct">pct</a></li><li><a href="global.html#pendingCluesOf">pendingCluesOf</a></li><li><a href="global.html#pendingDocsOf">pendingDocsOf</a></li><li><a href="global.html#pendingLinesOf">pendingLinesOf</a></li><li><a href="global.html#pendingSourcesOf">pendingSourcesOf</a></li><li><a href="global.html#perRunOf">perRunOf</a></li><li><a href="global.html#pickAreaCandidates">pickAreaCandidates</a></li><li><a href="global.html#pickCaptureVocab">pickCaptureVocab</a></li><li><a href="global.html#pickClues">pickClues</a></li><li><a href="global.html#pickDueSources">pickDueSources</a></li><li><a href="global.html#pickJsonReply">pickJsonReply</a></li><li><a href="global.html#pickKeyedJson">pickKeyedJson</a></li><li><a href="global.html#pickVocabKeys">pickVocabKeys</a></li><li><a href="global.html#pintOpt">pintOpt</a></li><li><a href="global.html#pipelineDueOf">pipelineDueOf</a></li><li><a href="global.html#pipelineNameOf">pipelineNameOf</a></li><li><a href="global.html#planBench">planBench</a></li><li><a href="global.html#planCs10Fix">planCs10Fix</a></li><li><a href="global.html#planCs12Fix">planCs12Fix</a></li><li><a href="global.html#planDeadRecheck">planDeadRecheck</a></li><li><a href="global.html#planHealthRecheck">planHealthRecheck</a></li><li><a href="global.html#poolsProblem">poolsProblem</a></li><li><a href="global.html#posNum">posNum</a></li><li><a href="global.html#positiveNumber">positiveNumber</a></li><li><a href="global.html#preFormOf">preFormOf</a></li><li><a href="global.html#preflight">preflight</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#probeFailText">probeFailText</a></li><li><a href="global.html#probeSearchEndpoints">probeSearchEndpoints</a></li><li><a href="global.html#probeSiteFeed">probeSiteFeed</a></li><li><a href="global.html#probes">probes</a></li><li><a href="global.html#problemsNote">problemsNote</a></li><li><a href="global.html#problemsOf">problemsOf</a></li><li><a href="global.html#profileDirOf">profileDirOf</a></li><li><a href="global.html#promptCtxOf">promptCtxOf</a></li><li><a href="global.html#promptDomainConflicts">promptDomainConflicts</a></li><li><a href="global.html#promptDomainOf">promptDomainOf</a></li><li><a href="global.html#promptOverridesOf">promptOverridesOf</a></li><li><a href="global.html#promptSigText">promptSigText</a></li><li><a href="global.html#promptSigsProblem">promptSigsProblem</a></li><li><a href="global.html#promptTextOf">promptTextOf</a></li><li><a href="global.html#promptsForDomain">promptsForDomain</a></li><li><a href="global.html#putHold">putHold</a></li><li><a href="global.html#queueAge">queueAge</a></li><li><a href="global.html#ranked">ranked</a></li><li><a href="global.html#readBenchVocabFile">readBenchVocabFile</a></li><li><a href="global.html#readCs10Ledger">readCs10Ledger</a></li><li><a href="global.html#readCs12Ledger">readCs12Ledger</a></li><li><a href="global.html#readGrid">readGrid</a></li><li><a href="global.html#readJson">readJson</a></li><li><a href="global.html#readJsonlRows">readJsonlRows</a></li><li><a href="global.html#readLedgerLast">readLedgerLast</a></li><li><a href="global.html#readOnlyOf">readOnlyOf</a></li><li><a href="global.html#readRunStart">readRunStart</a></li><li><a href="global.html#readRunSummary">readRunSummary</a></li><li><a href="global.html#readVocabFile">readVocabFile</a></li><li><a href="global.html#recordOf">recordOf</a></li><li><a href="global.html#recordSourceChainFail">recordSourceChainFail</a></li><li><a href="global.html#recordSourceOutcome">recordSourceOutcome</a></li><li><a href="global.html#refetchMethodOf">refetchMethodOf</a></li><li><a href="global.html#refetchRequestOf">refetchRequestOf</a></li><li><a href="global.html#refetchRowOf">refetchRowOf</a></li><li><a href="global.html#refetchSkipOf">refetchSkipOf</a></li><li><a href="global.html#refetchSources">refetchSources</a></li><li><a href="global.html#rejectChainOpts">rejectChainOpts</a></li><li><a href="global.html#rejectClassOf">rejectClassOf</a></li><li><a href="global.html#rejectListOf">rejectListOf</a></li><li><a href="global.html#renameChainProblems">renameChainProblems</a></li><li><a href="global.html#renderAreasMd">renderAreasMd</a></li><li><a href="global.html#reopenArea">reopenArea</a></li><li><a href="global.html#reopenStockHold">reopenStockHold</a></li><li><a href="global.html#reportRoleOf">reportRoleOf</a></li><li><a href="global.html#reprobeAutoAreas">reprobeAutoAreas</a></li><li><a href="global.html#reprobeDue">reprobeDue</a></li><li><a href="global.html#reprobeFailedClues">reprobeFailedClues</a></li><li><a href="global.html#reprobeSources">reprobeSources</a></li><li><a href="global.html#requestRetry">requestRetry</a></li><li><a href="global.html#resetStartMs">resetStartMs</a></li><li><a href="global.html#resolveAfterRun">resolveAfterRun</a></li><li><a href="global.html#resolveCaptureData">resolveCaptureData</a></li><li><a href="global.html#resolveCaptureSettings">resolveCaptureSettings</a></li><li><a href="global.html#resolveClockCfg">resolveClockCfg</a></li><li><a href="global.html#resolveDataCfg">resolveDataCfg</a></li><li><a href="global.html#resolveDirsCfg">resolveDirsCfg</a></li><li><a href="global.html#resolveHold">resolveHold</a></li><li><a href="global.html#resolveLmdbCfg">resolveLmdbCfg</a></li><li><a href="global.html#resolveLocale">resolveLocale</a></li><li><a href="global.html#resolveLogFactory">resolveLogFactory</a></li><li><a href="global.html#resolvePromptsCfg">resolvePromptsCfg</a></li><li><a href="global.html#resolveRuntime">resolveRuntime</a></li><li><a href="global.html#resolveSettings">resolveSettings</a></li><li><a href="global.html#resolveVocab">resolveVocab</a></li><li><a href="global.html#result">result</a></li><li><a href="global.html#retryRequestedOf">retryRequestedOf</a></li><li><a href="global.html#retryableOf">retryableOf</a></li><li><a href="global.html#reviewAutoAreas">reviewAutoAreas</a></li><li><a href="global.html#reviveDeadDocs">reviveDeadDocs</a></li><li><a href="global.html#roleOptOf">roleOptOf</a></li><li><a href="global.html#rollbackCs10Fix">rollbackCs10Fix</a></li><li><a href="global.html#rollbackCs12Fix">rollbackCs12Fix</a></li><li><a href="global.html#rollbackPlanOf">rollbackPlanOf</a></li><li><a href="global.html#rollbackStockHold">rollbackStockHold</a></li><li><a href="global.html#rollbackWriteOf">rollbackWriteOf</a></li><li><a href="global.html#rowsToCsv">rowsToCsv</a></li><li><a href="global.html#rowsToMd">rowsToMd</a></li><li><a href="global.html#runAreaBench">runAreaBench</a></li><li><a href="global.html#runAreaBenchCli">runAreaBenchCli</a></li><li><a href="global.html#runBench">runBench</a></li><li><a href="global.html#runBenchCli">runBenchCli</a></li><li><a href="global.html#runBrowserCli">runBrowserCli</a></li><li><a href="global.html#runBrowserLadder">runBrowserLadder</a></li><li><a href="global.html#runChainOverMsgs">runChainOverMsgs</a></li><li><a href="global.html#runPool">runPool</a></li><li><a href="global.html#runSubStages">runSubStages</a></li><li><a href="global.html#runText">runText</a></li><li><a href="global.html#runtimeCfgOf">runtimeCfgOf</a></li><li><a href="global.html#sameContentOn">sameContentOn</a></li><li><a href="global.html#sameContentPatch">sameContentPatch</a></li><li><a href="global.html#sameValue">sameValue</a></li><li><a href="global.html#sanitize">sanitize</a></li><li><a href="global.html#sanitizeAreaQuery">sanitizeAreaQuery</a></li><li><a href="global.html#saveClues">saveClues</a></li><li><a href="global.html#scriptApplies">scriptApplies</a></li><li><a href="global.html#scriptOf">scriptOf</a></li><li><a href="global.html#scriptProblem">scriptProblem</a></li><li><a href="global.html#scriptProblems">scriptProblems</a></li><li><a href="global.html#seatLabelsFrom">seatLabelsFrom</a></li><li><a href="global.html#seatProblem">seatProblem</a></li><li><a href="global.html#seatsFrom">seatsFrom</a></li><li><a href="global.html#sec">sec</a></li><li><a href="global.html#setAreaStatus">setAreaStatus</a></li><li><a href="global.html#setConceptFold">setConceptFold</a></li><li><a href="global.html#settleClue">settleClue</a></li><li><a href="global.html#sha1">sha1</a></li><li><a href="global.html#sharedParas">sharedParas</a></li><li><a href="global.html#showSettingValue">showSettingValue</a></li><li><a href="global.html#skipDerived">skipDerived</a></li><li><a href="global.html#slimTerminalDocs">slimTerminalDocs</a></li><li><a href="global.html#slugSuffixOf">slugSuffixOf</a></li><li><a href="global.html#slugify">slugify</a></li><li><a href="global.html#sortByEnforce">sortByEnforce</a></li><li><a href="global.html#sourceId">sourceId</a></li><li><a href="global.html#sourceMayBeNetFailure">sourceMayBeNetFailure</a></li><li><a href="global.html#sourceOriginOf">sourceOriginOf</a></li><li><a href="global.html#sourceRecordProblems">sourceRecordProblems</a></li><li><a href="global.html#sourceRowOf">sourceRowOf</a></li><li><a href="global.html#sourceStopReasonOf">sourceStopReasonOf</a></li><li><a href="global.html#specToUrl">specToUrl</a></li><li><a href="global.html#stableKey">stableKey</a></li><li><a href="global.html#stageAreas">stageAreas</a></li><li><a href="global.html#stageDetailFetch">stageDetailFetch</a></li><li><a href="global.html#stageDocMaintain">stageDocMaintain</a></li><li><a href="global.html#stageExpand">stageExpand</a></li><li><a href="global.html#stageFields">stageFields</a></li><li><a href="global.html#stageHygiene">stageHygiene</a></li><li><a href="global.html#stageListFetch">stageListFetch</a></li><li><a href="global.html#stageSeedSync">stageSeedSync</a></li><li><a href="global.html#standardsCountsOf">standardsCountsOf</a></li><li><a href="global.html#standardsScanOf">standardsScanOf</a></li><li><a href="global.html#startupWarningsOf">startupWarningsOf</a></li><li><a href="global.html#state">state</a></li><li><a href="global.html#stdReport">stdReport</a></li><li><a href="global.html#stepOpt">stepOpt</a></li><li><a href="global.html#stepOptsOf">stepOptsOf</a></li><li><a href="global.html#stockAtOf">stockAtOf</a></li><li><a href="global.html#stockErrorOf">stockErrorOf</a></li><li><a href="global.html#stockHoldProblems">stockHoldProblems</a></li><li><a href="global.html#stockLedgerFileOf">stockLedgerFileOf</a></li><li><a href="global.html#stockLedgerRowsOf">stockLedgerRowsOf</a></li><li><a href="global.html#stockLedgerWriter">stockLedgerWriter</a></li><li><a href="global.html#stopRequested">stopRequested</a></li><li><a href="global.html#strOf">strOf</a></li><li><a href="global.html#strictTextOf">strictTextOf</a></li><li><a href="global.html#stripOf">stripOf</a></li><li><a href="global.html#subOpt">subOpt</a></li><li><a href="global.html#subReportOf">subReportOf</a></li><li><a href="global.html#summaryOf">summaryOf</a></li><li><a href="global.html#sweepOrphanBrowsers">sweepOrphanBrowsers</a></li><li><a href="global.html#syncAreaSources">syncAreaSources</a></li><li><a href="global.html#syncIndex">syncIndex</a></li><li><a href="global.html#syncSeedAreas">syncSeedAreas</a></li><li><a href="global.html#tally">tally</a></li><li><a href="global.html#textFromLabelOf">textFromLabelOf</a></li><li><a href="global.html#textListOf">textListOf</a></li><li><a href="global.html#textOf">textOf</a></li><li><a href="global.html#textValueOf">textValueOf</a></li><li><a href="global.html#tidy">tidy</a></li><li><a href="global.html#titleKeyOf">titleKeyOf</a></li><li><a href="global.html#titleMismatchOf">titleMismatchOf</a></li><li><a href="global.html#titleTokens">titleTokens</a></li><li><a href="global.html#toCsv">toCsv</a></li><li><a href="global.html#toPatterns">toPatterns</a></li><li><a href="global.html#toTw">toTw</a></li><li><a href="global.html#toTwKeepLinks">toTwKeepLinks</a></li><li><a href="global.html#toTwOnce">toTwOnce</a></li><li><a href="global.html#tryCall">tryCall</a></li><li><a href="global.html#typeName">typeName</a></li><li><a href="global.html#uniq">uniq</a></li><li><a href="global.html#unknownKeysProblem">unknownKeysProblem</a></li><li><a href="global.html#unpackText">unpackText</a></li><li><a href="global.html#unpackTextStrict">unpackTextStrict</a></li><li><a href="global.html#unwrapNewsUrl">unwrapNewsUrl</a></li><li><a href="global.html#validateAreaCases">validateAreaCases</a></li><li><a href="global.html#validateAreaQuery">validateAreaQuery</a></li><li><a href="global.html#validateBenchCases">validateBenchCases</a></li><li><a href="global.html#valueAtPath">valueAtPath</a></li><li><a href="global.html#verdictSafe">verdictSafe</a></li><li><a href="global.html#verifyCs10Chain">verifyCs10Chain</a></li><li><a href="global.html#verifyCs12Chain">verifyCs12Chain</a></li><li><a href="global.html#vocabHeadOf">vocabHeadOf</a></li><li><a href="global.html#vocabKeyOf">vocabKeyOf</a></li><li><a href="global.html#waiveHold">waiveHold</a></li><li><a href="global.html#watchSeedAreas">watchSeedAreas</a></li><li><a href="global.html#withArg">withArg</a></li><li><a href="global.html#withoutForeignSpans">withoutForeignSpans</a></li><li><a href="global.html#writeAreaBenchReport">writeAreaBenchReport</a></li><li><a href="global.html#writeAreasProjection">writeAreasProjection</a></li><li><a href="global.html#writeBenchReport">writeBenchReport</a></li><li><a href="global.html#writeFileAtomic">writeFileAtomic</a></li><li><a href="global.html#writeRollback">writeRollback</a></li><li><a href="global.html#writeRunStart">writeRunStart</a></li><li><a href="global.html#writeRunSummary">writeRunSummary</a></li><li><a href="global.html#zhLabelOf">zhLabelOf</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">fetchers/openAlexNet.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>// openAlexNet.mjs — OpenAlex 請求之共用件:API 金鑰(讀取、附帶、遮罩)、429 之固定訊息、請求包裝(openAlexGet)
+//
+// 【為何有金鑰】OpenAlex 自 2026 年起不帶金鑰之請求共用「同一網路 IP」每日 US$0.10 之額度(超額 HTTP 429);免費金鑰另有每日 US$1。
+//   官方文件(https://help.openalex.org/api/authentication/ 〈Sending your key〉):金鑰以 query 參數 `api_key=` 或標頭 `Authorization: Bearer` 擇一,
+//   「Both work identically」;`/rate-limit` 須帶金鑰(不帶回 401)。本套件連 OpenAlex 之站點:網格來源(fetchers/defaultFetchers readGrid)、
+//   領域發現之驗證(stages/areaStage validateAreaQuery)、原文回溯之 DOI 批次與題名搜尋(ops/refetchSources defaultNet)——一律經本檔取金鑰與發請求。
+// 【金鑰只在 .env,設定檔只放變數名】settings.capture.services.openAlex.apiKeyEnv 為環境變數「名」(預設 OPENALEX_API_KEY;'' 不帶金鑰),
+//   值由金鑰檔(cfg.envFile,與 AI 金鑰同一檔)讀入(w-dispatch-ai 之 readEnvFile,不污染 process.env);檔不存在、無此變數或值為空 → 不帶金鑰,請求同無金鑰時。
+//   金鑰值只存在 createOpenAlexAuth 之閉包內:auth 物件經 JSON／util.inspect／展開皆不含金鑰值,設定、info()、deps 之輸出不會帶出。
+// 【為何用 query `api_key=` 而非標頭】內建抓取函數 w-fetch-web 之 fetchWebByCurl 不提供自訂標頭(其 curl 引數之標頭為固定清單),標頭需另寫一套傳輸;
+//   兩者官方等價,故用 query。金鑰因而進入網址,漏出路徑有三,逐一處置:
+//   ①fetchWebByCurl 重試時由 withRetry 把「失敗原因＋網址」寫到 process.stderr(w-fetch-web 內部,無關閉旗標)→ 帶金鑰之請求一律以 maxRetries:0 呼叫,
+//      重試由本檔自行做(openAlexGet;條件與等待同 w-fetch-web:5xx／429／curl 錯誤,等 3 秒)——不經 withRetry 即無該行輸出;
+//   ②curl 失敗之 message 含完整命令列(含網址)→ 請求結果之 message／reason／url／finalUrl 經 auth.mask 遮罩後才交呼叫端(wsemi 之 maskDiagText,
+//      跨套件遮罩規格〈診斷輸出與遮罩〉D1:不自寫等價實作);呼叫端自組之錯誤文字(回應片段)亦經 auth.mask;
+//   ③行程清單可見 curl 引數(本機他使用者)——query 與標頭用 curl 時皆如此,需避免者須改不經命令列之傳輸(列為已知限制)。
+//   自訂抓取函數(opt.fetchWebByCurl 注入者)收到的是含金鑰之網址,其記錄與回傳之遮罩由注入方負責。
+// 【429】官方文件(同上〈Rate limits〉):429 有兩因——超出每日額度,或超出每秒請求上限(無金鑰 10／秒,有金鑰 30／秒);「A per-second 429 costs nothing; wait a moment and retry」;
+//   X-RateLimit-Reset 為「Seconds until reset (midnight UTC)」。故單次 429 之訊息兩因並列(OPENALEX_QUOTA_MESSAGE),不單稱額度用盡;
+//   連續 OPENALEX_QUOTA_STOP_AFTER 次(皆已過 fetchWebByCurl 之 3 秒重試,每秒上限之 429 不會連續)才判定每日額度用盡而停止(ops/refetchSources)。
+
+import isobj from 'wsemi/src/isobj.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import delay from 'wsemi/src/delay.mjs'
+import getDiagSecrets from 'wsemi/src/getDiagSecrets.mjs'
+import maskDiagText from 'wsemi/src/maskDiagText.mjs'
+import readEnvFile from 'w-dispatch-ai/src/readEnvFile.mjs'
+import { httpCodeOf } from '../stores/fetchPolicy.mjs'
+
+/** 金鑰變數名之預設(OpenAlex 官方文件建議之名;settings.capture.services.openAlex.apiKeyEnv 之預設) */
+export const OPENALEX_KEY_ENV_DEFAULT = 'OPENALEX_API_KEY'
+
+/** 429 之固定訊息(日誌、處置帳、拋出之錯誤共用;巡檢白名單以前綴「OpenAlex HTTP 429」辨識;仍含「HTTP 429」字樣,依訊息取狀態碼者〔fetchPolicy.httpCodeOf〕照常判得 429) */
+export const OPENALEX_QUOTA_MESSAGE = 'OpenAlex HTTP 429：每日額度用盡或每秒請求超限（每日額度於 UTC 00:00 重置）'
+
+/** 原文回溯連續幾次 429 即判定每日額度用盡而停止(官方:每秒上限之 429 等一下重試即過,fetchWebByCurl 已重試一次,連續三次仍 429 即非每秒上限) */
+export const OPENALEX_QUOTA_STOP_AFTER = 3
+
+/** 帶金鑰之請求重試前之等待毫秒(同 w-fetch-web 第一次重試前之 3 秒) */
+const RETRY_WAIT_MS = 3000
+
+/**
+ * 429 連續停止之說明文字(原文回溯之日誌與結果共用)
+ *
+ * @param {Integer} unprocessed 輸入未處理篇數
+ * @returns {String} 回傳說明
+ * @example
+ * console.log(openAlexQuotaStopText(120))
+ * // => OpenAlex 連續 3 次 429，判定每日額度用盡（UTC 00:00 重置），停止 OpenAlex 回溯；未處理 120 篇（未入處置帳，下次直接續跑）
+ */
+export function openAlexQuotaStopText(unprocessed) {
+    return `OpenAlex 連續 ${OPENALEX_QUOTA_STOP_AFTER} 次 429，判定每日額度用盡（UTC 00:00 重置），停止 OpenAlex 回溯；未處理 ${unprocessed} 篇（未入處置帳，下次直接續跑）`
+}
+
+/**
+ * 讀取 OpenAlex API 金鑰:變數名取自 capture.services.openAlex.apiKeyEnv,值取自金鑰檔(不污染 process.env;不讀 process.env——與 AI 金鑰同一來源)
+ *
+ * 變數名為空、金鑰檔未給／不存在／不可讀、檔內無此變數或值為空 → 回 ''(不帶金鑰,請求同無金鑰時)。值修剪空白、剝除成對首尾引號(readEnvFile)。
+ *
+ * @param {Object} cap 輸入 settings.capture(取 services.openAlex.apiKeyEnv)
+ * @param {String} envFile 輸入金鑰檔路徑(cfg.envFile 解析後之絕對路徑)
+ * @returns {String} 回傳金鑰值，無則 ''
+ * @example
+ * console.log(JSON.stringify(openAlexApiKeyOf({ services: { openAlex: { apiKeyEnv: '' } } }, 'c:/kb/.env')))
+ * // => ""
+ *
+ * console.log(JSON.stringify(openAlexApiKeyOf({ services: { openAlex: { apiKeyEnv: 'OPENALEX_API_KEY' } } }, 'c:/not-exist/.env')))
+ * // => ""
+ */
+export function openAlexApiKeyOf(cap, envFile) {
+    const name = cap?.services?.openAlex?.apiKeyEnv
+    if (!isestr(name) || !isestr(envFile)) return ''
+    const v = readEnvFile(envFile)[name]
+    return isestr(v) ? v.trim() : ''
+}
+
+const INSPECT = Symbol.for('nodejs.util.inspect.custom')
+
+/**
+ * 建立 OpenAlex 金鑰載體:金鑰值只存於閉包,物件本身經 JSON.stringify／util.inspect／展開／字串化皆不含金鑰值
+ *
+ * @param {String} apiKey 輸入金鑰值(空或非字串＝不帶金鑰)
+ * @param {Object} [opt={}] 輸入設定物件
+ * @param {Integer} [opt.retryWaitMs=3000] 輸入帶金鑰之請求重試前之等待毫秒(測試注入;正式執行恆用預設)
+ * @returns {Object} 回傳 { enabled:Boolean, sign(url)→附 api_key 之網址, mask(text)→遮罩金鑰之文字, retryWaitMs }(凍結);無金鑰時 sign／mask 原樣回傳
+ * @example
+ * let a = createOpenAlexAuth('k+1/2=')
+ * console.log(a.enabled, a.sign('https://api.openalex.org/works?search=x'))
+ * // => true https://api.openalex.org/works?search=x&amp;api_key=k%2B1%2F2%3D
+ *
+ * console.log(a.mask('curl failed: https://api.openalex.org/works?api_key=k%2B1%2F2%3D'), JSON.stringify(a))
+ * // => curl failed: https://api.openalex.org/works?api_key=*** {"enabled":true}
+ *
+ * console.log(createOpenAlexAuth('').sign('https://api.openalex.org/works'))
+ * // => https://api.openalex.org/works
+ */
+export function createOpenAlexAuth(apiKey, opt = {}) {
+    const key = isestr(apiKey) ? apiKey.trim() : ''
+    if (!key) {
+        return Object.freeze({ enabled: false, sign: (url) => url, mask: (text) => text, toJSON: () => ({ enabled: false }) })
+    }
+    const secrets = getDiagSecrets({ values: [key] }).detail
+    const retryWaitMs = isobj(opt) &amp;&amp; Number.isFinite(opt.retryWaitMs) &amp;&amp; opt.retryWaitMs >= 0 ? opt.retryWaitMs : RETRY_WAIT_MS
+    return Object.freeze({
+        enabled: true,
+        retryWaitMs,
+        sign: (url) => `${url}${String(url).includes('?') ? '&amp;' : '?'}api_key=${encodeURIComponent(key)}`,
+        mask: (text) => maskDiagText(text, secrets),
+        toJSON: () => ({ enabled: true }),
+        [INSPECT]: () => '[OpenAlexAuth enabled]',
+    })
+}
+
+/** 不帶金鑰之載體(共用實體) */
+export const NO_OPENALEX_AUTH = createOpenAlexAuth('')
+
+/**
+ * 取用金鑰載體:形狀合格(createOpenAlexAuth 之產物)者原樣回傳,否則回不帶金鑰之載體
+ *
+ * @param {*} auth 輸入候選載體
+ * @returns {Object} 回傳金鑰載體
+ * @example
+ * console.log(openAlexAuthOf(undefined).enabled, openAlexAuthOf(createOpenAlexAuth('abc')).enabled)
+ * // => false true
+ */
+export function openAlexAuthOf(auth) {
+    return isobj(auth) &amp;&amp; typeof auth.enabled === 'boolean' &amp;&amp; isfun(auth.sign) &amp;&amp; isfun(auth.mask) ? auth : NO_OPENALEX_AUTH
+}
+
+/**
+ * 429 之錯誤(原文回溯之網路層拋出;帶 quota:true 供呼叫端辨識,自訂網路層亦可拋帶 quota:true 之錯誤參與連續計數)
+ *
+ * @example
+ * let e = new OpenAlexQuotaError()
+ * console.log(e.message === OPENALEX_QUOTA_MESSAGE, e.quota)
+ * // => true true
+ */
+export class OpenAlexQuotaError extends Error {
+    constructor() {
+        super(OPENALEX_QUOTA_MESSAGE)
+        this.name = 'OpenAlexQuotaError'
+        this.quota = true
+    }
+}
+
+/**
+ * 是否為 429(請求結果或錯誤上的 quota 標記)
+ *
+ * @param {*} x 輸入 openAlexGet 之結果或錯誤
+ * @returns {Boolean} 回傳是否為 429
+ * @example
+ * console.log(isOpenAlexQuota({ status: 'error', quota: true }), isOpenAlexQuota(new OpenAlexQuotaError()), isOpenAlexQuota(new Error('x')))
+ * // => true true false
+ */
+export function isOpenAlexQuota(x) {
+    return x?.quota === true
+}
+
+/** 帶金鑰時之重試條件(同 w-fetch-web:5xx、429、curl 錯誤;其餘 4xx、內容過短不重試) */
+const retryableOf = (r) => {
+    const c = httpCodeOf(r)
+    return c >= 500 || c === 429 || r?.reason === 'curl-error'
+}
+
+/**
+ * 失敗結果之整理:message／reason／url／finalUrl 遮罩金鑰;429 之 message 改為固定訊息並標 quota:true(成功結果原樣回傳)
+ *
+ * @param {*} r 輸入 fetchWebByCurl 風格之結果
+ * @param {Object} auth 輸入金鑰載體
+ * @returns {*} 回傳整理後之結果
+ */
+function tidy(r, auth) {
+    if (!isobj(r) || r.status === 'success') return r
+    const out = { ...r }
+    for (const k of ['message', 'reason', 'url', 'finalUrl']) if (typeof out[k] === 'string') out[k] = auth.mask(out[k])
+    if (httpCodeOf(r) === 429) {
+        out.message = OPENALEX_QUOTA_MESSAGE
+        out.quota = true
+    }
+    return out
+}
+
+/**
+ * OpenAlex GET 請求(本套件連 OpenAlex 之唯一出口)
+ *
+ * 無金鑰:以 fetchByCurl(url, { timeoutMs, maxRetries }) 呼叫(與加入金鑰前相同)。有金鑰:網址附 api_key,以 maxRetries:0 呼叫、重試由本函數做
+ * (避免 w-fetch-web 之重試輸出把含金鑰之網址寫到 stderr,見檔頭)。回傳 fetchByCurl 風格之結果,失敗者經整理(tidy):訊息遮罩金鑰、429 標 quota:true 並換固定訊息。
+ *
+ * @param {Function} fetchByCurl 輸入抓取函數 (url, { timeoutMs, maxRetries }) => Promise&lt;{ status, html, message, reason, httpCode }>
+ * @param {String} url 輸入不含金鑰之網址
+ * @param {Object} [o={}] 輸入設定物件
+ * @param {Object} [o.auth] 輸入金鑰載體(createOpenAlexAuth 之產物)，未給不帶金鑰
+ * @param {Integer} [o.timeoutMs] 輸入單次逾時毫秒
+ * @param {Integer} [o.maxRetries=0] 輸入失敗時最多重試次數(有金鑰時由本函數重試)
+ * @param {Integer} [o.retryWaitMs] 輸入有金鑰時重試前之等待毫秒(測試注入)，未給用金鑰載體之 retryWaitMs(預設 3000)
+ * @returns {Promise} 回傳 Promise，resolve 回傳整理後之結果({ status:'success', html, … } 或 { status:'error', message, reason, httpCode, quota? })；
+ *   抓取函數自身拋錯時(僅自訂注入者)，有金鑰者以遮罩後之訊息重拋
+ * @example
+ * let seen = []
+ * let fetchByCurl = async (u, o) => (seen.push([u, o.maxRetries]), { status: 'error', httpCode: 429, message: `HTTP 429 ${u}` })
+ * let auth = createOpenAlexAuth('SECRETKEY')
+ * let r = await openAlexGet(fetchByCurl, 'https://api.openalex.org/works?search=x', { auth, timeoutMs: 1000, maxRetries: 1, retryWaitMs: 1 })
+ * console.log(seen.length, seen[0][0], seen[0][1], r.quota, r.message === OPENALEX_QUOTA_MESSAGE)
+ * // => 2 https://api.openalex.org/works?search=x&amp;api_key=SECRETKEY 0 true true
+ */
+export async function openAlexGet(fetchByCurl, url, o = {}) {
+    const opt = isobj(o) ? o : {}
+    const auth = openAlexAuthOf(opt.auth)
+    const maxRetries = Number.isInteger(opt.maxRetries) &amp;&amp; opt.maxRetries >= 0 ? opt.maxRetries : 0
+    let r
+    if (!auth.enabled) {
+        r = await fetchByCurl(url, { timeoutMs: opt.timeoutMs, maxRetries })
+    }
+    else {
+        const keyed = auth.sign(url)
+        const wait = Number.isFinite(opt.retryWaitMs) &amp;&amp; opt.retryWaitMs >= 0 ? opt.retryWaitMs : auth.retryWaitMs
+        try {
+            for (let n = 0; ; n++) {
+                r = await fetchByCurl(keyed, { timeoutMs: opt.timeoutMs, maxRetries: 0 })
+                if (r?.status === 'success' || n >= maxRetries || !retryableOf(r)) break
+                await delay(wait)
+            }
+        }
+        catch (e) {
+            throw new Error(auth.mask(String(e?.message ?? e)))
+        }
+    }
+    return tidy(r, auth)
+}
+
+export default { OPENALEX_KEY_ENV_DEFAULT, OPENALEX_QUOTA_MESSAGE, OPENALEX_QUOTA_STOP_AFTER, openAlexQuotaStopText, openAlexApiKeyOf, createOpenAlexAuth, NO_OPENALEX_AUTH, openAlexAuthOf, OpenAlexQuotaError, isOpenAlexQuota, openAlexGet }
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue Nov 03 2026 17:25:56 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
