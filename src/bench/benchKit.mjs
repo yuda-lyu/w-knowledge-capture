@@ -64,11 +64,49 @@ const FREE_BY_PRICING = ['oc:opencode/big-pickle']
 const NON_TEXT_KINDS = ['api-typesafe-systemone']
 
 /**
+ * 走付費訂閱額度之條目前綴:OpenCode Go 月費訂閱(w-dispatch-ai providers.mjs 之 ocgo: 條目)
+ *
+ * 此類條目 id／model 即使帶 free 字樣(Go 方案內之限時免費期模型),仍須持已訂閱 Go 之金鑰才能呼叫(缺金鑰則調度層判不可用;
+ * 持未訂閱之金鑰則上游約 77 秒後才失敗),不是匿名即可跑之免費池,故不屬預設受測名單。
+ *
+ * @type {Array}
+ */
+const SUBSCRIPTION_ID_PREFIXES = ['ocgo:']
+
+/**
+ * 走付費訂閱額度之供應商(條目 provider 欄,前綴比對)
+ *
+ * @type {RegExp}
+ */
+const SUBSCRIPTION_PROVIDER_RE = /^opencode-go/
+
+/**
+ * 訂閱專屬之金鑰變數(條目 envVar 欄;Go 訂閱不沿用免費池之 OPENCODE_KEYS)
+ *
+ * @type {Array}
+ */
+const SUBSCRIPTION_ENV_VARS = ['OPENCODE_GO_KEYS']
+
+/**
+ * 判斷條目是否走付費訂閱額度(id 前綴、provider、envVar 三處任一為訂閱類即是:目錄以三個欄位各自宣告同一事實,擇一命中即擋,日後新增同類條目不論命名是否帶 free 皆被排除)
+ *
+ * @param {Object} p 輸入供應商目錄條目
+ * @returns {Boolean} 回傳是否為訂閱類條目
+ */
+function isSubscriptionEntry(p) {
+    return SUBSCRIPTION_ID_PREFIXES.some((x) => p.id.startsWith(x)) ||
+        SUBSCRIPTION_PROVIDER_RE.test(String(p.provider || '')) ||
+        SUBSCRIPTION_ENV_VARS.includes(p.envVar)
+}
+
+/**
  * 預設受測名單:w-dispatch-ai 內建目錄(src/providers.mjs)之免費文字生成條目;受測順序為預設領域發現席位之首選(capture.discover.ai 之 use)在前,其餘依目錄順序
  *
  * 判準(與 freeModelsOf 同一判準):條目 id 或 model 含「free」(免費模型之命名慣例),另加 oc:opencode/big-pickle(定價為免費而命名不帶 free);
- * 排除非文字生成之決策模型(kind 'api-typesafe-systemone')。目錄隨模型輪替增刪,升級 w-dispatch-ai 後須以 freeModelsOf 比對本清單
- * (單元測試據此抓漂移;本清單對照 w-dispatch-ai 1.0.62 之目錄)。zen: 開頭之條目走 REST 並宣告金鑰變數,未給金鑰時調度層判為不可用
+ * 排除非文字生成之決策模型(kind 'api-typesafe-systemone');排除走付費訂閱額度之條目(ocgo: OpenCode Go 月費訂閱,須持已訂閱之金鑰
+ * OPENCODE_GO_KEYS,其 beam-free、iceman-contributor-free 雖帶 free 字樣但屬訂閱方案內之限時免費期,見 isSubscriptionEntry)。
+ * 現存免費池條目皆為 provider opencode、useStoredAuth false、無 envVar(匿名可跑)。目錄隨模型輪替增刪,升級 w-dispatch-ai 後須以 freeModelsOf 比對本清單
+ * (單元測試據此抓漂移;本清單對照 w-dispatch-ai 1.0.74 之目錄)。zen: 開頭之條目走 REST 並宣告金鑰變數,未給金鑰時調度層判為不可用
  * (該模型各回記未呼叫;目錄目前無 zen: 之免費文字生成條目)。
  * 可覆寫:runBench 之 models、命令列之 --models;角色另有其席位順序者以角色定義之 models 給
  *
@@ -91,13 +129,13 @@ export const DEFAULT_FREE_MODELS = Object.freeze([
  * @param {Array} [catalogue] 輸入供應商目錄陣列，非陣列時用 w-dispatch-ai 內建目錄
  * @returns {Array} 回傳條目 id 陣列(依目錄順序)
  * @example
- * console.log(freeModelsOf([{ id: 'oc:x-free', kind: 'opencode' }, { id: 'zen:jev-free', kind: 'api-typesafe-systemone' }, { id: 'claude:sonnet', kind: 'claude' }]))
+ * console.log(freeModelsOf([{ id: 'oc:x-free', kind: 'opencode' }, { id: 'zen:jev-free', kind: 'api-typesafe-systemone' }, { id: 'claude:sonnet', kind: 'claude' }, { id: 'ocgo:opencode-go/y-free', kind: 'opencode', provider: 'opencode-go', envVar: 'OPENCODE_GO_KEYS' }]))
  * // => [ 'oc:x-free' ]
  */
 export function freeModelsOf(catalogue) {
     const list = isarr(catalogue) ? catalogue : providersAll
     return list
-        .filter((p) => isobj(p) && isestr(p.id) && !NON_TEXT_KINDS.includes(p.kind))
+        .filter((p) => isobj(p) && isestr(p.id) && !NON_TEXT_KINDS.includes(p.kind) && !isSubscriptionEntry(p))
         .filter((p) => /free/i.test(p.id) || /free/i.test(String(p.model || '')) || FREE_BY_PRICING.includes(p.id))
         .map((p) => p.id)
 }

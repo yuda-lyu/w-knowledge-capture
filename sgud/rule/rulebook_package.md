@@ -34,6 +34,9 @@
   - 為何:評分結果若只在暫存目錄(可隨時清),套件內即無留存;改由工具產生總表,不手寫。
   - 量測條件(資訊):表內「AI 工作目錄」欄記該列在何種工作目錄下跑;同一模型之分數跨工作目錄不可比(CAPX-04 之後果)。於無指示檔之目錄重跑會耗免費額度,屬另案。
   - 盤點:`git grep -nE "mergeAreaBenchBoard|--board" -- src`;評比表之表頭與寫入規則見 `src/bench/report.mjs` 之 `mergeBenchBoard`。
+  - **預設受測名單(`DEFAULT_FREE_MODELS`)之「免費」判準**(`freeModelsOf`,`src/bench/benchKit.mjs`):條目 id 或 model 含 `free`(另加定價為免費之 `oc:opencode/big-pickle`),**且**不是決策模型(kind `api-typesafe-systemone`),**且**不走付費訂閱額度(`isSubscriptionEntry`:id 前綴 `ocgo:`、provider 以 `opencode-go` 起頭、envVar `OPENCODE_GO_KEYS`,三處任一命中即排除)。為何:`ocgo:` 為 OpenCode Go 月費訂閱路徑,名稱帶 `free` 者(`beam-free`、`iceman-contributor-free`)只是訂閱方案內之限時免費期,仍須持已訂閱之金鑰(內建調度層無金鑰時判不可用;持未訂閱金鑰則上游約 77 秒後才失敗),不是匿名可跑之免費池;現存名單內條目皆為 provider `opencode`、`useStoredAuth: false`、無 `envVar`。判準以目錄之結構欄位判,不逐名比對,故日後同類條目(改名、換 provider 前綴、方案另名)皆被擋;目錄新增匿名免費池條目時,推得者與名單不一致,單元測試因而紅燈提醒更新名單(鑑別力不降)。
+    - 盤點:`git grep -n "isSubscriptionEntry\|SUBSCRIPTION_" -- src`;並以唯讀腳本載入 `w-dispatch-ai/src/providers.mjs`,列帶 free 字樣條目之 `kind／provider／envVar／useStoredAuth`(站點全集:2026-11-04 w-dispatch-ai 1.0.74,帶 free 字樣 10 條:oc: 7 條入名單〔另加 big-pickle 共 8〕、ocgo: 2 條〔訂閱〕排除、zen:jev-1.13-free 1 條〔決策模型〕排除)。
+    - 測試:`test/unit-bench.test.mjs`(「DEFAULT_FREE_MODELS 與依判準…一致」逐 id 抓漂移;「免費判準不含走付費訂閱額度者」三訊號單獨命中、名單內皆匿名、被排除者皆決策模型或須金鑰、新增匿名免費池條目使名單失配)。
   - 測試:`test/unit-bench.test.mjs`、`test/unit-bench-kit.test.mjs`、`test/unit-bench-roles.test.mjs`(AI 替身;含評比表之新建／覆蓋／停測不寫／表頭不同拋錯／RFC 4180 跳脫,與 CLI `--board`)、`test/unit-core.test.mjs`〔util/table〕(`csvCell`／`toCsv`／`mdCell`;評分報表與剔除清單同一份)、`test/api-area-ai.test.mjs`(真 AI,需免費額度與網路)。
 - **CAPX-08 同一內容與錯頁判定之穩健**:與 CAP-15 為同一組缺陷之修復,規則內容見 CAP-15(`contentKeysOfUrl` 遇非法百分比編碼以未解碼路徑照算;`contentIndexOf` 建立失敗不留快取;`titleTokens` 逐段切二字組〔CS2 v2〕)。
   - 測試:`test/unit-capture-standards.test.mjs`(CS2 v2、CS10 壞網址)、`test/unit-cs10fix.test.mjs`(索引建立失敗後重建、含壞網址之庫照建)。

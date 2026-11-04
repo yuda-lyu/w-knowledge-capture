@@ -1,14 +1,14 @@
-# 現況（w-knowledge-capture）— 2026-11-03
+# 現況（w-knowledge-capture）— 2026-11-04
 
 > 只記現況，不寫過程（過程在 `../exp/`）。接續工作先讀本檔；完成一項功能或結束一輪工作即更新。規則見 `../rule/rulebook.md`，兩者比對即知尚未做到者。
 > 路徑一律為 repo 相對路徑：原始碼 `src/`、測試 `test/`、工具 `toolg/`、範例 `g.mjs`。
 
 ## 身分與位置
 
-- npm `w-knowledge-capture`、版本 1.0.5（`package.json`）；主入口 `src/WKnowledgeCapture.mjs`、總組裝 `createKnowledgeCapture`（`src/createKnowledgeCapture.mjs`）、執行期件 `createCaptureRuntime`（`src/captureRuntime.mjs`）、物件 `src/captureObject.mjs`；`main` 為 `dist/w-knowledge-capture.umd.js`（Node 專用 UMD，發布流程產製）。
+- npm `w-knowledge-capture`、版本 1.0.7（`package.json`）；主入口 `src/WKnowledgeCapture.mjs`、總組裝 `createKnowledgeCapture`（`src/createKnowledgeCapture.mjs`）、執行期件 `createCaptureRuntime`（`src/captureRuntime.mjs`）、物件 `src/captureObject.mjs`；`main` 為 `dist/w-knowledge-capture.umd.js`（Node 專用 UMD，發布流程產製）。
 - 套件佈局（依自有套件範本 w-knowledge-extract）：`src/`（原始碼，子目錄 `core/ stages/ stores/ fetchers/ standards/ domain/ ops/ bench/`）、`test/`（`test/tools/` 輔助件隨 npm 包發布）、`toolg/`（`addVersion`、`modifyReadme`、`cleanFolder`、`gDocsExams`、`gDistRollup`）、`g.mjs`（離線範例，輸出附檔末，README Example 為其複本）、根目錄範本檔（`.editorconfig`、`.eslintignore`、`.eslintrc.js`、`.jsdoc`、`babel.config.js`、`SECURITY.md`、`script.txt`）；`模型評比.csv` 留套件根（bench CLI 之 `--board` 輸出，程式不讀）。`package.json` 不設 `exports`／`files`（下游以深層路徑取 `src/…` 與 `test/tools/…`），且不提供 `.npmignore`：發布範圍依 `.gitignore`（npm 包＝git 版控之內容；`sgud/`、`test/`、`docs/` 皆隨包，`CLAUDE*.md`、暫存不入包）。
 - 打包清單（2026-11-02 `npm pack --dry-run`）279 檔：`src/` 81、`test/` 53（含 `test/tools/` 10、測試檔 42、`fixtures/` 1）、`docs/` 110、`sgud/` 16、`toolg/` 5、`dist/` 2、套件根 12；`CLAUDE*.md` 0。`docs/` 約 8.3MB、`test/` 約 1.7MB，皆低於 10MB 門檻（守門 `unit-package` ⑤ 以實際打包清單斷言）。
-- 依賴：`dependencies` 為 opencc-js ^1.4.2、w-data-pipeline ^1.0.28、w-dispatch-ai ^1.0.70、w-dwdata-hub ^1.0.28、w-fetch-web ^1.0.34、w-orm-lmdb ^1.0.54、wsemi ^1.9.48（皆與 `src/` 之實際 import 對帳，守門 `test/unit-package.test.mjs` ⑤）；`devDependencies` 為 w-package-tools ^1.1.23（mocha 隨之安裝）。執行秩序件取自 w-data-pipeline、w-dispatch-ai、wsemi，由 `src/core/runnerPackage.mjs` 以深層路徑取用（名稱 createClock→`genClockTZ`、runJsonCli→`execCliJsonFile`、cliFailDetail→`execCliFailDetail`，其餘同名）；`queueAge` 與 `readJson`／`writeFileAtomic` 在本套件 `src/core/util/{queueAge,fileIo}.mjs`。
+- 依賴：`dependencies` 為 opencc-js ^1.4.2、w-data-pipeline ^1.0.29、w-dispatch-ai ^1.0.74、w-dwdata-hub ^1.0.29、w-fetch-web ^1.0.35、w-orm-lmdb ^1.0.55、wsemi ^1.9.49（皆與 `src/` 之實際 import 對帳，守門 `test/unit-package.test.mjs` ⑤）；`devDependencies` 為 w-package-tools ^1.1.23（mocha 隨之安裝）。執行秩序件取自 w-data-pipeline、w-dispatch-ai、wsemi，由 `src/core/runnerPackage.mjs` 以深層路徑取用（名稱 createClock→`genClockTZ`、runJsonCli→`execCliJsonFile`、cliFailDetail→`execCliFailDetail`，其餘同名）；`queueAge` 與 `readJson`／`writeFileAtomic` 在本套件 `src/core/util/{queueAge,fileIo}.mjs`。
 - 被誰用：下游套件（摘要、關聯、提煉）各經其埠檔以深層路徑取本套件之 `src/…` 與 `test/tools/…`；使用端（宿主專案）以套件取用，抓取即本套件之實作。
 - 發布與版號由使用者處理，不列為待辦。
 
@@ -24,6 +24,7 @@
 
 | 日期 | 項 | 結果 |
 |---|---|---|
+| 2026-11-04 | 預設受測名單之免費判準排除走付費訂閱額度者（`isSubscriptionEntry`；w-dispatch-ai 1.0.74 加入之 `ocgo:` 條目帶 free 字樣致 `unit-bench` 紅 1）後全套 `npm test`（`unit-bench` 增 1 案）；變異 7 種（判準不排除、各訊號單獨去除 3、provider 精確比對、過度排除匿名池、名單少一條＝目錄新增匿名免費條目）皆被擊殺 | **1142 ✓、0 ✗、5 pending**（前次 1141；增 1＝新案）；修前 `unit-bench` 紅 1（推得者比名單多 `ocgo:opencode-go/beam-free`、`iceman-contributor-free`）；`DEFAULT_FREE_MODELS` 8 條內容 0 變動，皆在 1.0.74 目錄且內建調度層無金鑰可解析；未呼叫任何模型 |
 | 2026-11-03 | OpenAlex 金鑰與 429（CAP-16）落地後全套 `npm test`（新增 `test/unit-capture-openalex.test.mjs` 41 案；`unit-settings`／`unit-assembly`／`unit-fetchers` 各依刻意改變之行為更新）；變異（連續計數不歸零、失敗訊息不遮罩、不帶金鑰判定失效、遭 429 者仍入帳）各被新測試擊殺；修前 `src` 與現行 `src` 以同一組情境（未設金鑰、無 429）比對請求網址、處置帳、結果、日誌逐字相同；UMD 於暫存夾編譯後 `require` 可載入且含新匯出 | **1141 ✓、0 ✗、5 pending**（前次 1100；增 41＝新檔）；全 429 情境：修前 8 個請求全打、106 列 `fetch-failed`，修後 3 個請求即停、0 列、未處理 106 篇、續跑 106 篇 archived |
 | 2026-11-02 | 發布範圍對齊（刪 `.npmignore`、`unit-package` ⑤ 改判實際打包清單）、bench 用法字串改 `node src/bench/cli.mjs`（`unit-bench*` 釘住）、註解更正（宿主時期措辭、`articles.perRun` 容量式補 `browser.perRun`）後全套 `npm test`（連跑三次） | **1100 ✓、0 ✗、5 pending**（三次同數，與改動前同數）；`node src/bench/cli.mjs --help` 首句印 `node src/bench/cli.mjs`；`npm pack --dry-run` 279 檔（含 `sgud/` 16、`test/tools/` 10，`CLAUDE*.md` 0） |
 | 2026-11-01 | sgud 改寫為套件角度（檔名去宿主前綴、移出宿主專屬內容）後全套 `npm test` | **1100 ✓、0 ✗、5 pending**（與改動前同數；sgud 不入測試） |
@@ -48,14 +49,14 @@
 | 健全閘偵測器陣列注入（`capture.standards.detectors`；內建 `GATE_DETECTORS_DEFAULT` 對外；自訂者帶 `module`，瀏覽器子行程依規格重建）；站台 adapter 帶 `module` 者亦達瀏覽器層 | 落地（2026-10-31） | CAPX-10；`unit-capture-browser`、`unit-settings`、`unit-assembly` |
 | CS5 來源健康存量全掃（記錄形狀、連敗／連空／零產出與寫入同一判定 `sourceStopReasonOf`） | 落地（2026-10-31） | CAPX-11；`unit-capture-policies`、`unit-capture-standards` |
 | OpenAlex API 金鑰與 429（`src/fetchers/openAlexNet.mjs`）：`capture.services.openAlex.apiKeyEnv`（預設 `OPENALEX_API_KEY`）自 `cfg.envFile` 讀值；網格、領域驗證、原文回溯 DOI 批次與題名四處帶 `api_key`（未設則不帶、請求逐字同前）；金鑰不入日誌／處置帳／事件／錯誤／stderr；429 固定訊息；原文回溯連續 3 次 429 即停止 OpenAlex 回溯（`quotaStop`，未處理者不入處置帳、可續跑）；網格 429 切 arXiv 並記事件（`_oaQuota`、`detail.gridOaQuota`） | 落地（2026-11-03） | CAP-16；`unit-capture-openalex`（另 `unit-settings`、`unit-assembly`、`unit-fetchers`） |
-| 免費 AI 能力評分（`src/bench/`） | 落地；`模型評比.csv` 2026-10-06 由第一輪結果轉出 | GEN-15／16；`unit-bench*` |
+| 免費 AI 能力評分（`src/bench/`）；預設受測名單 `DEFAULT_FREE_MODELS` 之「免費」判準 `freeModelsOf`＝名稱／定價判免費，排除決策模型與走付費訂閱額度者（`isSubscriptionEntry`：`ocgo:` 前綴、provider `opencode-go*`、envVar `OPENCODE_GO_KEYS` 任一命中；2026-11-04 起，w-dispatch-ai 1.0.74 目錄之 `ocgo:opencode-go/beam-free`、`iceman-contributor-free` 帶 free 字樣但須 Go 訂閱金鑰，不入名單） | 落地；名單 8 條（與 1.0.74 目錄推得者一致）；`模型評比.csv` 2026-10-06 由第一輪結果轉出 | GEN-15／16、CAPX-07；`unit-bench*` |
 | 語言設定 `lang` | 落地（預設 zh-TW，與出現前逐字同） | GEN-20；`unit-core-locale` |
 | 自有套件佈局、編譯與文件（`src/`、`toolg/`、`dist` UMD、JSDoc、`g.mjs`、README Example） | 落地（2026-11-01）；`dist/`、`docs/` 由 `script.txt` 流程於發布時產製 | 規則帳本鐵則 9、10；`unit-package` ①⑤ |
 
 ## 已知缺口與待辦
 
 - **OpenAlex 金鑰與 429（CAP-16）之未做與限制**：①啟動時查 `GET {base}/rate-limit`（帶金鑰）寫入 `startupWarnings`：未做（該端點不帶金鑰回 401）；②金鑰以 `api_key=` 查詢參數帶（`fetchWebByCurl` 無自訂標頭）——`curl` 執行期間金鑰在本機行程清單之命令列可見；待 w-fetch-web 增 `headers` 與 `useShowLog` 選項後可改標頭並簡化 `openAlexGet` 之自行重試；③領域驗證（逐候選一次請求）遇 429 只回固定 `reason`（暫時性、不冷卻），不做連續停止；④`refetchSources` 之金鑰須由呼叫端傳 `deps.envFile`（`flow.info().envFile`）或 `deps.openAlexAuth`，未傳則不帶金鑰；⑤`createCaptureRuntime` 之 `opt.envFile` 由本套件 `createKnowledgeCapture` 傳入，下游總組裝若自行呼叫須自傳才帶金鑰（未傳＝不帶，行為同前）；⑥新增之 WARN 字樣含「HTTP 429」，已落在 `CAPTURE_LOG_KNOWN` 之 `HTTP (…|429)`，巡檢不當未知警告（要升為須見項需另入 `CAPTURE_LOG_MUST_SEE`）。
-- **免費 AI 評比未涵蓋新席位**：`DEFAULT_FREE_MODELS`（`src/bench/benchKit.mjs`）已隨 w-dispatch-ai 目錄對齊，但新免費池之 id 尚無評比（`模型評比.csv` 為 2026-10-06 第一輪結果）；需要時以 bench CLI 重跑評比與題組。
+- **免費 AI 評比未涵蓋新席位**：`DEFAULT_FREE_MODELS`（`src/bench/benchKit.mjs`）已隨 w-dispatch-ai 目錄對齊，但新免費池之 id 尚無評比（`模型評比.csv` 為 2026-10-06 第一輪結果）；需要時以 bench CLI 重跑評比與題組。訂閱類條目（`ocgo:`）不在預設名單，要評比須以 `--models` 明列其 id 並備妥已訂閱之金鑰（`OPENCODE_GO_KEYS`；本套件未實測）。
 - **實網測試之設計待使用者確認**：`test/api-capture-live.test.mjs` 現行設計為「確定性之案逐案斷言、站方相依之案只斷言分流不變式」，是否定案待使用者確認；勿短時間重複實跑、勿據短時間觀察改題組。
 - **預設領域發現席位同屬 opencode 族**：`src/core/settingsDefault.mjs:164` 之 `capture.discover.ai` 預設 `use` 與 `fallback` 皆為 `oc:opencode/…`（同一故障域）；opencode 免費池撞總量上限時（見下條）預設席位即不可用，使用端須自給席位（`cfg.capture.discover.ai`，付費家加於 `fallback` 尾）。
 - **STD-01 站點偏差**：領域標籤（`src/stages/areaStage.mjs`、`src/standards/audit.mjs`、`src/standards/cs12Fix.mjs`）與關鍵字／主題線索值（`src/core/stores/frontierPolicy.mjs`）用 `script.fix`／`script.problems`，未經 `withoutForeignSpans`／`fixKeepLinks`；皆為無連結之短文字，結果等價，規則帳本 STD-01 已記為待辦。

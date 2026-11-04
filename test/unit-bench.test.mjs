@@ -416,6 +416,49 @@ describe('unit-bench', function() {
         assert.deepEqual(freeModelsOf([{ id: 'a-free', kind: 'opencode' }, { id: 'b', model: 'x-free', kind: 'opencode' }, { id: 'c', kind: 'claude' }, { id: 'd-free', kind: 'api-typesafe-systemone' }]), ['a-free', 'b'])
     })
 
+    it('免費判準不含走付費訂閱額度者(ocgo: OpenCode Go 月費訂閱):帶 free 字樣之 ocgo: 條目須持已訂閱金鑰才能跑,不入預設受測名單;判準以 id 前綴／provider／envVar 三處任一命中即擋(日後同類條目不論命名),目錄新增匿名免費池條目時名單仍須因而不一致', () => {
+        const poolSort = (a) => [...a].sort()
+        const withFree = (p) => /free/i.test(p.id) || /free/i.test(String(p.model || ''))
+        // 規則:Go 訂閱條目須金鑰——目錄中帶 free 字樣之 ocgo: 條目存在(此案例即為其而設),且內建調度層在無金鑰時判不可用、不入受測名單
+        const goFree = providersAll.filter((p) => p.id.startsWith('ocgo:') && withFree(p))
+        assert.ok(goFree.length > 0, '目錄須仍有帶 free 字樣之 ocgo: 條目,否則本案例失去對象(如已下架,改寫為對照其他訂閱類條目)')
+        const ad = createAiAdapter({ ai: resolveSettings({}).ai, workspace: path.join(TMP, 'ws-go'), env: {} })
+        for (const p of goFree) {
+            assert.equal(p.envVar, 'OPENCODE_GO_KEYS', `${p.id} 宣告訂閱專屬金鑰變數`)
+            assert.match(p.provider, /^opencode-go/, `${p.id} 之 provider 為訂閱類`)
+            assert.ok(!DEFAULT_FREE_MODELS.includes(p.id), `${p.id} 走 Go 訂閱,不得入預設受測名單`)
+            assert.ok(!freeModelsOf().includes(p.id), `${p.id} 不得被免費判準推入`)
+            assert.throws(() => ad.chainFor({ use: p.id, fallback: [] }), /缺金鑰 OPENCODE_GO_KEYS/, `${p.id} 無金鑰時判不可用`)
+        }
+        // 規則:名單內條目皆為匿名免費池(provider opencode、useStoredAuth false、無 envVar)——名單永不含須金鑰者
+        for (const id of DEFAULT_FREE_MODELS) {
+            const p = providersAll.find((x) => x.id === id)
+            assert.ok(p, id)
+            assert.equal(p.provider, 'opencode', `${id} 之 provider`)
+            assert.equal(p.useStoredAuth, false, `${id} 匿名(不用登入態)`)
+            assert.equal(p.envVar, undefined, `${id} 不宣告金鑰變數`)
+        }
+        // 規則:帶 free 字樣卻被免費判準排除者,只限決策模型或須金鑰者——判準不得誤擋匿名可跑之條目
+        const names = new Set(freeModelsOf())
+        for (const p of providersAll.filter(withFree).filter((x) => !names.has(x.id))) {
+            assert.ok(p.kind === 'api-typesafe-systemone' || (typeof p.envVar === 'string' && p.envVar !== ''), `${p.id} 被排除但既非決策模型亦未宣告金鑰變數`)
+        }
+        // 規則:三處訊號各自單獨命中即擋(模擬日後同類條目:改名、換 provider、換 id 前綴皆不繞過)
+        assert.deepEqual(freeModelsOf([{ id: 'ocgo:opencode-go/n1-free', kind: 'opencode' }]), [], '僅 id 前綴')
+        assert.deepEqual(freeModelsOf([{ id: 'go2:n2-free', kind: 'opencode', provider: 'opencode-go' }]), [], '僅 provider')
+        assert.deepEqual(freeModelsOf([{ id: 'go3:n3-free', kind: 'opencode', provider: 'opencode-go-plus' }]), [], 'provider 前綴比對(方案另名)')
+        assert.deepEqual(freeModelsOf([{ id: 'go4:n4-free', kind: 'opencode', envVar: 'OPENCODE_GO_KEYS' }]), [], '僅 envVar')
+        assert.deepEqual(freeModelsOf([{ id: 'ocgo:opencode-go/n5', model: 'opencode-go/n5-free', kind: 'opencode', provider: 'opencode-go', envVar: 'OPENCODE_GO_KEYS' }]), [], 'model 帶 free、id 不帶')
+        // 規則:判準不誤擋一般免費池(provider opencode、無 envVar)與以名稱／定價判為免費者
+        const poolNew = { id: 'oc:opencode/zz-new-free', model: 'opencode/zz-new-free', kind: 'opencode', provider: 'opencode', useStoredAuth: false }
+        assert.deepEqual(freeModelsOf([poolNew]), ['oc:opencode/zz-new-free'])
+        assert.deepEqual(freeModelsOf([{ id: 'oc:opencode/big-pickle', model: 'opencode/big-pickle', kind: 'opencode', provider: 'opencode', useStoredAuth: false }]), ['oc:opencode/big-pickle'])
+        // 規則:目錄新增匿名免費池條目時,推得者與名單不一致(單元測試因而紅燈提醒更新名單);新增 Go 訂閱條目(含 free 字樣)則不影響一致性
+        assert.notDeepEqual(poolSort(freeModelsOf([...providersAll, poolNew])), poolSort(DEFAULT_FREE_MODELS), '新增匿名免費池條目須使名單失配')
+        const goNew = { id: 'ocgo:opencode-go/zz-new-free', model: 'opencode-go/zz-new-free', kind: 'opencode', provider: 'opencode-go', envVar: 'OPENCODE_GO_KEYS' }
+        assert.deepEqual(poolSort(freeModelsOf([...providersAll, goNew])), poolSort(DEFAULT_FREE_MODELS), '新增 Go 訂閱條目不影響名單')
+    })
+
     it('報表:CSV 含 BOM、表頭與列數(模型數;模型×案數),逗號／引號／換行照錄跳脫;Markdown 含分數表、逐案明細、未通過原因', async () => {
         const tricky = 'a,"b"\nc'
         const ai = benchStubAi({
@@ -485,10 +528,13 @@ describe('unit-bench', function() {
         assert.deepEqual(b2.skipped.map((x) => x.model), ['slow'])
         assert.match(b2.skipped[0].reason, /停測/)
         const lines2 = fs.readFileSync(file, 'utf8').slice(1).trim().split('\r\n')
-        assert.match(lines2[1], /,m,4,4,/)
-        assert.match(lines2[2], /,n,4,4,100\.0%,/, 'n 之舊列被覆蓋')
-        assert.ok(lines2[1].includes('"x,y ""ws"""'), '未受測之 m 原列(含跳脫欄位)原樣保留')
-        assert.ok(lines2[2].includes(',（專案外之工作目錄）,'), '專案外之絕對路徑不入表')
+        // m、n 皆 4/4 同分,其後依平均耗時排序,先後隨當下負載而變(2026-11-04 高負載下 n 排前而紅),故依模型取列,不依列序
+        const lineM2 = lines2.find((x) => /,m,4,4,/.test(x))
+        const lineN2 = lines2.find((x) => /,n,4,4,100\.0%,/.test(x))
+        assert.ok(lineM2, 'm 原列保留')
+        assert.ok(lineN2, 'n 之舊列被覆蓋')
+        assert.ok(lineM2.includes('"x,y ""ws"""'), '未受測之 m 原列(含跳脫欄位)原樣保留')
+        assert.ok(lineN2.includes(',（專案外之工作目錄）,'), '專案外之絕對路徑不入表')
         assert.ok(!/[A-Za-z]:[\\/]/.test(lines2.join('\n')), '表內無磁碟機路徑')
         assert.ok(!lines2.some((l) => l.includes(',slow,')), '停測者不寫')
         // 表頭不同 → 拋錯、不覆寫

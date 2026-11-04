@@ -498,7 +498,7 @@ node src/bench/cli.mjs [--models <id,…>|free] [--cases <題組 json>] [--vocab
 
 時區(評分時間與報表檔名之時間戳)預設 `Asia/Taipei`,`--tz` 或 `runAreaBench({ timeZone })` 可改;管線之時區同理由 `cfg.timeZone`／`cfg.clock` 指定。
 
-- **受測名單**:未給或 `free` ＝ `DEFAULT_FREE_MODELS`(w-dispatch-ai 目錄中 id 或 model 含 free 者,加定價為免費之 big-pickle,排除決策模型)。`freeModelsOf()` 由目錄重算;w-dispatch-ai 升版後名單有變,單元測試會失敗提醒。
+- **受測名單**:未給或 `free` ＝ `DEFAULT_FREE_MODELS`(w-dispatch-ai 目錄中 id 或 model 含 free 者,加定價為免費之 big-pickle,排除決策模型與走付費訂閱額度者〔`ocgo:` OpenCode Go 月費訂閱:名稱雖帶 free,仍須持已訂閱之金鑰,不是匿名免費池〕)。`freeModelsOf()` 由目錄重算;w-dispatch-ai 升版後名單有變,單元測試會失敗提醒。要評比訂閱類條目,以 `--models` 明列其 id。
 - **題組**:未給 ＝ `bench/cases/area-generic.json`(通用 16 案,含保留題 5 案;題型:下位概念、同義、過寬、過窄、範圍外、新領域)。格式 `{ std, v, note, cases:[{ id, holdout, type?, input:{ candidate, areas, vocab? }, expect:{ covered }, why }] }`,於任何呼叫之前驗完;題組宣告之 std／v 須為 CS8／1。
 - **計分**:每案呼叫 `runs` 回,**各回之類別皆等於應然才算通過**(一回不符即不通過,不以比率放行);保留題分列。合契約率、平均耗時、呼叫失敗只列資訊。
 - **停測**:判為額度用盡或限流即停測該模型;連續 2 回逾時或執行錯誤亦停(opencode 限流時不結束、以逾時回報)。其他模型照跑。
