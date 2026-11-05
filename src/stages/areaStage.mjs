@@ -77,7 +77,8 @@ export async function writeAreasProjection(stores, dirs, opt = {}) {
  * 以 OpenAlex 驗證候選查詢:計數(同 field 白名單)、首頁有摘要者、首頁已在庫比例(冗餘)
  *
  * @param {String} query 輸入查詢
- * @param {Object} ctx 輸入管道脈絡(取 deps.settings.capture 之 services.openAlex〔base、mailto〕、areas.openAlexFields、discover.minHits，與 deps.stores.docs、deps.seen、deps.openAlexAuth〔OpenAlex 金鑰載體,可缺〕)
+ * @param {Object} ctx 輸入管道脈絡(取 deps.settings.capture 之 services.openAlex〔base、mailto〕、areas.openAlexFields、discover.minHits，與 deps.stores.docs、deps.seen、deps.openAlexAuth〔OpenAlex 金鑰載體,可缺〕；
+ *   另取 ctx.log 記 OpenAlex 金鑰被判無效之 WARN〔可缺，缺則不記〕)
  * @param {Object} [opt={}] 輸入設定物件
  * @param {Function} [opt.fetchWebByCurl] 輸入 curl 抓取函數 (url, { timeoutMs, maxRetries }) => Promise<{ status, html, message }>(測試注入)，未給則用 w-fetch-web 之 fetchWebByCurl
  * @param {Object} [opt.openAlexAuth] 輸入 OpenAlex 金鑰載體(createOpenAlexAuth 之產物)，優先於 ctx.deps.openAlexAuth；皆未給則不帶金鑰
@@ -114,7 +115,7 @@ export async function validateAreaQuery(query, ctx, opt = {}) {
     const u = `${base}/works?search=${encodeURIComponent(query)}&per-page=8&select=id,doi,primary_location,abstract_inverted_index` +
         (fields ? `&filter=${encodeURIComponent(`primary_topic.field.id:${fields}`)}` : '') + mailto
     // 金鑰:opt.openAlexAuth(測試或自訂注入)優先,否則取每輪依賴 deps.openAlexAuth(總組裝依 capture.services.openAlex.apiKeyEnv 與金鑰檔建立);都沒有＝不帶金鑰
-    const r = await openAlexGet(fetchFn, u, { auth: openAlexAuthOf(opt.openAlexAuth ?? ctx.deps.openAlexAuth), timeoutMs: VALIDATE_TIMEOUT_MS, maxRetries: 1 })
+    const r = await openAlexGet(fetchFn, u, { auth: openAlexAuthOf(opt.openAlexAuth ?? ctx.deps.openAlexAuth), timeoutMs: VALIDATE_TIMEOUT_MS, maxRetries: 1, log: ctx.log })
     // 429 以固定字樣為原因(OPENALEX_QUOTA_MESSAGE:額度用盡或每秒超限)並標 quota:true;仍屬暫時性失敗(不冷卻)
     if (isOpenAlexQuota(r)) return { ok: false, count: 0, abstracts: 0, overlap: 0, reason: OPENALEX_QUOTA_MESSAGE, transient: true, quota: true }
     if (r?.status !== 'success') return { ok: false, count: 0, abstracts: 0, overlap: 0, reason: `OpenAlex 驗證失敗：${oneline(r?.message || r?.reason, 80)}`, transient: true }

@@ -75,6 +75,8 @@ export const CAPTURE_LOG_MUST_SEE = Object.freeze([
     '原文另存失敗', '判定依據另存失敗',
     // 領域發現:AI 判定或整段失敗、投影寫入失敗
     '領域發現：AI 判定失敗', '領域發現失敗', '領域清單投影寫入失敗',
+    // OpenAlex 金鑰被判無效(401／403;fetchers/openAlexNet):設定錯誤須人為修正,行內即使併入已知字樣(如「網格雙供應商皆失敗：OpenAlex HTTP 401：…」)亦須見
+    'OpenAlex 金鑰無效',
     // 核心件之字樣(本機網路不通)
     ...CORE_LOG_MUST_SEE,
 ])

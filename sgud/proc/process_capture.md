@@ -19,7 +19,7 @@
 | 詞彙表 | `data.vocab` 只取 `domain`、`kbLabel`、`conceptRenames`、`conceptAliases` | 其他鍵拋錯;取子集用 `pickCaptureVocab`(`src/core/vocab/vocabDefault.mjs`) |
 | 種子來源、網格主題 | `data.seedSources`、`data.gridTopics` | 標題預篩在 `capture.articles.skipTitlePatterns` |
 | 既有 `notes` 集合 | `notes: true` | 領域發現與原文回溯與原管線同口徑 |
-| 金鑰檔、時間上限、時區 | `envFile`、`scheduleLimitMin`、`timeZone` | OpenAlex 信箱在 `capture.services.openAlex.mailto`;OpenAlex API 金鑰放金鑰檔(變數名由 `capture.services.openAlex.apiKeyEnv` 指,預設 `OPENALEX_API_KEY`;檔內無此變數則不帶金鑰,易 429) |
+| 金鑰檔、時間上限、時區 | `envFile`、`scheduleLimitMin`、`timeZone` | OpenAlex 信箱在 `capture.services.openAlex.mailto`;OpenAlex API 金鑰放金鑰檔(變數名由 `capture.services.openAlex.apiKeyEnv` 指,預設 `OPENALEX_API_KEY`;檔內無此變數則不帶金鑰,易 429;值可為逗號分隔多把,429 換把、401／403 標記該把無效並於日誌 WARN `OpenAlex 金鑰無效`——見 CAP-16) |
 
 - **線索來源**:本套件只消化線索,不從文章產生線索(由下游以 `saveClues` 寫入,見 `README.md` §1)。單獨使用時沒有自我擴充之輸入。
 

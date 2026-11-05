@@ -205,8 +205,9 @@ export function createCaptureRuntime(cfg, settings, opt = {}) {
     const siteAdapterSpecs = adapterSpecsOf(siteAdapters)
 
     // ── OpenAlex 金鑰載體(fetchers/openAlexNet):變數名取 capture.services.openAlex.apiKeyEnv,值取 opt.envFile(金鑰檔;與 AI 金鑰同檔);
-    //   無金鑰檔／無此變數 → 不帶金鑰。載體只在閉包內持金鑰值:rt、deps 被輸出時不帶出金鑰。網格抓取器與每輪依賴(領域發現之驗證)共用同一個 ──
-    const openAlexAuth = createOpenAlexAuth(openAlexApiKeyOf(cap, opt.envFile))
+    //   無金鑰檔／無此變數 → 不帶金鑰。值可為逗號分隔之多把(429 換把、401／403 標記該把無效,見 fetchers/openAlexNet【多把金鑰】);變數名(非機密)隨載體帶入,
+    //   供無效金鑰之 WARN 指明該改哪個變數。載體只在閉包內持金鑰值:rt、deps 被輸出時不帶出金鑰。網格抓取器與每輪依賴(領域發現之驗證)共用同一個 ──
+    const openAlexAuth = createOpenAlexAuth(openAlexApiKeyOf(cap, opt.envFile), { envName: cap?.services?.openAlex?.apiKeyEnv })
 
     // ── 抓取器與去重身分 ──
     const fetchers = mergeFetchers(

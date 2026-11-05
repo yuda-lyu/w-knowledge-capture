@@ -67,11 +67,12 @@ function noteGridDrops(src, drops, log, via) {
  *
  * @param {Object} src 輸入 grid 來源記錄，需含 query，可含 cursor(頁碼)；本函數於其上標 _fetchedVia('openalex'｜'arxiv'),
  *   供來源政策判 cursor 是否前進(arXiv 遞補不用 cursor,前進會漏頁);另標 _dropped({ short, mojibake, noUrl })
- * 【OpenAlex 金鑰與 429】opt.openAlexAuth(createOpenAlexAuth 之產物)有金鑰時請求附 api_key(見 openAlexNet);OpenAlex 回 429 仍切 arXiv,
- *   但於來源物件標 _oaQuota:true、記一行固定字樣之警告(OPENALEX_QUOTA_MESSAGE,寫明是 OpenAlex 額度而非站台故障)
+ * 【OpenAlex 金鑰與 429】opt.openAlexAuth(createOpenAlexAuth 之產物;可持多把金鑰,429 換把、401／403 標記該把無效,見 openAlexNet【多把金鑰】)有金鑰時請求附 api_key;
+ *   OpenAlex 回 429(所有可用之把都 429)仍切 arXiv,但於來源物件標 _oaQuota:true、記一行固定字樣之警告(OPENALEX_QUOTA_MESSAGE,寫明是 OpenAlex 額度而非站台故障);
+ *   金鑰全部無效(401／403)亦切 arXiv,但不標 _oaQuota(非額度),金鑰被判無效之 WARN 已於判定時記在 ctx.log
  *
  * @param {Object} opt 輸入設定物件，可含 openAlexMailto、openAlexAuth、openAlexFields、arxivCategories、openAlexBase、arxivApiBase、fetchWebByCurl
- * @param {Object} [ctx] 輸入管道脈絡(取 ctx.log 記略過計數與 429 事件;未給不記)
+ * @param {Object} [ctx] 輸入管道脈絡(取 ctx.log 記略過計數、429 事件與 OpenAlex 金鑰被判無效之 WARN;未給不記)
  * @returns {Promise} 回傳 Promise，resolve 回傳原始項目陣列 [{ url, time, title, summary, text }]，雙供應商皆失敗時 reject
  */
 async function readGrid(src, opt, ctx) {
@@ -93,7 +94,7 @@ async function readGrid(src, opt, ctx) {
     `&select=title,publication_year,doi,abstract_inverted_index,primary_location${mailto}`
     // 金鑰(opt.openAlexAuth;未給＝不帶)與 429 之整理一律經 openAlexNet 的 openAlexGet(金鑰附帶、失敗訊息遮罩、429 固定訊息)
     const auth = openAlexAuthOf(opt.openAlexAuth)
-    const r = await openAlexGet(fetchByCurl, u, { auth, timeoutMs: 15_000, maxRetries: 1 })
+    const r = await openAlexGet(fetchByCurl, u, { auth, timeoutMs: 15_000, maxRetries: 1, log: ctx?.log })
     let openAlexWhy = r.message || r.reason || ''
     if (r.status === 'success') {
         let j = null
@@ -105,7 +106,7 @@ async function readGrid(src, opt, ctx) {
         }
         // 結構驗證:須有 results 陣列——錯誤 JSON(如 { error })不可被當成「空頁」而誤判耗盡,改走遞補
         if (j && typeof j === 'object' && !isarr(j.results)) {
-            openAlexWhy = `回應缺 results（${auth.mask(oneline(JSON.stringify(j).slice(0, 80), 80))}）`
+            openAlexWhy = `回應缺 results（${oneline(auth.mask(JSON.stringify(j)), 80)}）`
             j = null
         }
         if (j && typeof j === 'object') {
@@ -152,6 +153,8 @@ async function readGrid(src, opt, ctx) {
         src._oaQuota = isOpenAlexQuota(r)
     }
     if (isOpenAlexQuota(r)) ctx?.log?.warn?.(`網格[${oneline(src?.name || src?.query, 40)}] ${OPENALEX_QUOTA_MESSAGE}；本次改走 arXiv（此來源之 cursor 不前進）`)
+    // 金鑰全部無效(401／403):判定時已 WARN 一次;此處每個改走 arXiv 之來源再記一行,使長駐行程後續各輪亦可見(此情形不標 _oaQuota,非額度)
+    else if (r?.invalidKey === true) ctx?.log?.warn?.(`網格[${oneline(src?.name || src?.query, 40)}] OpenAlex 金鑰無效（狀態碼 ${r.httpCode}），本次改走 arXiv（此來源之 cursor 不前進）`)
     const items = []
     const drops = { short: 0, mojibake: 0, noUrl: 0 }
     for (const [, e] of String(r2.html || '').matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {

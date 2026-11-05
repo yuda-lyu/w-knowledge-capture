@@ -163,7 +163,8 @@ export function judgeAbstractRefetch(doc, rec, o = {}) {
  * 內建之網路層(可由 deps.refetch 注入替身;測試不發網路)
  *
  * @param {Object} cap 輸入 settings.capture(取 services.openAlex〔base、mailto〕、services.arxiv.base、articles.timeoutMs)
- * @param {Object} [o={}] 輸入 { openAlexAuth:OpenAlex 金鑰載體〔openAlexNet 之 createOpenAlexAuth 產物;未給不帶金鑰〕, fetchWebByCurl:curl 抓取函數〔測試注入;預設 w-fetch-web〕 }
+ * @param {Object} [o={}] 輸入 { openAlexAuth:OpenAlex 金鑰載體〔openAlexNet 之 createOpenAlexAuth 產物;未給不帶金鑰〕, fetchWebByCurl:curl 抓取函數〔測試注入;預設 w-fetch-web〕,
+ *   log:日誌〔金鑰被判無效時於此記 WARN;本函數之既有日誌管道即 deps.log〕 }
  * @returns {Object} 回傳 { arxiv(ids)→Map(id → {title,abstract}), openalexDoi(dois)→Map(doi → {title,abstract}), openalexTitle(title)→Array({title,abstract,url}), article(url)→fetchArticle 結果, pause(method) }
  */
 function defaultNet(cap = {}, o = {}) {
@@ -175,7 +176,7 @@ function defaultNet(cap = {}, o = {}) {
     // OpenAlex 回應須有 results 陣列:錯誤回應(額度、參數錯)解析成功卻無 results 時,不可當「查無」而永久記 not-found
     //   請求經 openAlexGet(附金鑰、失敗訊息遮罩);429 拋 OpenAlexQuotaError(固定訊息,帶 quota:true 供連續計數);回應片段入錯誤訊息前亦遮罩
     const getResults = async (u) => {
-        const r = await openAlexGet(fetchFn, u, { auth, timeoutMs: 20_000, maxRetries: 1 })
+        const r = await openAlexGet(fetchFn, u, { auth, timeoutMs: 20_000, maxRetries: 1, log: o.log })
         if (isOpenAlexQuota(r)) throw new OpenAlexQuotaError()
         if (r.status !== 'success') throw new Error(`HTTP 失敗：${oneline(r.message || r.reason, 120)}`)
         let j
@@ -186,7 +187,7 @@ function defaultNet(cap = {}, o = {}) {
             if (!auth.enabled) throw e
             throw new Error(auth.mask(String(e?.message)))
         }
-        if (!isarr(j?.results)) throw new Error(`OpenAlex 回應無 results（${auth.mask(oneline(JSON.stringify(j).slice(0, 160), 160))}）`)
+        if (!isarr(j?.results)) throw new Error(`OpenAlex 回應無 results（${oneline(auth.mask(JSON.stringify(j)), 160)}）`)
         return j.results
     }
     const oaRec = (p) => ({ title: decodeEntities(String(p?.title || '')).trim(), abstract: deinvertAbstract(p?.abstract_inverted_index), url: p?.doi || p?.primary_location?.landing_page_url || '' })
@@ -288,7 +289,7 @@ export async function refetchSources(deps, opt = {}) {
     //   (使用端以 flow.info().envFile 傳入;皆未給＝不帶金鑰)
     const net = isobj(deps.refetch)
         ? deps.refetch
-        : defaultNet(cap, { openAlexAuth: deps.openAlexAuth ?? createOpenAlexAuth(openAlexApiKeyOf(cap, deps.envFile)), fetchWebByCurl: deps.fetchWebByCurl })
+        : defaultNet(cap, { openAlexAuth: deps.openAlexAuth ?? createOpenAlexAuth(openAlexApiKeyOf(cap, deps.envFile), { envName: cap.services?.openAlex?.apiKeyEnv }), fetchWebByCurl: deps.fetchWebByCurl, log })
     const ledgerFile = path.join(dirs.state, REFETCH_LEDGER_FILE)
     const seen = new Map() // 帳上各文件之最後結論(缺檔空、壞行略過:JSONL 共用件)
     for (const r of readJsonlRows(ledgerFile)) if (isestr(r.id)) seen.set(r.id, r.outcome)

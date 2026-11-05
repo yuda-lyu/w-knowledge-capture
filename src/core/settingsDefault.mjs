@@ -168,7 +168,8 @@ export const CAPTURE_DEFAULT = {
     services: {
         // mailto:OpenAlex 禮貌池信箱(網格查詢、領域驗證、來源重抓共用;'' 不帶)。
         // apiKeyEnv:OpenAlex API 金鑰之「環境變數名」(非金鑰值;值只放金鑰檔 cfg.envFile〔預設 <workDir>/.env〕,與 AI 金鑰同法),三處請求共用(fetchers/openAlexNet);
-        //   金鑰檔無此變數或值為空 → 不帶金鑰(行為同無金鑰:無金鑰之請求共用同一 IP 每日 US$0.10 額度,易 429);'' 明確不使用(即使金鑰檔有該變數)
+        //   金鑰檔無此變數或值為空 → 不帶金鑰(行為同無金鑰:無金鑰之請求共用同一 IP 每日 US$0.10 額度,易 429);'' 明確不使用(即使金鑰檔有該變數)。
+        //   該變數之值可為逗號分隔之多把(各有各的每日額度):429 換下一把、401／403 標記該把無效(見 fetchers/openAlexNet【多把金鑰】);逗號相連之整串不是一把金鑰
         openAlex: { base: 'https://api.openalex.org', mailto: '', apiKeyEnv: 'OPENALEX_API_KEY' },
         arxiv: { base: 'https://export.arxiv.org' },
         bingNews: { base: 'https://www.bing.com' },

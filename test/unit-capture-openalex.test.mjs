@@ -14,6 +14,7 @@
 //   OA7  金鑰不外洩(失敗路徑):五種失敗 × 四處站點,拋出之錯誤、日誌、處置帳、結果、stderr 皆不含金鑰(原形與 URL 編碼形)
 //   OA8  429 固定訊息:網格(切 arXiv、事件、_oaQuota、gridOaQuota 計數)、領域驗證、回溯(單次 429)
 //   OA9  原文回溯連續 429:連續 3 次即停(DOI 批次、題名、跨二者)、未處理篇數正確、未入處置帳、續跑接上;非連續不停;arXiv／網頁照常
+//   (多把金鑰:apiKeyEnv 之值為逗號分隔多把、429 換把、401／403 標記無效 → OA10～OA15 見 unit-capture-openalex-keys.test.mjs;本檔之金鑰皆以單把陣列〔[KEY]〕傳入)
 // 執行:自套件根 node <mocha> --timeout 180000 test/unit-capture-openalex.test.mjs(暫存 test/_tmp/openalex-*-<pid>,測完即刪)
 
 import assert from 'node:assert/strict'
@@ -172,31 +173,31 @@ describe('unit-capture-openalex', function() {
     // ══════════════════════════ OA2 金鑰讀取 ══════════════════════════
     describe('OA2 金鑰讀取', function() {
         const cap = (name) => ({ services: { openAlex: { apiKeyEnv: name } } })
-        it('依 apiKeyEnv 自金鑰檔讀值(去引號與空白);不污染 process.env;無檔、無變數、空值、變數名空、金鑰檔未給 → 空字串(不帶金鑰)', () => {
+        it('依 apiKeyEnv 自金鑰檔讀值(去引號與空白)回金鑰陣列;不污染 process.env;無檔、無變數、空值、變數名空、金鑰檔未給 → 空陣列(不帶金鑰)', () => {
             const before = process.env.OPENALEX_API_KEY
-            assert.equal(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), KEYS), KEY, '成對引號剝除,值內之 + / = 保留')
-            assert.equal(openAlexApiKeyOf(cap('MY_OA_KEY'), KEYS), 'other-name-key', '依設定之變數名取;值修剪空白')
+            assert.deepEqual(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), KEYS), [KEY], '成對引號剝除,值內之 + / = 保留;單把長度 1')
+            assert.deepEqual(openAlexApiKeyOf(cap('MY_OA_KEY'), KEYS), ['other-name-key'], '依設定之變數名取;值修剪空白')
             assert.equal(process.env.OPENALEX_API_KEY, before, '不寫 process.env')
-            assert.equal(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), NOKEY), '', '檔內無此變數')
-            assert.equal(openAlexApiKeyOf(cap('EMPTY_KEY'), KEYS), '', '值為空')
-            assert.equal(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), `${TMP}/not-exist.env`), '', '檔不存在')
-            assert.equal(openAlexApiKeyOf(cap(''), KEYS), '', "apiKeyEnv '' 即使檔內有 OPENALEX_API_KEY 亦不用")
-            assert.equal(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), undefined), '', '未給金鑰檔')
-            assert.equal(openAlexApiKeyOf({}, KEYS), '', 'capture 缺 services')
+            assert.deepEqual(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), NOKEY), [], '檔內無此變數')
+            assert.deepEqual(openAlexApiKeyOf(cap('EMPTY_KEY'), KEYS), [], '值為空')
+            assert.deepEqual(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), `${TMP}/not-exist.env`), [], '檔不存在')
+            assert.deepEqual(openAlexApiKeyOf(cap(''), KEYS), [], "apiKeyEnv '' 即使檔內有 OPENALEX_API_KEY 亦不用")
+            assert.deepEqual(openAlexApiKeyOf(cap('OPENALEX_API_KEY'), undefined), [], '未給金鑰檔')
+            assert.deepEqual(openAlexApiKeyOf({}, KEYS), [], 'capture 缺 services')
         })
     })
 
     // ══════════════════════════ OA3 金鑰載體 ══════════════════════════
     describe('OA3 金鑰載體', function() {
         it('金鑰只在閉包:JSON.stringify／util.inspect／展開／String／Object.values 皆不含金鑰值(原形與編碼形)', () => {
-            const a = createOpenAlexAuth(KEY)
+            const a = createOpenAlexAuth([KEY])
             const dumps = [JSON.stringify(a), util.inspect(a, { depth: 5, showHidden: true }), JSON.stringify({ ...a }), String(a), JSON.stringify(Object.values(a).filter((v) => typeof v !== 'function')), JSON.stringify(Object.getOwnPropertyNames(a))]
             for (const d of dumps) assert.ok(noKey(d), `載體輸出不含金鑰：${d}`)
             assert.equal(a.enabled, true)
             assert.equal(JSON.stringify(a), '{"enabled":true}')
         })
         it('sign:附 api_key(值 URL 編碼);網址已有查詢用 &、無查詢用 ?;mask:原形、URL 編碼形、表單編碼形、JSON 內皆遮;無金鑰載體 sign／mask 原樣', () => {
-            const a = createOpenAlexAuth(KEY)
+            const a = createOpenAlexAuth([KEY])
             assert.equal(a.sign('https://x.test/works?search=a'), `https://x.test/works?search=a&api_key=${KEY_ENC}`)
             assert.equal(a.sign('https://x.test/works'), `https://x.test/works?api_key=${KEY_ENC}`)
             const text = `curl failed https://x.test/works?api_key=${KEY_ENC} raw ${KEY} form ${KEY_ENC.replace(/%20/g, '+')} json ${JSON.stringify({ k: KEY })}`
@@ -206,7 +207,7 @@ describe('unit-capture-openalex', function() {
             assert.equal(NO_OPENALEX_AUTH.enabled, false)
             assert.equal(NO_OPENALEX_AUTH.sign('https://x.test/works?a=1'), 'https://x.test/works?a=1')
             assert.equal(NO_OPENALEX_AUTH.mask('abc'), 'abc')
-            for (const v of ['', '   ', null, undefined, 5]) assert.equal(createOpenAlexAuth(v).enabled, false, `金鑰=${JSON.stringify(v)} → 不帶`)
+            for (const v of [[], [''], ['   ', ''], [null, 5, undefined], null, undefined]) assert.equal(createOpenAlexAuth(v).enabled, false, `金鑰=${JSON.stringify(v)} → 不帶`)
             assert.equal(openAlexAuthOf({ enabled: true }), NO_OPENALEX_AUTH, '形狀不合者視同未給')
             assert.equal(openAlexAuthOf(a), a)
         })
@@ -233,7 +234,7 @@ describe('unit-capture-openalex', function() {
             assert.deepEqual(calls, [['https://x.test/works?search=a', { timeoutMs: 1234, maxRetries: 1 }]])
         })
         it('有金鑰:網址附 api_key、抓取函數一律 maxRetries:0(不經 w-fetch-web 之重試輸出);5xx／429／curl 錯誤重試至多 maxRetries 次;4xx／內容過短不重試;成功即止', async () => {
-            const auth = createOpenAlexAuth(KEY, { retryWaitMs: 1 })
+            const auth = createOpenAlexAuth([KEY], { retryWaitMs: 1 })
             for (const [first, retried] of [[fail(503), true], [fail(429), true], [{ status: 'error', reason: 'curl-error', message: 'x' }, true], [fail(404), false], [{ status: 'error', reason: 'empty-response', message: 'short', httpCode: 200 }, false], [{ status: 'error', httpCode: 0, message: 'HTTP 502' }, true]]) {
                 const { f, calls } = mk([first, ok])
                 const r = await openAlexGet(f, 'https://x.test/works?search=a', { auth, timeoutMs: 10, maxRetries: 1 })
@@ -246,7 +247,7 @@ describe('unit-capture-openalex', function() {
             assert.deepEqual([calls.length, r.status], [3, 'error'], 'maxRetries:2 → 共 3 次後放棄')
         })
         it('失敗結果:message／reason／url／finalUrl 遮罩金鑰;429 之 message 換固定字樣並標 quota:true(其餘失敗不標);非 429 之訊息逐字保留', async () => {
-            const auth = createOpenAlexAuth(KEY)
+            const auth = createOpenAlexAuth([KEY])
             const leak = `Command failed: curl -s https://x.test/works?api_key=${KEY_ENC}`
             const r1 = await openAlexGet(mk([{ status: 'error', reason: 'curl-error', message: leak, url: `https://x.test/works?api_key=${KEY_ENC}`, finalUrl: leak }]).f, 'https://x.test/works', { auth, maxRetries: 0 })
             assert.ok(noKey(JSON.stringify(r1)), JSON.stringify(r1))
@@ -263,7 +264,7 @@ describe('unit-capture-openalex', function() {
             assert.match(OPENALEX_QUOTA_MESSAGE, /^OpenAlex HTTP 429：.*每日額度.*每秒.*UTC 00:00/, '兩因並列(官方:每日額度或每秒上限)與重置時間')
         })
         it('抓取函數自身拋錯(自訂注入者):有金鑰者以遮罩後之訊息重拋;無金鑰者原錯誤透傳', async () => {
-            const auth = createOpenAlexAuth(KEY)
+            const auth = createOpenAlexAuth([KEY])
             await assert.rejects(() => openAlexGet(async (u) => { throw new Error(`boom ${u}`) }, 'https://x.test/works', { auth }), (e) => noKey(e.message) && /boom https:\/\/x\.test\/works\?api_key=\*\*\*/.test(e.message))
             const boom = new Error('boom')
             await assert.rejects(() => openAlexGet(async () => { throw boom }, 'https://x.test/works', {}), (e) => e === boom)
@@ -309,7 +310,7 @@ describe('unit-capture-openalex', function() {
         }
 
         it('網格來源:有金鑰 → 請求帶 api_key(query)與 mailto,不帶 Authorization 標頭;無金鑰 → 不帶 api_key;兩者其餘查詢字串相同', async () => {
-            const keyed = await gridOf(createOpenAlexAuth(KEY)).fetch({ query: 'planetary science', name: 'g', cursor: 1 }, {})
+            const keyed = await gridOf(createOpenAlexAuth([KEY])).fetch({ query: 'planetary science', name: 'g', cursor: 1 }, {})
             assert.equal(keyed.length, 8)
             const q = oa.reqs[0]
             assert.equal(q.path, '/works')
@@ -324,7 +325,7 @@ describe('unit-capture-openalex', function() {
         })
 
         it('領域發現驗證:有金鑰(ctx.deps.openAlexAuth 或 opt.openAlexAuth)→ 帶 api_key;無金鑰 → 不帶;修前網址逐字', async () => {
-            const a = createOpenAlexAuth(KEY)
+            const a = createOpenAlexAuth([KEY])
             const r1 = await validateAreaQuery('black hole spectra', areaCtx(a))
             assert.deepEqual([r1.ok, r1.count, oa.reqs[0].params.get('api_key'), oa.reqs[0].authorization], [true, 1500, KEY, undefined])
             oa.reqs.length = 0
@@ -356,7 +357,7 @@ describe('unit-capture-openalex', function() {
             }
             // deps.openAlexAuth 優先於 envFile;apiKeyEnv '' 即使金鑰檔有也不帶
             oa.reqs.length = 0
-            const e3 = refetchEnv('refetch-auth', { nDoi: 1, deps: { openAlexAuth: createOpenAlexAuth('direct-key'), envFile: NOKEY } })
+            const e3 = refetchEnv('refetch-auth', { nDoi: 1, deps: { openAlexAuth: createOpenAlexAuth(['direct-key']), envFile: NOKEY } })
             await refetchSources(e3.base, { apply: true })
             assert.equal(oa.reqs[0].params.get('api_key'), 'direct-key')
             oa.reqs.length = 0
@@ -439,7 +440,7 @@ describe('unit-capture-openalex', function() {
             it(`${mode}:網格(雙供應商皆失敗)、領域驗證、回溯 DOI 批次與題名 → 拋出之錯誤、日誌、處置帳、結果、stderr 皆不含金鑰(原形與編碼形)`, async () => {
                 oa.route = spec.dead ? null : (u) => (u.pathname === '/works' ? spec.works(u) : { status: spec.arxiv, type: 'text/plain', body: 'arxiv down' })
                 const base = spec.dead ? DEAD : oa.base
-                const auth = createOpenAlexAuth(KEY, { retryWaitMs: 5 })
+                const auth = createOpenAlexAuth([KEY], { retryWaitMs: 5 })
                 const texts = []
                 const { stderr } = await withStderr(async () => {
                     // ① 網格:OpenAlex 與 arXiv 皆失敗 → 拋錯
@@ -488,7 +489,7 @@ describe('unit-capture-openalex', function() {
 
         for (const keyed of [false, true]) {
             const label = keyed ? '有金鑰' : '未設金鑰'
-            const auth = () => (keyed ? createOpenAlexAuth(KEY, { retryWaitMs: 5 }) : undefined)
+            const auth = () => (keyed ? createOpenAlexAuth([KEY], { retryWaitMs: 5 }) : undefined)
 
             it(`網格(${label}):OpenAlex 429 → 切 arXiv 取得項目;來源標 _fetchedVia:arxiv、_oaQuota:true;警告事件為固定字樣(額度非站台故障);其他失敗(404)無此標記與事件`, async () => {
                 route429()
@@ -599,7 +600,7 @@ describe('unit-capture-openalex', function() {
 
         for (const keyed of [true, false]) {
             const label = keyed ? '有金鑰' : '未設金鑰'
-            const depsOf = () => (keyed ? { openAlexAuth: createOpenAlexAuth(KEY, { retryWaitMs: 5 }) } : { fetchWebByCurl: fastCurl })
+            const depsOf = () => (keyed ? { openAlexAuth: createOpenAlexAuth([KEY], { retryWaitMs: 5 }) } : { fetchWebByCurl: fastCurl })
 
             it(`DOI 批次(${label}):200 篇 4 批,全部 429 → 連續 3 批即停(第 4 批不發請求);quotaStop 列原因與未處理 200 篇;無任何處置帳列、無另存;額度恢復後不加 retry 直接續跑 → 200 篇全數 archived`, async () => {
                 const env = envOf(`s1-${keyed ? 'k' : 'n'}`, { nDoi: 200, deps: depsOf() })

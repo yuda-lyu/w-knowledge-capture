@@ -197,14 +197,19 @@ npm i w-knowledge-capture
 
 ### OpenAlex API 金鑰與 429
 
-OpenAlex 自 2026 年起,**不帶金鑰之請求共用同一網路 IP 每日 US$0.10 額度**(回應 `meta.notice`),超額回 HTTP 429;免費金鑰(不需付款方式)每日 US$1、UTC 00:00 重置([官方文件](https://help.openalex.org/api/authentication/))。本套件連 OpenAlex 的三處(網格來源、領域發現之驗證、原文回溯之 DOI 批次與題名搜尋)共用同一把金鑰:
+OpenAlex 自 2026 年起,**不帶金鑰之請求共用同一網路 IP 每日 US$0.10 額度**(回應 `meta.notice`),超額回 HTTP 429;免費金鑰(不需付款方式)每日 US$1、UTC 00:00 重置([官方文件](https://help.openalex.org/api/authentication/))。本套件連 OpenAlex 的三處(網格來源、領域發現之驗證、原文回溯之 DOI 批次與題名搜尋)共用同一組金鑰:
 
 - **設定只放環境變數名,值放金鑰檔**:`capture.services.openAlex.apiKeyEnv`(預設 `'OPENALEX_API_KEY'`)所指之變數,自 `cfg.envFile`(預設 `<workDir>/.env`,與 AI 金鑰同一檔)讀入,不污染 `process.env`、不入設定與 `info()`。金鑰檔不存在、檔內無該變數或值為空 → **不帶金鑰,請求與加入金鑰支援前逐字相同**;`apiKeyEnv: ''` 明確不使用(即使檔內有該變數)。
+- **值可為逗號分隔之多把**(各把有各自的每日額度),如 `OPENALEX_API_KEY=keyA,keyB`:拆逗號、去前後空白、去空、去重(保序)。**逗號相連之整串不是一把金鑰**——OpenAlex 對無效金鑰回 HTTP 401(`Invalid or missing API key`),不會退回無金鑰額度。
+  - **429 換把**:當前把回 429 → 立即換下一把再送(不等待);**所有可用之把都 429 才算這一次 429**(走上述連續計數),其後才走既有之等待與 `maxRetries`。每一次嘗試是一輪(每把至多一次),故單一請求之呼叫次數上限為 `(maxRetries+1)×把數`。當前把只記在行程內(不落地);多個請求同時收到 429 時只換一把。
+  - **401／403 標記無效**:該把於本行程標記無效、不再使用並換下一把;日誌 WARN 一次,字樣 `OpenAlex 金鑰無效（狀態碼 401）：<變數名> 之第 N／M 把不被接受…`(寫明變數名與狀態碼,不印值)。**全部把都無效**時,請求結果為 HTTP 401／403(`message` 指明金鑰無效、`invalidKey: true`、不標 `quota`、**不計入 429 連續計數**),此後不再送出 OpenAlex 請求,也不默默退回不帶金鑰;須修正金鑰檔並重啟(金鑰於建構時讀入)。已知限制:403 也可能出自非金鑰之原因(如站方暫時封鎖),本套件一律視為金鑰被拒。
+  - 5xx、curl 錯誤:同把重試,不換把;其他 4xx:不重試、不換把。
+  - 單把之行為除 401／403 外與改前相同。`logContract` 的 `CAPTURE_LOG_MUST_SEE` 新增 `OpenAlex 金鑰無效`(巡檢須列出)。
 - **帶法**:`api_key=` 查詢參數(官方:與 `Authorization: Bearer` 標頭「Both work identically」;內建抓取函數 `fetchWebByCurl` 不提供自訂標頭,故用查詢參數)。金鑰不入日誌、處置帳、事件、拋出之錯誤與 stderr:請求結果之訊息一律遮罩(wsemi `maskDiagText`),並自行重試以避開 `fetchWebByCurl` 重試時把網址寫到 stderr。已知限制:`curl` 執行期間金鑰在本機行程清單的命令列可見(標頭亦同)。自訂 `fetchWebByCurl`(各階段 `opt` 注入者)收到含金鑰的網址,其記錄須自行遮罩。
 - **`netGuard` 本機網路探測不帶金鑰**(只看可達,429 亦算可達)。
 - **429 的訊息固定**:`OpenAlex HTTP 429：每日額度用盡或每秒請求超限（每日額度於 UTC 00:00 重置）`(官方:429 有兩因——超出每日額度,或超出每秒上限〔無金鑰 10、有金鑰 30 次/秒〕;後者等一下重試即過)。網格遇 429 仍切 arXiv,另記一行同字樣之警告、來源標 `_oaQuota`、report 的 `detail.gridOaQuota` 計其數;領域驗證遇 429 之 `reason` 為此字樣(暫時性,不冷卻)。
 - **原文回溯連續 3 次 429 即停止 OpenAlex 回溯**(DOI 批次與題名搜尋;各次已含一次重試,每秒上限之 429 不會連續三次):回傳 `quotaStop: { after, unprocessed, byMethod, message }` 列明原因與未處理篇數;遭 429 與尚未發出請求者皆**不入處置帳**,額度恢復後不加 `retry` 直接續跑。arXiv 與網頁回溯不受影響;非連續之 429(中間夾其他結果)不停止,該批／篇照舊記 `fetch-failed`(訊息為上列固定字樣)。
-- 使用端:`refetchSources(deps, …)` 的金鑰自 `deps.envFile` 讀(傳 `flow.info().envFile`),或直接給 `deps.openAlexAuth`(`createOpenAlexAuth(金鑰)` 之產物)。
+- 使用端:`refetchSources(deps, …)` 的金鑰自 `deps.envFile` 讀(傳 `flow.info().envFile`),或直接給 `deps.openAlexAuth`(`createOpenAlexAuth(金鑰陣列, { envName })` 之產物)。**API 變更**:`openAlexApiKeyOf` 回傳金鑰**陣列**(無金鑰為 `[]`,原為字串),`createOpenAlexAuth` 只收陣列(字串等舊形狀拋 `TypeError`,不回顯值),不留相容分支;直接呼叫這兩個匯出者須隨之改。
 
 ---
 
@@ -308,7 +313,7 @@ createKnowledgeCapture({
 | | `candidatesPerCall`／`rejectCooldownDays` | 8／30 | 每次交 AI 判定之候選數上限／驗證未過之冷卻天數 |
 | | `ai` | 見 §8 | 領域發現之席位;`null`＝無席位、不發現(不用 AI 時) |
 | `services` | `openAlex.base`／`openAlex.mailto` | 公開服務／`''` | OpenAlex 端點基底與禮貌池信箱(網格、領域驗證、原文回溯共用;`''` 不帶) |
-| | `openAlex.apiKeyEnv` | `'OPENALEX_API_KEY'` | OpenAlex API 金鑰之**環境變數名**(非金鑰值;值自 `cfg.envFile` 讀);檔內無該變數或值為空 → 不帶金鑰;`''` 明確不使用。見 §2「OpenAlex API 金鑰與 429」 |
+| | `openAlex.apiKeyEnv` | `'OPENALEX_API_KEY'` | OpenAlex API 金鑰之**環境變數名**(非金鑰值;值自 `cfg.envFile` 讀,**可為逗號分隔之多把**,429 換把、401／403 標記該把無效);檔內無該變數或值為空 → 不帶金鑰;`''` 明確不使用。見 §2「OpenAlex API 金鑰與 429」 |
 | | `arxiv.base`／`bingNews.base` | 公開服務 | 測試可指向本機假站台 |
 | `standards` | `minTextChars`／`minFallbackChars` | 300／300 | 正文最少字數(curl 與瀏覽器同一把尺)／feed 摘要退路之最少字數 |
 | | `maxSaneChars` | 300000 | 正文合理上限(逾之判格式雜訊) |

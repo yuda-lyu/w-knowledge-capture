@@ -1,6 +1,6 @@
 {
   "name": "w-knowledge-capture",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "main": "dist/w-knowledge-capture.umd.js",
   "dependencies": {
     "opencc-js": "^1.4.2",
