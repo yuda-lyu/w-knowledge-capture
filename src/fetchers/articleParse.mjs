@@ -183,6 +183,12 @@ export async function fetchArticleLinks(url, options = {}) {
 
 // ─── Feed 探測(自動擴充來源用)─────────────────────────
 
+/** 探測用快速失敗之單次逾時(毫秒;feed 探測與線索擴充之關鍵詞探測同值,擴充子階段據以估計一條線索之探測最壞耗時) */
+export const FEED_PROBE_TIMEOUT_MS = 12_000
+/** 探測用快速失敗之重試次數(含初始共 FEED_PROBE_MAX_RETRIES＋1 次) */
+export const FEED_PROBE_MAX_RETRIES = 1
+/** feed 探測至多試之候選網址數(首頁 link 標籤與常見路徑去重後取前幾個) */
+export const FEED_PROBE_MAX_CANDIDATES = 8
 const COMMON_FEED_PATHS = ['/feed', '/feed/', '/rss', '/rss.xml', '/feed.xml', '/atom.xml', '/index.xml', '/blog/feed']
 
 /**
@@ -221,7 +227,7 @@ export async function discoverFeed(siteUrl) {
     }
 
     const base = normalizeUrl(siteUrl)
-    const r = await fetchWebByCurl(base, { timeoutMs: 12_000, maxRetries: 1 })
+    const r = await fetchWebByCurl(base, { timeoutMs: FEED_PROBE_TIMEOUT_MS, maxRetries: FEED_PROBE_MAX_RETRIES })
     const candidates = []
 
     if (r.status === 'success') {
@@ -246,8 +252,8 @@ export async function discoverFeed(siteUrl) {
         catch { /* 忽略 */ }
     }
 
-    for (const c of [...new Set(candidates)].slice(0, 8)) {
-        const fr = await fetchWebByCurl(c, { timeoutMs: 12_000, maxRetries: 1 })
+    for (const c of [...new Set(candidates)].slice(0, FEED_PROBE_MAX_CANDIDATES)) {
+        const fr = await fetchWebByCurl(c, { timeoutMs: FEED_PROBE_TIMEOUT_MS, maxRetries: FEED_PROBE_MAX_RETRIES })
         if (fr.status === 'success' && looksLikeFeed(fr.html)) {
             const siteTitle = (fr.html.match(/<title>([^<]*)<\/title>/i)?.[1] || '').trim()
             return { ok: true, feedUrl: c, siteTitle }

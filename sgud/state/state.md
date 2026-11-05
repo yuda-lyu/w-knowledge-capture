@@ -1,4 +1,4 @@
-# 現況（w-knowledge-capture）— 2026-11-04
+# 現況（w-knowledge-capture）— 2026-11-05
 
 > 只記現況，不寫過程（過程在 `../exp/`）。接續工作先讀本檔；完成一項功能或結束一輪工作即更新。規則見 `../rule/rulebook.md`，兩者比對即知尚未做到者。
 > 路徑一律為 repo 相對路徑：原始碼 `src/`、測試 `test/`、工具 `toolg/`、範例 `g.mjs`。
@@ -24,6 +24,7 @@
 
 | 日期 | 項 | 結果 |
 |---|---|---|
+| 2026-11-05 | 耗時子階段扣保留(CAP-17)落地後全套 `npm test`(新增 `unit-capture-reserve`、`-gate`、`-guard` 三檔 64 案;`README` 與 `sgud` 同步);修前對現況碼之新階段測試 26 ✗／10 ✓(10 ✓＝保留未給之行為不變與不誤報之守門案)、守護測試對現況碼 3 ✗；對修正處植入 66 種變異,補測後全數擊殺(含獨立審查採納 6 點後補之案);保留未給時 report 欄集不變、`ctx.remainingMs` 探詢次數不變(以案釘住) | **1206 ✓、0 ✗、5 pending**(前次 1142;增 64＝新檔);未呼叫任何模型、未連網;下游套件全套未跑(其經 `node_modules` 取已安裝之本套件版本,非本工作樹) |
 | 2026-11-04 | 預設受測名單之免費判準排除走付費訂閱額度者（`isSubscriptionEntry`；w-dispatch-ai 1.0.74 加入之 `ocgo:` 條目帶 free 字樣致 `unit-bench` 紅 1）後全套 `npm test`（`unit-bench` 增 1 案）；變異 7 種（判準不排除、各訊號單獨去除 3、provider 精確比對、過度排除匿名池、名單少一條＝目錄新增匿名免費條目）皆被擊殺 | **1142 ✓、0 ✗、5 pending**（前次 1141；增 1＝新案）；修前 `unit-bench` 紅 1（推得者比名單多 `ocgo:opencode-go/beam-free`、`iceman-contributor-free`）；`DEFAULT_FREE_MODELS` 8 條內容 0 變動，皆在 1.0.74 目錄且內建調度層無金鑰可解析；未呼叫任何模型 |
 | 2026-11-03 | OpenAlex 金鑰與 429（CAP-16）落地後全套 `npm test`（新增 `test/unit-capture-openalex.test.mjs` 41 案；`unit-settings`／`unit-assembly`／`unit-fetchers` 各依刻意改變之行為更新）；變異（連續計數不歸零、失敗訊息不遮罩、不帶金鑰判定失效、遭 429 者仍入帳）各被新測試擊殺；修前 `src` 與現行 `src` 以同一組情境（未設金鑰、無 429）比對請求網址、處置帳、結果、日誌逐字相同；UMD 於暫存夾編譯後 `require` 可載入且含新匯出 | **1141 ✓、0 ✗、5 pending**（前次 1100；增 41＝新檔）；全 429 情境：修前 8 個請求全打、106 列 `fetch-failed`，修後 3 個請求即停、0 列、未處理 106 篇、續跑 106 篇 archived |
 | 2026-11-02 | 發布範圍對齊（刪 `.npmignore`、`unit-package` ⑤ 改判實際打包清單）、bench 用法字串改 `node src/bench/cli.mjs`（`unit-bench*` 釘住）、註解更正（宿主時期措辭、`articles.perRun` 容量式補 `browser.perRun`）後全套 `npm test`（連跑三次） | **1100 ✓、0 ✗、5 pending**（三次同數，與改動前同數）；`node src/bench/cli.mjs --help` 首句印 `node src/bench/cli.mjs`；`npm pack --dry-run` 279 檔（含 `sgud/` 16、`test/tools/` 10，`CLAUDE*.md` 0） |
@@ -49,11 +50,14 @@
 | 健全閘偵測器陣列注入（`capture.standards.detectors`；內建 `GATE_DETECTORS_DEFAULT` 對外；自訂者帶 `module`，瀏覽器子行程依規格重建）；站台 adapter 帶 `module` 者亦達瀏覽器層 | 落地（2026-10-31） | CAPX-10；`unit-capture-browser`、`unit-settings`、`unit-assembly` |
 | CS5 來源健康存量全掃（記錄形狀、連敗／連空／零產出與寫入同一判定 `sourceStopReasonOf`） | 落地（2026-10-31） | CAPX-11；`unit-capture-policies`、`unit-capture-standards` |
 | OpenAlex API 金鑰與 429（`src/fetchers/openAlexNet.mjs`）：`capture.services.openAlex.apiKeyEnv`（預設 `OPENALEX_API_KEY`）自 `cfg.envFile` 讀值；網格、領域驗證、原文回溯 DOI 批次與題名四處帶 `api_key`（未設則不帶、請求逐字同前）；金鑰不入日誌／處置帳／事件／錯誤／stderr；429 固定訊息；原文回溯連續 3 次 429 即停止 OpenAlex 回溯（`quotaStop`，未處理者不入處置帳、可續跑）；網格 429 切 arXiv 並記事件（`_oaQuota`、`detail.gridOaQuota`） | 落地（2026-11-03） | CAP-16；`unit-capture-openalex`（另 `unit-settings`、`unit-assembly`、`unit-fetchers`） |
+| 耗時子階段扣「保留給後段之時間」（`src/core/util/stageReserve.mjs`）：輪抓、補全文（含瀏覽器佇列、同輪瀏覽器升級、`timeoutMsOf`、`opt.pick`）、擴充、文件維護、領域發現（含逐候選驗證；25 分鐘下限並存）之開工前與每次取件前須「整輪剩餘 − 保留 ≥ 一次作業之估計」；保留取 `opt.reserveMs`（明給優先）或每輪依賴 `deps.reserveMs`，皆未給為 0（行為與無此機制前相同）；不足即少做、未處理者原樣留佇列，`detail.reserveDeferred` 記件數（領域發現為 `true`，僅確因保留延後時才有）；`src/` 不得直接問整輪預算（守護測試） | 落地（2026-11-05） | CAP-17；`unit-capture-reserve`、`unit-capture-reserve-gate`、`unit-capture-reserve-guard` |
 | 免費 AI 能力評分（`src/bench/`）；預設受測名單 `DEFAULT_FREE_MODELS` 之「免費」判準 `freeModelsOf`＝名稱／定價判免費，排除決策模型與走付費訂閱額度者（`isSubscriptionEntry`：`ocgo:` 前綴、provider `opencode-go*`、envVar `OPENCODE_GO_KEYS` 任一命中；2026-11-04 起，w-dispatch-ai 1.0.74 目錄之 `ocgo:opencode-go/beam-free`、`iceman-contributor-free` 帶 free 字樣但須 Go 訂閱金鑰，不入名單） | 落地；名單 8 條（與 1.0.74 目錄推得者一致）；`模型評比.csv` 2026-10-06 由第一輪結果轉出 | GEN-15／16、CAPX-07；`unit-bench*` |
 | 語言設定 `lang` | 落地（預設 zh-TW，與出現前逐字同） | GEN-20；`unit-core-locale` |
 | 自有套件佈局、編譯與文件（`src/`、`toolg/`、`dist` UMD、JSDoc、`g.mjs`、README Example） | 落地（2026-11-01）；`dist/`、`docs/` 由 `script.txt` 流程於發布時產製 | 規則帳本鐵則 9、10；`unit-package` ①⑤ |
 
 ## 已知缺口與待辦
+
+- **扣保留（CAP-17）之未做與限制**：①文件維護之瘦身（`mwSlim`）不逐項判時間（現版即如此）；穩態每輪僅清本輪新增之終態件，首次啟用原文另存或積壓大量終態件時會一次做完、吃進保留——待觀察，必要時於 `slimTerminalDocs` 增選配之 `shouldStop`（動 `src/core/stores/docPolicy.mjs`）；②領域發現之 AI 呼叫若被「剩餘 − 保留」之預算中途切斷，同其他 AI 失敗：記 `discoverFailAt`、`min(發現間隔, 3 時)` 後重試；開工門檻只要求可用 ≥ 席位首家逾時（不預留首次遞補），未改；③保留 ≥ 整輪預算時五段皆不開工、每輪僅留 INFO，無啟動期警告（組裝者設定問題）；④領域發現被保留中途停止驗證時，已驗證者落帳、其餘候選待下一窗口（發現窗口已推進，約一個發現間隔）；⑤`src/ops/refetchSources.mjs`（維運入口）無時間判斷，只受 `opt.limit` 限制；⑥一次作業之估計取「該段既有之逾時之最壞耗時」，調度層內建條目表自帶之 AI 逾時看不到（以 `ai.timeoutMs` 計）——要精準請於 `ai.providerTimeouts` 明列；⑦實機驗證（組裝者實注入 `deps.reserveMs` 連跑多輪）屬使用端，本套件僅以虛擬時鐘之單元測試驗證。
 
 - **OpenAlex 金鑰與 429（CAP-16）之未做與限制**：①啟動時查 `GET {base}/rate-limit`（帶金鑰）寫入 `startupWarnings`：未做（該端點不帶金鑰回 401）；②金鑰以 `api_key=` 查詢參數帶（`fetchWebByCurl` 無自訂標頭）——`curl` 執行期間金鑰在本機行程清單之命令列可見；待 w-fetch-web 增 `headers` 與 `useShowLog` 選項後可改標頭並簡化 `openAlexGet` 之自行重試；③領域驗證（逐候選一次請求）遇 429 只回固定 `reason`（暫時性、不冷卻），不做連續停止；④`refetchSources` 之金鑰須由呼叫端傳 `deps.envFile`（`flow.info().envFile`）或 `deps.openAlexAuth`，未傳則不帶金鑰；⑤`createCaptureRuntime` 之 `opt.envFile` 由本套件 `createKnowledgeCapture` 傳入，下游總組裝若自行呼叫須自傳才帶金鑰（未傳＝不帶，行為同前）；⑥新增之 WARN 字樣含「HTTP 429」，已落在 `CAPTURE_LOG_KNOWN` 之 `HTTP (…|429)`，巡檢不當未知警告（要升為須見項需另入 `CAPTURE_LOG_MUST_SEE`）。
 - **免費 AI 評比未涵蓋新席位**：`DEFAULT_FREE_MODELS`（`src/bench/benchKit.mjs`）已隨 w-dispatch-ai 目錄對齊，但新免費池之 id 尚無評比（`模型評比.csv` 為 2026-10-06 第一輪結果）；需要時以 bench CLI 重跑評比與題組。訂閱類條目（`ocgo:`）不在預設名單，要評比須以 `--models` 明列其 id 並備妥已訂閱之金鑰（`OPENCODE_GO_KEYS`；本套件未實測）。

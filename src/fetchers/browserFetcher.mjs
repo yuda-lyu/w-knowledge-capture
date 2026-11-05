@@ -168,7 +168,7 @@ export async function runBrowserCli(url, steps, opt = {}) {
  *
  * @param {Object} cap 輸入 settings.capture(取 browser.perRun、browser.maxMs、browser.navTimeoutMs)
  * @param {Object} [opt={}] 輸入設定物件
- * @param {Function} [opt.remainingMs] 輸入整輪剩餘毫秒數之函數(budgetOf(ctx).remainingMs)，未給視為無限
+ * @param {Function} [opt.remainingMs] 輸入本段可用之剩餘毫秒數之函數(補全文子階段傳扣掉保留給後段之時間後者;未保留即整輪剩餘)，未給視為無限
  * @param {Function} [opt.now=Date.now] 輸入時鐘(測試注入)
  * @returns {Object} 回傳狀態物件 { canStart(steps), take(), account(r), remainingQuota(), timeUp(), broken:Set, stats }
  * @example

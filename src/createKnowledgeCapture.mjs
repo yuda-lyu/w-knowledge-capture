@@ -18,7 +18,8 @@
 //   事件日誌、集合之開關、每輪之序列與 info() 之共同欄,為各總組裝共用之一份(下游套件之總組裝同取之);本檔只放抓取專屬者
 //   (抓取之鍵集、captureRuntime、抓取物件、每輪依賴、抓取之符合度掃描)與檢核之順序。
 // 【時間預算單一來源】整輪軟性截止 deadlineMs、執行鎖陳舊期限 lockStaleMs 與各路徑皆由 core/runtime 之 resolveRuntime 一次解析
-//   (排程上限 cfg.scheduleLimitMin;cfg 明給者優先);管線與 info() 同取此份。各段經 core/runnerPackage 之 budgetOf(ctx)消費同一份預算。
+//   (排程上限 cfg.scheduleLimitMin;cfg 明給者優先);管線與 info() 同取此份。各耗時段經 core/util/stageReserve 之守門閘消費同一份預算,
+//   並扣掉組裝者保留給後段之時間(各段 opt.reserveMs,未給取每輪依賴 deps.reserveMs;皆未給為 0＝只守整輪逾期):時間不足是少做幾件、未處理者留待下輪,不縮容量。
 // 【開工標記】每輪開工先寫 log/<day>/<stamp>-run.start.json(本輪上限之宣告):被砍的輪次沒有 run.json,外部巡檢逐輪判界靠它。
 // 【啟動期檢核】設定(各段 schema)、cfg 各鍵之形狀、資料、提示詞、子階段、AI 席位(use／fallback 全部可解析)皆於建構期驗——
 //   打錯之鍵、缺金鑰或 id 打錯要在啟動期爆,不是靜默沿用預設或跑到第一次呼叫才被子階段當單次失敗吞掉。

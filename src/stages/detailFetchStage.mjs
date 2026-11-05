@@ -22,13 +22,19 @@
 //   會在站台維護 2 小時內判死整批。
 // 【判死記一級類別】dead 寫 deadClass(分流類別)、httpCode、deadBy(實際抓取器;存量重判為 health);內容類判死(付費牆、找不到、軟 404、
 //   錯頁)另存判定依據並記閘版本 healthV(閘改版後依版重判,docMaintain)。
+// 【時間:扣保留給後段之時間(core/util/stageReserve)】opt.reserveMs 明給者優先、未給取每輪依賴 ctx.deps.reserveMs、皆未給為 0(由組裝者注入,本段不讀他工作
+//   之設定)。保留 > 0 時:補全文佇列每次取件前須「整輪剩餘 − 保留 ≥ 一次抓取之估計(各待抓文件所解析之抓取器之最壞耗時:逾時 × 嘗試次數 ＋ 重試等待,
+//   至少 capture.articles.timeoutMs)」、瀏覽器佇列須「≥ 最長階梯逾時＋60 秒」、自訂取件(opt.pick)於可用已不足一次抓取時略過,
+//   同輪瀏覽器升級(round.canStart)與逐篇逾時(timeoutMsOf 之 remainingMs)亦以扣保留後之剩餘為準;不足即少抓,未取件者仍為 new、不記 tries(detail.reserveDeferred
+//   記件數)。保留為 0 時只守整輪逾期(行為不變)。時間不足是少做,不是縮容量(perRun 不變)。
 
 import isobj from 'wsemi/src/isobj.mjs'
 import { attemptFetch } from 'w-data-pipeline/src/fetch/attemptFetch.mjs'
 import { normalizeContent } from 'w-data-pipeline/src/fetch/itemContract.mjs'
 import { isTimeoutError } from 'w-data-pipeline/src/core/errors.mjs'
 import { defineMw, defineFirstMw, applyTaps, makeMsg, count, runChainOverMsgs, stdReport, stageFields } from '../core/kernel.mjs'
-import { budgetOf, oneline } from '../core/runnerPackage.mjs'
+import { oneline } from '../core/runnerPackage.mjs'
+import { stageReserveFnOf, stageReserveGateOf, stageStepMsOf, fetchStepMsOf, reserveNoteOf } from '../core/util/stageReserve.mjs'
 import { byRetryTierFifo, backoffUntil, docQueuesOf, docQueueStatsOf } from '../core/stores/docPolicy.mjs'
 import { archiveDocText } from '../core/stores/docTexts.mjs'
 import { defaultToLinkedRecord } from '../core/util/records.mjs'
@@ -165,7 +171,8 @@ export const mwRouteFetcher = () => defineFirstMw({
  *
  * @param {Object} [opt={}] 輸入子階段 opts,非物件則回退為 {}
  * @param {Function} [opt.timeoutMsOf] 輸入逐篇逾時 (doc, { remainingMs, left, index }) => 毫秒(回非正整數即用抓取器或設定之逾時):
- *   單輪流程依整輪剩餘時間逐篇分配逾時(left＝本輪排在本篇之後之篇數、index＝本篇序;皆以本輪取件時之序計)
+ *   單輪流程依本段可用之剩餘時間逐篇分配逾時(remainingMs＝整輪剩餘扣掉保留給後段之時間,未給保留即整輪剩餘;left＝本輪排在本篇之後之篇數、
+ *   index＝本篇序;皆以本輪取件時之序計)
  * @returns {Object} 回傳 defineMw 產物
  * @throws {Error} 無可用內文抓取器(kind 未指定或未註冊)時拋出
  * @example
@@ -200,7 +207,9 @@ export const mwFetchDetail = (opt = {}) => defineMw({
         try {
             let timeoutMs = fetcher.timeoutMs || settings.capture.articles.timeoutMs || 0
             if (timeoutOf) {
-                const own = timeoutOf(doc, { remainingMs: budgetOf(ctx).remainingMs(), left: Number(doc._left) || 0, index: Number(doc._index) || 0 })
+                // 剩餘時間:本段(扣保留後;由 stageDetailFetch 以 _stageRemainingMs 注入);獨立呼叫本環而無注入者為整輪剩餘(保留 0 之閘,不扣)
+                const remainingMs = typeof doc._stageRemainingMs === 'function' ? doc._stageRemainingMs() : stageReserveGateOf(ctx, 0).remainingMs()
+                const own = timeoutOf(doc, { remainingMs, left: Number(doc._left) || 0, index: Number(doc._index) || 0 })
                 if (Number.isInteger(own) && own > 0) timeoutMs = own
             }
             const raw = await attemptFetch(fetcher, doc, ctx, timeoutMs)
@@ -761,8 +770,12 @@ export const mwPersistOutcome = () => defineMw({
  * @param {Object} [opt={}] 輸入子階段設定,非物件則回退為 {};可含 chain, tap, patterns, toLinkedRecord, linksPerDoc, articlesPerRun(每輪補全文篇數,預設 capture.articles.perRun), runCli,
  *   pick(本輪取件 (candidates, { ctx, quota, queues }) => 文件陣列:候選為補全文佇列依現行排序之全部,回傳者截至 quota、須為候選之成員——零件庫用法之
  *   「選完才抓」,如使用端以標題 AI 選文),timeoutMsOf(逐篇逾時,見 mwFetchDetail);階段契約欄位 enabled／when 等(core/kernel stageFields)
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數(每輪求值):> 0 時補全文佇列每次取件前須「整輪剩餘 − 保留 ≥ 一次抓取之估計
+ *   (各待抓文件所解析之抓取器之最壞耗時,至少 capture.articles.timeoutMs)」、瀏覽器佇列須「≥ 最長階梯逾時＋60 秒」,opt.pick 於可用已不足一次抓取時略過;不足即少抓、未取件者仍為 new 不記 tries(detail.reserveDeferred 記件數);同輪瀏覽器升級與
+ *   timeoutMsOf 之 remainingMs 亦扣保留。由組裝者注入(如後段工作之最低時間),本段不讀他工作之設定。未給(或 null)則取每輪依賴之 ctx.deps.reserveMs,皆未給為 0
+ *   (只守整輪逾期,行為不變);明給 0 優先於依賴
  * @returns {Object} 回傳階段物件 { name:'detailFetch', run(ctx) }
- * @throws {Error} run 時 opt.pick 回傳非陣列(須回傳候選之子集陣列)時拋出
+ * @throws {Error} run 時 opt.pick 回傳非陣列(須回傳候選之子集陣列)時拋出;opt.reserveMs 非非負毫秒數亦非函數時建構即拋出(deps.reserveMs 不合、函數回傳不合者於該輪開工時拋出)
  * @example
  * // W 為 w-data-pipeline 之預設匯出(import W from 'w-data-pipeline/src/WDataPipeline.mjs')
  * let rows = [{ id: 'd1', status: 'new', kind: 'web', title: '黑洞光譜', url: 'https://example.com/post/1', fetchTries: 0 }]
@@ -794,6 +807,8 @@ export function stageDetailFetch(opt = {}) {
         opt = {}
     }
 
+    // 保留時間:opt 明給者優先(建構即檢核);未給者每輪取 ctx.deps.reserveMs(組裝者之依賴);取值規則各段同一份(core/util/stageReserve)
+    const reserveFn = stageReserveFnOf(opt, 'stageDetailFetch')
     const chain = opt.chain || applyTaps(
         [mwTitleSkip(opt), mwRouteFetcher(opt), mwFetchDetail(opt), mwContentGate(opt), mwBrowserRetry(opt), mwTranscodeLinks(opt), mwFeedFallback(opt), mwPersistOutcome(opt)],
         opt.tap, { chainName: 'capture.detailFetch' },
@@ -801,9 +816,12 @@ export function stageDetailFetch(opt = {}) {
     return {
         ...stageFields(opt, { name: 'detailFetch' }),
         run: async (ctx) => {
+            const keepMs = reserveFn(ctx) // 本輪之保留(不合法即於此拋出,不先動任何文件)
             const { stores, settings } = ctx.deps
             const cap = settings.capture
-            const budget = budgetOf(ctx)
+            // 扣保留(core/util/stageReserve):保留 > 0 時補全文佇列每次取件前須「整輪剩餘 − 保留 ≥ 一次抓取之估計」(估計見下 stepOfDocs);
+            //   保留為 0 時只守整輪逾期(同現版)
+            const reserveGate = stageReserveGateOf(ctx, keepMs)
             // 本機網路不通:本段略過(不發請求、不計任何文件之失敗;core/util/netGuard)。detail 須帶齊抓取物件固定格式摘要所讀之計數
             //   (素材／轉錄／放棄、瀏覽器試成延後;缺 aggregated 會使該摘要印出「轉錄 undefined」);
             //   佇列量(queued 等)不給:讀取端讀不到即不納入佇列消化之判定
@@ -824,14 +842,30 @@ export function stageDetailFetch(opt = {}) {
             const order = byRetryTierFifo('fetchTries', { plus: 'fetchChainFails' })
             const ordered = mainQ.sort(order)
             let pending = ordered.slice(0, quota)
-            // 自訂取件(opt.pick):使用端決定本輪抓哪些(回傳截至 quota、只認候選之成員;非陣列即呼叫端錯誤)
-            if (typeof opt.pick === 'function') {
+            // 一次抓取之估計(開工門檻):各待抓文件所解析之抓取器之最壞耗時(逾時 × 嘗試次數 ＋ 重試等待;自宣告者優先,否則 capture.articles.timeoutMs)之最大者,
+            //   至少 capture.articles.timeoutMs;逐篇逾時 timeoutMsOf 另行分配者由呼叫端依傳入之扣保留後剩餘自控。保留為 0 時不解析抓取器(只守整輪逾期,同現版)
+            const stepOfDoc = (d) => {
+                try {
+                    return fetchStepMsOf(ctx.deps.registry?.resolve?.('detail', { ...d, fetcher: d.fetcher || undefined }, ctx), cap.articles.timeoutMs)
+                }
+                catch {
+                    return 0 // 解析不到抓取器者(逐篇鏈會拋並記鏈異常)不影響估計
+                }
+            }
+            const stepOfDocs = (docs) => stageStepMsOf(cap.articles.timeoutMs, ...(reserveGate.keep > 0 ? docs.map(stepOfDoc) : []))
+            // 自訂取件(opt.pick):使用端決定本輪抓哪些(回傳截至 quota、只認候選之成員;非陣列即呼叫端錯誤)。
+            //   保留 > 0 且扣保留後之可用已不足一次抓取者,略過取件(pick 可能含 AI 呼叫,白耗額度與時間而一篇也抓不成);以預設排序之前 quota 件計其留下輪
+            if (typeof opt.pick === 'function' && reserveGate.cut(stepOfDocs(pending))) {
+                ctx.log.info(`補全文：${reserveNoteOf(reserveGate, stepOfDocs(pending))}，略過自訂取件`)
+            }
+            else if (typeof opt.pick === 'function') {
                 const picked = await opt.pick(ordered, { ctx, quota, queues: q })
                 if (!Array.isArray(picked)) throw new Error('detailFetch 之 opt.pick 須回傳文件陣列（候選之子集）')
                 const byIdQ = new Map(ordered.map((d) => [d.id, d]))
                 pending = [...new Set(picked.map((d) => byIdQ.get(d?.id)).filter(Boolean))].slice(0, quota)
                 ctx.log.info(`補全文：自訂取件 ${pending.length} 篇（候選 ${ordered.length}、配額 ${quota}）`)
             }
+            const stepMs = stepOfDocs(pending)
             // 積壓可見性:佇列長度、未試/重試/退避組成與最舊者天數每輪進日誌(外部監控據此告警排隊過長;沒有時間型丟棄,只告警不丟)
             const qs = docQueueStatsOf(queue, { nowMs, browserOn })
             const age = qs.main
@@ -840,9 +874,10 @@ export function stageDetailFetch(opt = {}) {
             ctx.log.info(`待抓內文 ${age.count} 篇（未試 ${qs.untried.count}、重試 ${qs.retry.count}、退避中 ${backoff}、最舊 ${age.oldestDays} 天），本輪取 ${pending.length}；瀏覽器佇列 ${bAge.count} 篇（最舊 ${bAge.oldestDays ?? '-'} 天）`)
             // 本輪共用之健全閘與瀏覽器狀態(配額／軟性時間上限／方法斷路;見 fetchers/browserFetcher)
             const gate = createContentGate(cap.standards)
-            const round = browserOn ? createBrowserRound(cap, { remainingMs: budget.remainingMs }) : null
-            // 閘之版本(CS1a):落 raw 時記 healthV;每輪算一次
-            const shared = { _gate: gate, _browserRound: round, _healthV: gateVersionOf(cap.standards) }
+            //   瀏覽器一輪狀態之整輪剩餘(同輪升級 canStart 之依據)以扣保留後者為準;capture.browser.maxMs 軟性時間上限之語意不變
+            const round = browserOn ? createBrowserRound(cap, { remainingMs: reserveGate.remainingMs }) : null
+            // 閘之版本(CS1a):落 raw 時記 healthV;每輪算一次。_stageRemainingMs:本段可用剩餘(扣保留;mwFetchDetail 之 timeoutMsOf 取用)
+            const shared = { _gate: gate, _browserRound: round, _healthV: gateVersionOf(cap.standards), _stageRemainingMs: reserveGate.remainingMs }
             // 容量自洽警告(resolveSettings.warnings)由總組裝於每輪開頭記入,不在此重複記
             // 時間預算守門:逾整輪軟性截止即不再取件(未抓者仍為 new,下輪 FIFO 接手);本機網路轉不通(落帳前確認)亦停
             const netDown = () => ctx.deps.netGuard?.isDown?.() === true
@@ -855,29 +890,54 @@ export function stageDetailFetch(opt = {}) {
             }
             // _index／_left:本篇序與其後篇數(逐篇逾時 timeoutMsOf 之依據;取件時之序)
             const msgs = pending.map((d, i) => makeMsg('doc', { ...d, ...shared, _index: i, _left: pending.length - i - 1 }, { stage: 'detailFetch' }))
-            const r = await runChainOverMsgs({ chain, ctx, msgs, chainName: 'capture.detailFetch', shouldStop: () => budget.shouldStop() || netDown(), onFail })
+            // 補全文佇列之守門:逾整輪預算、本機網路不通、或(保留 > 0)扣保留後之可用不足一次抓取之估計;因保留而停者記 mainCut(未取件者仍為 new)
+            let mainCut = false
+            const mainStop = () => {
+                if (reserveGate.expired() || netDown()) return true
+                if (reserveGate.cut(stepMs)) {
+                    mainCut = true
+                    return true
+                }
+                return false
+            }
+            const r = await runChainOverMsgs({ chain, ctx, msgs, chainName: 'capture.detailFetch', shouldStop: mainStop, onFail })
 
             // 瀏覽器佇列:以補全文用剩之配額消化;配額、軟性時間、方法全斷或整輪截止即停(未取件者原狀留下輪,不落帳)
             let rb = { stats: {}, fails: 0, left: 0, errors: [] }
             let browserPicked = 0
+            let browserCut = false // 瀏覽器佇列是否因保留而停(整輪剩餘本身足夠、扣保留後不足最長階梯逾時時才成立)
+            let worstMs = 0 // 瀏覽器佇列之一次作業之估計(開了瀏覽器佇列才求值)
             const allBroken = () => round && ['playwright', 'camofox'].filter((mth) => mth !== 'camofox' || cap.browser.camofox.enabled).every((mth) => round.broken.has(mth))
             if (round && browserQ.length && round.remainingQuota() > 0 && !round.timeUp() && !allBroken() && !netDown()) {
                 const picks = browserQ.sort(order).slice(0, round.remainingQuota())
                 browserPicked = picks.length
-                // 逐篇開工守門:整輪剩餘須 ≥ 最長跨輪階梯之子行程硬逾時＋60 秒(進行中之一篇不可被整輪截止腰斬於子行程外)
-                const worstMs = ladderTimeoutMs(['curl', 'camofox', 'playwright'], cap) + 60_000
+                // 逐篇開工守門:整輪剩餘(扣保留後)須 ≥ 最長跨輪階梯之子行程硬逾時＋60 秒(進行中之一篇不可被整輪截止腰斬於子行程外,亦不吃進保留)。
+                //   此門檻保留為 0 時亦在(現版即有);歸因為保留者:整輪剩餘本身 ≥ 門檻、扣保留後才不足
+                worstMs = ladderTimeoutMs(['curl', 'camofox', 'playwright'], cap) + 60_000
                 const bmsgs = picks.map((d) => makeMsg('doc', { ...d, ...shared }, { stage: 'detailFetch' }))
+                const browserStop = () => {
+                    if (reserveGate.expired() || round.timeUp() || round.remainingQuota() === 0 || allBroken() || netDown()) return true
+                    if (reserveGate.remainingMs() < worstMs) {
+                        if (reserveGate.keep > 0 && reserveGate.roundMs() >= worstMs) browserCut = true
+                        return true
+                    }
+                    return false
+                }
                 rb = await runChainOverMsgs({
                     chain,
                     ctx,
                     msgs: bmsgs,
                     chainName: 'capture.detailFetch',
-                    shouldStop: () => budget.shouldStop() || round.timeUp() || round.remainingQuota() === 0 || allBroken() || budget.remainingMs() < worstMs || netDown(),
+                    shouldStop: browserStop,
                     onFail,
                 })
             }
             for (const e of [...r.errors, ...rb.errors]) ctx.log.warn(`detailFetch 逐篇異常：${e}`)
-            if (r.left > 0) ctx.log.warn(`補全文：逾時間預算，${r.left} 篇未取件留下輪`)
+            // 因保留而延後:INFO 寫明(不是逾整輪預算,不印「逾時間預算」之 WARN);文件仍為 new、不記 tries,下輪照常取
+            const reserveDeferred = (mainCut ? r.left : 0) + (browserCut ? rb.left : 0)
+            if (mainCut && r.left > 0) ctx.log.info(`補全文：${reserveNoteOf(reserveGate, stepMs)}，${r.left} 篇未取件留下輪`)
+            else if (r.left > 0) ctx.log.warn(`補全文：逾時間預算，${r.left} 篇未取件留下輪`)
+            if (browserCut && rb.left > 0) ctx.log.info(`補全文(瀏覽器佇列)：${reserveNoteOf(reserveGate, worstMs)}，${rb.left} 篇未取件留下輪`)
             const sum = (k) => (r.stats[k] || 0) + (rb.stats[k] || 0)
             const bs = round?.stats || { tried: 0, ok: 0, envFail: 0, final: 0, pageFail: 0 }
             const gateCounts = {}
@@ -900,6 +960,8 @@ export function stageDetailFetch(opt = {}) {
                     sameContent: sum('sameContent'), // 檢定標準 CS10:與既有文件同一內容而記 skip(轉錄入庫、轉址代稱、段落重疊——正文與 feed 退路)
                     linkFiltered, // 轉錄連結濾除之逐因計數(無效網址、非 http、同站、分享按鈕、學術索引／平台工具、連結文字過短、逾每篇上限)
                     left: r.left,
+                    // 因保留給後段之時間而留下輪之件數(補全文佇列＋瀏覽器佇列;僅確因保留延後時才有此欄,report 欄集於平時不變)
+                    ...(reserveDeferred > 0 ? { reserveDeferred } : {}),
                     queued: age.count,
                     queuedBackoff: backoff, // 暫時性失敗之退避中(retryAt 未到;不取、不丟)
                     queuedOldestDays: age.oldestDays,

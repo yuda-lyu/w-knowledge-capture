@@ -12,18 +12,35 @@
 //   同輪連 2 篇即本輪停探關鍵詞(其餘原狀留下輪);③逐線索鏈異常 → chainFails、退避,不加 tries(與線索本身之失敗分帳);
 //   ④線索本身之失敗(站台無 feed、首頁抓不到)照計 tries 並退避(retryAt;6 時、24 時),達上限 failed;
 //   ⑤failed 依來源之冷卻參數重探(reprobeFailedClues),不永久封存。
+// 【時間:扣保留給後段之時間(core/util/stageReserve)】opt.reserveMs 明給者優先、未給取每輪依賴 ctx.deps.reserveMs、皆未給為 0(由組裝者注入,本段不讀他工作
+//   之設定)。保留 > 0 時每筆線索開工前須「整輪剩餘 − 保留 ≥ 本輪各線索之探測最壞耗時之最大者(keyword／topic＝兩個探測端點各一次請求;site＝首頁一次＋至多 8 個候選
+//   feed 網址各一次;每次請求＝快速失敗之單次逾時 × 嘗試次數 ＋ 重試退避)」,不足即少探,未取件之線索仍為 pending、不記次、不退避
+//   (detail.reserveDeferred 記筆數)。保留為 0 時只守整輪逾期(行為不變)。時間不足是少做,不是縮容量(perRun 不變)。
 
 import isobj from 'wsemi/src/isobj.mjs'
 import fetchRSS from 'w-dwdata-hub/src/fetchRSS.mjs'
 import { defineMw, defineFirstMw, applyTaps, makeMsg, count, runChainOverMsgs, stdReport, stageFields } from '../core/kernel.mjs'
-import { budgetOf, oneline } from '../core/runnerPackage.mjs'
+import { oneline } from '../core/runnerPackage.mjs'
+import { stageReserveFnOf, stageReserveGateOf, stageStepMsOf, reserveNoteOf } from '../core/util/stageReserve.mjs'
 import { pickClues, settleClue, deferClue, reprobeFailedClues, enforceFrontierCap } from '../core/stores/frontierPolicy.mjs'
 import { netDownAtStart, netDownNow } from '../core/util/netGuard.mjs'
 import { ingestFeedItems } from '../stores/ingestGate.mjs'
-import { discoverFeed } from '../fetchers/articleParse.mjs'
+import { discoverFeed, FEED_PROBE_TIMEOUT_MS, FEED_PROBE_MAX_RETRIES, FEED_PROBE_MAX_CANDIDATES } from '../fetchers/articleParse.mjs'
 import { bingNewsSearchUrl, arxivSearchUrl } from '../fetchers/endpoints.mjs'
 import { sourceId, autoSourceOrigin } from '../core/util/records.mjs'
 import { normalizeUrl } from '../core/util/web.mjs'
+
+/** 一次探測請求之最壞耗時(毫秒):快速失敗之單次逾時 × 嘗試次數(含初始共 maxRetries＋1 次),加重試之間之線性退避(w-fetch-web 之 curl 抓取:第 k 次重試前等 3k 秒) */
+const PROBE_REQUEST_MS = (FEED_PROBE_MAX_RETRIES + 1) * FEED_PROBE_TIMEOUT_MS + 3_000 * (FEED_PROBE_MAX_RETRIES * (FEED_PROBE_MAX_RETRIES + 1) / 2)
+
+/**
+ * 一條線索之探測最壞耗時(開工門檻之估計):site 線索＝首頁一次＋至多 FEED_PROBE_MAX_CANDIDATES 個候選 feed 網址各一次(discoverFeed,逐次循序);
+ *   其餘(keyword／topic 與 tap 加入之自訂探測)＝至多兩個探測端點(Bing News＋arXiv)各一次。皆以 PROBE_REQUEST_MS 計
+ *
+ * @param {Object} clue 輸入線索記錄(取 type)
+ * @returns {Number} 回傳毫秒數
+ */
+const clueStepMs = (clue) => (clue?.type === 'site' ? (1 + FEED_PROBE_MAX_CANDIDATES) * PROBE_REQUEST_MS : 2 * PROBE_REQUEST_MS)
 
 /**
  * 探測衍生來源的記錄組裝(tier 3:優先權低於人工驗證過的種子)
@@ -140,7 +157,7 @@ export async function probeSearchEndpoints(clue, ctx, opt = {}) {
         let items = []
         try {
             // 探測用快速失敗設定:一次性試抓,用預設重試預算會讓一輪探測吃掉近兩小時
-            items = await fetchRSS(src.url, { method: 'curl', withContent: true, maxRetries: 1, timeout: 12_000, useShowLog: false })
+            items = await fetchRSS(src.url, { method: 'curl', withContent: true, maxRetries: FEED_PROBE_MAX_RETRIES, timeout: FEED_PROBE_TIMEOUT_MS, useShowLog: false })
         }
         catch (e) {
             // 端點失敗須留痕:網路失敗不可與「查無內容」混為一談(否則線索被標 done 而零產出之 done 失真);
@@ -287,8 +304,12 @@ export const mwSettleClue = (opt = {}) => {
  * @param {Integer} [opt.maxPending] 輸入待探索線索上限，未給則用 settings.capture.expand.maxPending
  * @param {Integer} [opt.maxTries=2] 輸入線索失敗達幾次即轉 failed
  * @param {Object} [opt.ingest] 輸入探測入庫閘門之 opts(filter、toRecord、itemsPerSource)，預設同 listFetch
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數(每輪求值):> 0 時每筆線索開工前須「整輪剩餘 − 保留 ≥ 本輪各線索之探測最壞耗時
+ *   之最大者(keyword／topic 54 秒、site 約 4 分)」才開工,不足即少探、未取件之線索仍為 pending(detail.reserveDeferred 記筆數);由組裝者注入(如後段工作之最低時間),本段不讀他工作之設定。
+ *   未給(或 null)則取每輪依賴之 ctx.deps.reserveMs,皆未給為 0(只守整輪逾期,行為不變);明給 0 優先於依賴
  * @returns {Object} 回傳 stage 物件 { name, run }
  * @throws {MwContractError} opt.tap 指向不存在之錨點(可用 probe、settleClue)，或掛載規格不合法時拋出
+ * @throws {Error} opt.reserveMs 非非負毫秒數亦非函數時建構即拋出(deps.reserveMs 不合、函數回傳不合者於該輪開工時拋出)
  * @example
  * // 以 tap 置換 probe 錨點為替身探測器(不連網);settleClue 照常落帳
  * let fakeProbe = defineMw({
@@ -316,10 +337,13 @@ export function stageExpand(opt = {}) {
         opt = {}
     }
 
+    // 保留時間:opt 明給者優先(建構即檢核);未給者每輪取 ctx.deps.reserveMs(組裝者之依賴);取值規則各段同一份(core/util/stageReserve)
+    const reserveFn = stageReserveFnOf(opt, 'stageExpand')
     const chain = opt.chain || applyTaps([mwProbe(opt), mwSettleClue(opt)], opt.tap, { chainName: 'capture.expand' })
     return {
         ...stageFields(opt, { name: 'expand' }),
         run: async (ctx) => {
+            const keepMs = reserveFn(ctx) // 本輪之保留(不合法即於此拋出,不先動任何線索)
             const { stores, settings, clock } = ctx.deps
             // 本機網路不通:本段略過(不發請求、不計任何線索之失敗;core/util/netGuard)
             if (await netDownAtStart(ctx, '擴充')) return stdReport({ detail: { netDown: true, picked: 0, newSources: 0, docsAdded: 0, failed: 0 } })
@@ -345,21 +369,34 @@ export function stageExpand(opt = {}) {
             // 時間預算守門(每筆線索 2 次 HTTP,無守門時消化量一調高就吃掉後段時間);未取件之線索仍為 pending;本機網路轉不通亦停
             // 例外仍落帳:逐線索鏈拋錯(入庫失敗、安裝方 filter 回非陣列…)——記 chainFails 並退避(retryAt;線索依 hits 排序,不退避即每輪排回隊頭),
             //   **不加 tries、不轉 failed**(程式／環境問題,與線索本身之失敗分帳;否則兩次異常即 failed)
-            const budget = budgetOf(ctx)
+            // 扣保留(core/util/stageReserve):保留 > 0 時每筆線索開工前須「整輪剩餘 − 保留 ≥ 一條線索之探測最壞耗時」;保留為 0 時只守整輪逾期(同現版)
+            const gate = stageReserveGateOf(ctx, keepMs)
+            const stepMs = stageStepMsOf(...pending.map(clueStepMs))
+            let reserveCut = false // 本段是否因保留而停(最後一次 shouldStop 為真之成因)
             const backoffHours = settings?.capture?.articles?.retryBackoffHours ?? 6
             const r = await runChainOverMsgs({
                 chain,
                 ctx,
                 msgs,
                 chainName: 'capture.expand',
-                shouldStop: () => budget.shouldStop() || ctx.deps.netGuard?.isDown?.() === true,
+                shouldStop: () => {
+                    if (gate.expired() || ctx.deps.netGuard?.isDown?.() === true) return true
+                    if (gate.cut(stepMs)) {
+                        reserveCut = true
+                        return true
+                    }
+                    return false
+                },
                 onFail: async (m, e) => {
                     const d = await deferClue(stores.frontier, m.data, { nowIso: clock.iso8(), kind: 'chain', error: `逐線索鏈異常：${oneline(e?.message, 120)}`, backoffHours })
                     ctx.log.warn(`擴充：${m.data.type}[${m.data.value}] 逐線索鏈異常（第 ${d.chainFails} 次；程式或環境問題，不計失敗、不轉 failed，退避至 ${d.retryAt || '-'}）：${oneline(e?.message, 120)}`)
                 },
             })
             for (const e of r.errors) ctx.log.warn(`expand 逐線索異常：${e}`)
-            if (r.left > 0) ctx.log.warn(`擴充：逾時間預算，${r.left} 筆線索未取件留下輪`)
+            // 因保留而延後:INFO 寫明(不是逾整輪預算,不印「逾時間預算」之 WARN);線索仍為 pending、不記次、不退避
+            const reserveDeferred = reserveCut ? r.left : 0
+            if (reserveDeferred > 0) ctx.log.info(`擴充：${reserveNoteOf(gate, stepMs)}，${r.left} 筆線索未取件留下輪`)
+            else if (r.left > 0) ctx.log.warn(`擴充：逾時間預算，${r.left} 筆線索未取件留下輪`)
             if (r.stats.netDeferred) ctx.log.warn(`擴充：本機網路不通（${ctx.deps.netGuard?.describe?.() || '-'}），${r.stats.netDeferred} 筆線索之失敗不計，本段提前停止`)
             return stdReport({
                 stats: { in: pending.length - r.left, out: r.stats.newSources || 0, fail: (r.stats.clueFailed || 0) + r.fails },
@@ -369,6 +406,8 @@ export function stageExpand(opt = {}) {
                     docsAdded: r.stats.docsAdded || 0,
                     failed: (r.stats.clueFailed || 0) + r.fails,
                     left: r.left,
+                    // 因保留給後段之時間而留下輪之線索數(僅確因保留延後時才有此欄,report 欄集於平時不變)
+                    ...(reserveDeferred > 0 ? { reserveDeferred } : {}),
                     evicted: cap.evicted,
                     pending: cap.pending,
                     reprobed: rp.reprobed.length, // failed 冷卻期滿重探

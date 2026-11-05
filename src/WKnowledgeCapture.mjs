@@ -89,6 +89,7 @@ import * as jsonlNs from './core/util/jsonl.mjs'
 import * as fileIoNs from './core/util/fileIo.mjs'
 import * as queueAgeNs from './core/util/queueAge.mjs'
 import * as netGuardNs from './core/util/netGuard.mjs'
+import * as stageReserveNs from './core/util/stageReserve.mjs'
 import * as textNs from './core/util/text.mjs'
 import * as valuesNs from './core/util/values.mjs'
 import * as cliNs from './core/util/cli.mjs'
@@ -168,6 +169,7 @@ export * from './core/util/jsonl.mjs'
 export * from './core/util/fileIo.mjs'
 export * from './core/util/queueAge.mjs'
 export * from './core/util/netGuard.mjs'
+export * from './core/util/stageReserve.mjs'
 export * from './core/util/text.mjs'
 export * from './core/util/values.mjs'
 export * from './core/util/cli.mjs'
@@ -194,7 +196,7 @@ const NAMESPACES = [
     benchKitNs, benchRolesNs, areaBenchNs,
     reviveDocsNs, refetchSourcesNs, docStockFixNs, rejectsNs, logContractNs, browserHygieneNs, runSummaryNs, runnerPackageNs,
     kernelNs, assemblyKitNs, promptsNs, runtimeNs, dirsNs, vocabDefaultNs, vocabKitNs, docPolicyNs, docTextsNs, noteFieldsNs, frontierPolicyNs, holdsNs, stockLedgerNs, jsonlNs,
-    fileIoNs, queueAgeNs, netGuardNs, textNs, valuesNs, cliNs, tableNs, webNs, recordsNs, patternsNs, injectablesNs, entryNs,
+    fileIoNs, queueAgeNs, netGuardNs, stageReserveNs, textNs, valuesNs, cliNs, tableNs, webNs, recordsNs, patternsNs, injectablesNs, entryNs,
 ]
 
 /**

@@ -9,7 +9,7 @@
 |---|---|
 | `rulebook_general.md` | GEN-01～04、06、07、09、10、16、18、19（工作英文名、機制在套件領域在使用端、設定三層驗證、只放新格式、模組邊界、hook 錨點全集、測試之匯入根、抓取之行為與知識只在本套件、評分命令列與評分小件、匯入指定詞、跨套件共用件之歸屬與只一份）＋ §2 使用端與下游須知 |
 | `rulebook_core.md` | GEN-20～22（泛用套件與語言設定、共用件歸最低使用者、測試件之共用與守門）、CORE-01～05、07、08、10（時間預算、執行期生效值、執行鎖、掛載 fail-loud、例外分帳、身分雜湊、記錄不刪、直接寫檔之範圍）、AI-01～11（AI 調度層只一份：席位檢核、能力預篩、健康、免費池額度、截止歸類、截斷、事件、額度字樣、席位鍵、取最後一段合格之 JSON、開工門檻） |
-| `rulebook_capture.md` | CAP-01～16（單一入庫閘門、文件狀態機、標題預篩、失敗分流與 dead、feed 退路、來源計帳、線索、瀏覽器分流、內容健全閘、孤兒瀏覽器、領域清單、本機網路判斷、剔除清單與回收、種子與網格主題形狀、同一內容與錯頁判定、OpenAlex 金鑰與 429） |
+| `rulebook_capture.md` | CAP-01～17（單一入庫閘門、文件狀態機、標題預篩、失敗分流與 dead、feed 退路、來源計帳、線索、瀏覽器分流、內容健全閘、孤兒瀏覽器、領域清單、本機網路判斷、剔除清單與回收、種子與網格主題形狀、同一內容與錯頁判定、OpenAlex 金鑰與 429、耗時子階段扣保留給後段之時間） |
 | `rulebook_package.md` | CAPX-01～12（套件邊界、預設領域中立、設定與資料錯誤建構期拋錯、CLI 不隔離、提示詞可覆寫、筆記可缺、評分判準、時區、偵測器陣列注入、CS5 全掃、PDF 暫不做） |
 | `rulebook_standards.md` | STD-00、01、03、04、07、09、10、14、22、24～26、29（檢定標準框架之抓取段與共用件：正體單一實作、原文另存、待判登錄、抓取納入閘、存量處置工具與回退＝撤銷、持久檔語意、已不再違反之結案）＋ 使用端須知 |
 
@@ -50,6 +50,6 @@
 
 - 核心：`unit-core`、`unit-core-text`、`unit-core-locale`、`unit-core-shared`、`unit-core-layers`、`unit-assembly`、`unit-assembly-kit`、`unit-holds`、`unit-stock-ledger`、`unit-jsonl`、`unit-settings`、`unit-entry`、`unit-package`、`unit-domain-terms`、`unit-log-contract`
 - AI 調度：`unit-ai-adapter`、`unit-ai-adapter-ext`、`unit-ai-adapter-workflow`、`unit-ai-json-reply`
-- 抓取：`unit-capture-stages`、`unit-capture-object`、`unit-capture-policies`、`unit-capture-standards`、`unit-capture-fetch-checks`、`unit-capture-browser`、`unit-capture-areas`、`unit-capture-netguard`、`unit-capture-refetch`、`unit-capture-openalex`、`unit-capture-fix`、`unit-capture-ops`、`unit-cs10fix`、`unit-cs12fix`、`unit-fetchers`、`unit-siteAdapters`、`unit-rejects`、`unit-flow-capture`、`unit-flow-areas`
+- 抓取：`unit-capture-stages`、`unit-capture-object`、`unit-capture-policies`、`unit-capture-standards`、`unit-capture-fetch-checks`、`unit-capture-browser`、`unit-capture-areas`、`unit-capture-netguard`、`unit-capture-refetch`、`unit-capture-openalex`、`unit-capture-reserve`、`unit-capture-reserve-gate`、`unit-capture-reserve-guard`、`unit-capture-fix`、`unit-capture-ops`、`unit-cs10fix`、`unit-cs12fix`、`unit-fetchers`、`unit-siteAdapters`、`unit-rejects`、`unit-flow-capture`、`unit-flow-areas`
 - 評分：`unit-bench`、`unit-bench-kit`、`unit-bench-roles`
 - 需外部資源（未設旗標即略過）：`api-capture-live`（實網）、`api-area-ai`（真 AI）

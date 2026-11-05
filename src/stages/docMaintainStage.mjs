@@ -20,10 +20,15 @@
 //   閘改版後以依據重判(stores/healthRecheck.planDeadRecheck):已不違規 → 回待抓(tries＝上限−1);仍違規 → 記現版。與 raw 重判共用每輪名額。
 // 【索引同步】存量重判改狀態／清段落鍵、補算段落鍵時,同步本行程已建之同一內容索引(contentIndex.contentIndexIfBuilt)。
 // 【判死前另存依據】存量重判判 dead 者,改狀態前另存庫內正文(dead 不在瘦身另存範圍——不另存則依據隨瘦身清除)。
+// 【時間:扣保留給後段之時間(core/util/stageReserve)】opt.reserveMs 明給者優先、未給取每輪依賴 ctx.deps.reserveMs、皆未給為 0(由組裝者注入,本段不讀他工作
+//   之設定)。重判(raw、內容類 dead 兩處)與段落雜湊補算皆為本機逐項作業(不發網路、不呼叫 AI),保留 > 0 時每件開工前須「整輪剩餘 − 保留 ≥ 1 秒
+//   (STAGE_STEP_FLOOR_MS,本機逐項作業之估計)」,不足即停、未處理者原樣留下輪(detail.reserveDeferred 記件數)。保留為 0 時只守整輪逾期(行為不變)。
+//   瘦身(slim)為一次批次清除,不逐項判時間(現版即如此)。
 
 import isobj from 'wsemi/src/isobj.mjs'
 import { defineMw, applyTaps, makeMsg, count, runChainOverMsgs, stdReport, stageFields } from '../core/kernel.mjs'
-import { budgetOf, oneline } from '../core/runnerPackage.mjs'
+import { oneline } from '../core/runnerPackage.mjs'
+import { STAGE_STEP_FLOOR_MS, stageReserveFnOf, stageReserveGateOf, reserveNoteOf } from '../core/util/stageReserve.mjs'
 import { slimTerminalDocs, DOC_TERMINAL_STATUSES } from '../core/stores/docPolicy.mjs'
 import { DOC_TEXT_STATUSES, archiveDocText, docTextOf } from '../core/stores/docTexts.mjs'
 import { STATUS } from '../core/standards/verdict.mjs'
@@ -61,6 +66,18 @@ const ROUTE_LABELS = { final: '終態（dead）', browser: '瀏覽器佇列', re
 const perRunOf = (v, def) => (Number.isInteger(v) && v >= 0 ? v : def)
 
 /**
+ * 本段本輪之守門閘:取維護訊息上之 _reserveGate(stageDocMaintain 於開工時建立並先檢核保留值);獨立呼叫本環而無注入者,依 opt／ctx.deps.reserveMs 當場建
+ *
+ * @param {Object} msg 輸入維護訊息
+ * @param {Object} ctx 輸入鏈上下文
+ * @param {Function} reserveFn 輸入保留時間取值器(stageReserveFnOf)
+ * @returns {Object} 回傳守門閘(stageReserveGateOf 之回傳)
+ */
+function gateOf(msg, ctx, reserveFn) {
+    return msg.data._reserveGate || stageReserveGateOf(ctx, reserveFn(ctx))
+}
+
+/**
  * 本輪維護訊息共用之文件全表(docs 之 select 一律全表讀——帶條件亦同成本;兩環共用一次,各環自行依狀態篩選)。
  * 重判只改 raw 者之狀態、補算只讀 noted 者,共用不互相干擾;環被置換時另一環照樣自取
  *
@@ -81,7 +98,10 @@ async function allDocsOf(msg, docs) {
  *
  * @param {Object} [opt={}] 輸入子階段 opts,非物件則回退為 {}
  * @param {Integer} [opt.healthRecheckPerRun=500] 輸入每輪至多寫入篇數(未給則用 settings.capture.standards.healthRecheckPerRun)
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數;> 0 時每件開工前須「整輪剩餘 − 保留 ≥ 1 秒」，不足即停、未判者留下輪
+ *   (見檔頭【時間】);未給取每輪依賴之 ctx.deps.reserveMs，皆未給為 0(只守整輪逾期)
  * @returns {Object} 回傳 defineMw 產物
+ * @throws {Error} opt.reserveMs 非非負毫秒數亦非函數時建構即拋出
  * @example
  * // 閘版本(healthV)不同於現版的 raw 文件，以庫內原文重判:合格者改記現版
  * let text = '黑洞光譜的觀測記錄包含吸積盤與噴流的詳細描述。'.repeat(20)
@@ -103,6 +123,7 @@ export const mwRecheckHealth = (opt = {}) => {
         opt = {}
     }
 
+    const reserveFn = stageReserveFnOf(opt, 'stageDocMaintain')
     return defineMw({
         name: 'recheckHealth',
         handle: async (msg, ctx, next) => {
@@ -111,7 +132,9 @@ export const mwRecheckHealth = (opt = {}) => {
             const gates = createHealthGates(cap.standards)
             // 每輪上限:子階段 opt ＞ settings.capture.standards.healthRecheckPerRun ＞ 預設
             const per = perRunOf(opt.healthRecheckPerRun ?? cap.standards?.healthRecheckPerRun, HEALTH_RECHECK_PER_RUN)
-            const budget = budgetOf(ctx)
+            // 扣保留(core/util/stageReserve):每件開工前須整輪未逾期,且(保留 > 0 時)扣保留後之可用 ≥ 本機逐項作業之估計;保留為 0 時只守整輪逾期(同現版)
+            const gate = gateOf(msg, ctx, reserveFn)
+            let reserveLeft = 0 // 因保留而留下輪之件數
             const nowIso = clock?.iso8?.() || ''
             const due = (await allDocsOf(msg, stores.docs))
                 .filter((d) => d.status === 'raw' && d.healthV !== gates.version)
@@ -123,8 +146,14 @@ export const mwRecheckHealth = (opt = {}) => {
             let na = 0
             let left = 0
             for (let i = 0; i < due.length; i++) {
-                if (written >= per || budget.shouldStop()) {
+                if (written >= per) {
                     left = due.length - i
+                    break
+                }
+                if (gate.shouldStop(STAGE_STEP_FLOOR_MS)) {
+                    left = due.length - i
+                    // 因保留而留下輪之件數以「本輪名額內尚能寫入者」為上限(每輪上限 per 另擋者,縱無保留亦本輪不做,不算因保留)
+                    if (gate.cut(STAGE_STEP_FLOOR_MS)) reserveLeft += Math.min(left, Math.max(0, per - written))
                     break
                 }
                 const d = due[i]
@@ -160,8 +189,13 @@ export const mwRecheckHealth = (opt = {}) => {
             let deadKept = 0
             let deadLeft = 0
             for (let i = 0; i < deadDue.length; i++) {
-                if (written >= per || budget.shouldStop()) {
+                if (written >= per) {
                     deadLeft = deadDue.length - i
+                    break
+                }
+                if (gate.shouldStop(STAGE_STEP_FLOOR_MS)) {
+                    deadLeft = deadDue.length - i
+                    if (gate.cut(STAGE_STEP_FLOOR_MS)) reserveLeft += Math.min(deadLeft, Math.max(0, per - written))
                     break
                 }
                 const d = deadDue[i]
@@ -191,6 +225,11 @@ export const mwRecheckHealth = (opt = {}) => {
             for (const [k, n] of Object.entries(routed)) count(msg, `healthRouted_${k}`, n)
             count(msg, 'healthUndetermined', undetermined.length)
             count(msg, 'healthLeft', left)
+            // 因保留而留下輪:僅確因保留延後時才計(report 欄集於平時不變);INFO 寫明(不是逾整輪預算)
+            if (reserveLeft > 0) {
+                count(msg, 'reserveDeferred', reserveLeft)
+                ctx.log.info(`健全閘存量重判：${reserveNoteOf(gate, STAGE_STEP_FLOOR_MS)}，${reserveLeft} 篇未判留下輪`)
+            }
             msg.data.health = { version: gates.version, undetermined: undetermined.slice(0, LIST_MAX) }
             if (due.length) {
                 ctx.log.info(`健全閘存量重判（版本 ${gates.version}）：應重判 ${due.length}、合格 ${passed}、不適用 ${na}、改分流 ${nRouted}（終態 ${routed.final}、瀏覽器佇列 ${routed.browser}、補全文佇列 ${routed.refetch + routed.retry}）、未能判定 ${undetermined.length}` +
@@ -208,7 +247,10 @@ export const mwRecheckHealth = (opt = {}) => {
  *
  * @param {Object} [opt={}] 輸入子階段 opts,非物件則回退為 {}
  * @param {Integer} [opt.paraKeysPerRun=2000] 輸入每輪至多篇數(未給則用 settings.capture.standards.paraKeysPerRun)
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數;> 0 時每件開工前須「整輪剩餘 − 保留 ≥ 1 秒」，不足即停、未補者留下輪
+ *   (見檔頭【時間】);未給取每輪依賴之 ctx.deps.reserveMs，皆未給為 0(只守整輪逾期)
  * @returns {Object} 回傳 defineMw 產物
+ * @throws {Error} opt.reserveMs 非非負毫秒數亦非函數時建構即拋出
  * @example
  * // noted 文件無 paraKeys 者以原文補算;兩處皆無原文者記 paraKeysNoText
  * let text = '黑洞光譜的觀測記錄包含吸積盤與噴流的詳細描述。'.repeat(4)
@@ -230,21 +272,27 @@ export const mwFillParaKeys = (opt = {}) => {
         opt = {}
     }
 
+    const reserveFn = stageReserveFnOf(opt, 'stageDocMaintain')
     return defineMw({
         name: 'fillParaKeys',
         handle: async (msg, ctx, next) => {
             const { stores, clock, settings } = ctx.deps
             // 每輪上限:子階段 opt ＞ settings.capture.standards.paraKeysPerRun ＞ 預設
             const per = perRunOf(opt.paraKeysPerRun ?? settings?.capture?.standards?.paraKeysPerRun, PARA_KEYS_PER_RUN)
-            const budget = budgetOf(ctx)
+            // 扣保留(core/util/stageReserve):每件開工前須整輪未逾期,且(保留 > 0 時)扣保留後之可用 ≥ 本機逐項作業之估計;保留為 0 時只守整輪逾期(同現版)
+            const gate = gateOf(msg, ctx, reserveFn)
             const nowIso = clock?.iso8?.() || ''
             const due = (await allDocsOf(msg, stores.docs))
                 .filter((d) => d.status === 'noted' && !Array.isArray(d.paraKeys) && !d.paraKeysNoText)
                 .sort((a, b) => String(a.notedAt || '').localeCompare(String(b.notedAt || '')) || String(a.id).localeCompare(String(b.id)))
             let filled = 0
             let noText = 0
+            let reserveCut = false // 是否因保留而停(逾整輪預算者不是)
             for (const d of due.slice(0, per)) {
-                if (budget.shouldStop()) break
+                if (gate.shouldStop(STAGE_STEP_FLOOR_MS)) {
+                    reserveCut = gate.cut(STAGE_STEP_FLOOR_MS)
+                    break
+                }
                 // 原文:docs 尚未瘦身者直取,已瘦身者取另存(docTexts;core/stores/docTexts.docTextOf 為取得原文之單一實作)
                 const text = d.text ? String(d.text) : String((await docTextOf(stores, d.id))?.text || '')
                 if (text) {
@@ -263,6 +311,13 @@ export const mwFillParaKeys = (opt = {}) => {
             count(msg, 'paraKeysFilled', filled)
             count(msg, 'paraKeysNoText', noText)
             count(msg, 'paraKeysLeft', left)
+            // 因保留而留下輪:僅確因保留延後時才計(report 欄集於平時不變);INFO 寫明(不是逾整輪預算)
+            //   件數以「本輪名額(per)內尚未補者」計(超出 per 者縱無保留亦本輪不做,不算因保留)
+            const inWindowLeft = Math.min(due.length, per) - filled - noText
+            if (reserveCut && inWindowLeft > 0) {
+                count(msg, 'reserveDeferred', inWindowLeft)
+                ctx.log.info(`段落雜湊補算：${reserveNoteOf(gate, STAGE_STEP_FLOOR_MS)}，${inWindowLeft} 篇未補留下輪`)
+            }
             if (due.length) ctx.log.info(`段落雜湊補算（CS10 存量）：待補 ${due.length}、本輪補 ${filled}、無原文 ${noText}（docs 與 docTexts 皆無，符合度掃描記未能判定）${left ? `、留下輪 ${left}` : ''}`)
             return next(msg)
         },
@@ -330,7 +385,11 @@ export const mwSlim = (opt = {}) => {
  * run(ctx) 回傳統一 report,detail 含 slimmed、archived、archiveFailed、noArchive,以及 health(健全閘存量重判計數)與 paraKeys(段落雜湊補算計數)兩組。
  *
  * @param {Object} [opt={}] 輸入子階段設定,非物件則回退為 {};可含 chain, tap, terminalStatuses, healthRecheckPerRun, paraKeysPerRun
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數(每輪求值):> 0 時重判與段落雜湊補算之每件開工前須「整輪剩餘 − 保留 ≥ 1 秒」，
+ *   不足即停、未處理者原樣留下輪(detail.reserveDeferred 記件數);由組裝者注入(如後段工作之最低時間),本段不讀他工作之設定。未給(或 null)則取每輪依賴之
+ *   ctx.deps.reserveMs,皆未給為 0(只守整輪逾期,行為不變);明給 0 優先於依賴
  * @returns {Object} 回傳階段物件 { name:'docMaintain', run(ctx) }
+ * @throws {Error} opt.reserveMs 非非負毫秒數亦非函數時建構即拋出(deps.reserveMs 不合、函數回傳不合者於該輪開工時拋出)
  * @example
  * let rows = [{ id: 'd1', status: 'dead', text: '失敗頁面的殘留素材' }]
  * let docs = {
@@ -351,11 +410,14 @@ export function stageDocMaintain(opt = {}) {
         opt = {}
     }
 
+    // 保留時間:opt 明給者優先(建構即檢核);未給者每輪取 ctx.deps.reserveMs(組裝者之依賴);取值規則各段同一份(core/util/stageReserve)
+    const reserveFn = stageReserveFnOf(opt, 'stageDocMaintain')
     const chain = opt.chain || applyTaps([mwRecheckHealth(opt), mwFillParaKeys(opt), mwSlim(opt)], opt.tap, { chainName: 'capture.docMaintain' })
     return {
         ...stageFields(opt, { name: 'docMaintain' }),
         run: async (ctx) => {
-            const m = makeMsg('maintenance', {})
+            // 本輪之保留與守門閘於開工時建立並檢核(不合法即於此拋出,不被逐項隔離吞成失敗計數、不先動任何文件),經維護訊息交各環取用
+            const m = makeMsg('maintenance', { _reserveGate: stageReserveGateOf(ctx, reserveFn(ctx)) })
             const r = await runChainOverMsgs({ chain, ctx, msgs: [m], chainName: 'capture.docMaintain' })
             const s = r.stats
             const n = (k) => s[k] || 0
@@ -367,6 +429,8 @@ export function stageDocMaintain(opt = {}) {
                     archived: n('archived'),
                     archiveFailed: n('archiveFailed'),
                     noArchive: n('noArchive'),
+                    // 因保留給後段之時間而留下輪之件數(重判＋段落雜湊補算;僅確因保留延後時才有此欄,report 欄集於平時不變)
+                    ...(n('reserveDeferred') > 0 ? { reserveDeferred: n('reserveDeferred') } : {}),
                     // 檢定標準 CS1a:健全閘存量重判(版本、應重判、合格、不適用、改分流、未能判定〔附 id〕、留下輪)
                     health: {
                         version: m.data.health?.version || '',

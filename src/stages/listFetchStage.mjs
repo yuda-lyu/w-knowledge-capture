@@ -9,7 +9,8 @@ import isobj from 'wsemi/src/isobj.mjs'
 import { attemptFetch } from 'w-data-pipeline/src/fetch/attemptFetch.mjs'
 import { isTimeoutError, ContractError } from 'w-data-pipeline/src/core/errors.mjs'
 import { defineMw, applyTaps, makeMsg, count, runChainOverMsgs, stdReport, stageFields } from '../core/kernel.mjs'
-import { budgetOf, oneline } from '../core/runnerPackage.mjs'
+import { oneline } from '../core/runnerPackage.mjs'
+import { stageReserveFnOf, stageReserveGateOf, stageStepMsOf, fetchStepMsOf, reserveNoteOf } from '../core/util/stageReserve.mjs'
 import { pickDueSources, recordSourceOutcome, recordSourceChainFail } from '../stores/sourcePolicy.mjs'
 import { normalizeFeedItems, filterFeedItems, admitFeedItems } from '../stores/ingestGate.mjs'
 import { httpCodeOf } from '../stores/fetchPolicy.mjs'
@@ -301,8 +302,12 @@ export const mwAccountSource = (opt = {}) => {
  *   sourcesPerRun(預設 capture.sources.perRun), gridPerRun(預設 capture.areas.perRun), minSourceIntervalMs(預設 capture.sources.minIntervalMs), itemsPerSource,
  *   onAdmitted(新入庫回呼,見 mwAdmitPersist), collectIds(true → report.detail.newIds 列本輪新入庫之文件 id;零件庫用法之回傳清單),
  *   concurrency(同時輪抓之來源數,預設 capture.sources.concurrency;0／1 即串行);階段契約欄位 enabled／when 等見 core/kernel stageFields
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數(每輪求值):> 0 時開工前與每次取件前須「整輪剩餘 − 保留 ≥ 一次抓取之估計
+ *   (各到期來源抓取之最壞耗時之最大者:抓取器逾時 × 嘗試次數 ＋ 重試等待)」才開工,不足即少抓、未取件之來源原樣留下輪(detail.reserveDeferred 記件數);由組裝者注入(如後段工作之最低時間),
+ *   本段不讀他工作之設定。未給(或 null)則取每輪依賴之 ctx.deps.reserveMs,皆未給為 0(只守整輪逾期,行為不變);明給 0 優先於依賴
  * @returns {Object} 回傳階段物件 { name:'listFetch', run(ctx) }
  * @throws {ContractError} run 時 ctx.deps.registry 缺席，或有到期來源無可用抓取器時拋出
+ * @throws {Error} opt.reserveMs 非非負毫秒數亦非函數時拋出(deps.reserveMs 不合、函數回傳不合者於該輪開工時拋出)
  * @example
  * // W 為 w-data-pipeline 之預設匯出(import W from 'w-data-pipeline/src/WDataPipeline.mjs')
  * let rows = [{ id: 's1', name: '天文新聞', kind: 'rss', url: 'https://example.com/feed', tier: 1, lastFetchAt: '', failCount: 0 }]
@@ -329,6 +334,8 @@ export function stageListFetch(opt = {}) {
         opt = {}
     }
 
+    // 保留時間:opt 明給者優先(建構即檢核);未給者每輪取 ctx.deps.reserveMs(組裝者之依賴);取值規則各段同一份(core/util/stageReserve)
+    const reserveFn = stageReserveFnOf(opt, 'stageListFetch')
     const chain = opt.chain || applyTaps(
         [mwFetchList(opt), mwNormalizeItems(opt), mwFilterItems(opt), mwAdmitPersist(opt), mwAccountSource(opt)],
         opt.tap, { chainName: 'capture.listFetch' },
@@ -336,6 +343,7 @@ export function stageListFetch(opt = {}) {
     return {
         ...stageFields(opt, { name: 'listFetch' }),
         run: async (ctx) => {
+            const keepMs = reserveFn(ctx) // 本輪之保留(不合法即於此拋出,不先動任何來源)
             const { stores, registry, settings } = ctx.deps
             if (!registry) throw new ContractError('listFetch 需要抓取器登錄（cfg.fetchers 或內建預設）')
             // 本機網路不通:本段略過(不發請求、不計任何來源之失敗;core/util/netGuard)
@@ -373,7 +381,11 @@ export function stageListFetch(opt = {}) {
             // 例外仍落帳:逐來源鏈於計帳環之前拋錯(安裝方 filter 回非陣列、toRecord 拋錯、入庫失敗…)——記 chainFails、更新 lastFetchAt
             // (排隊尾、不擋隊頭)、每次 WARN,**不加 failCount、不停用**(程式／環境問題,與來源本身之失敗分帳:
             // 否則連續異常即達停用門檻,修好後仍須等冷卻期)
-            const budget = budgetOf(ctx)
+            // 扣保留(core/util/stageReserve):保留 > 0 時每次取件(並行時每波)前須「整輪剩餘 − 保留 ≥ 一次抓取之估計」;一次抓取之估計＝各到期來源
+            //   抓取之最壞耗時(抓取器自宣告之逾時優先,否則 capture.sources.listTimeoutMs;× 嘗試次數 ＋ 重試等待)之最大者。保留為 0 時只守整輪逾期(同現版)
+            const gate = stageReserveGateOf(ctx, keepMs)
+            const stepMs = stageStepMsOf(...resolved.map(({ fetcher }) => fetchStepMsOf(fetcher, settings.capture.sources.listTimeoutMs)))
+            let reserveCut = false // 本段是否因保留而停(最後一次 shouldStop 為真之成因;runChainOverMsgs 一旦為真即停止取件)
             // 並行輪抓(capture.sources.concurrency 或 opt.concurrency;>1 才並行,以波次跑、落帳與統計同串行)
             const conc = opt.concurrency ?? settings.capture.sources.concurrency
             const r = await runChainOverMsgs({
@@ -382,14 +394,24 @@ export function stageListFetch(opt = {}) {
                 msgs,
                 chainName: 'capture.listFetch',
                 ...(Number.isInteger(conc) && conc > 1 ? { concurrency: conc } : {}),
-                shouldStop: () => budget.shouldStop() || ctx.deps.netGuard?.isDown?.() === true,
+                shouldStop: () => {
+                    if (gate.expired() || ctx.deps.netGuard?.isDown?.() === true) return true
+                    if (gate.cut(stepMs)) {
+                        reserveCut = true
+                        return true
+                    }
+                    return false
+                },
                 onFail: async (m, e) => {
                     const { chainFails } = await recordSourceChainFail(stores.sources, m.data, { nowIso: ctx.deps.clock.iso8(), error: `逐來源鏈異常：${oneline(e?.message, 180)}` })
                     ctx.log.warn(`來源[${m.data.name || m.data.url}] 逐來源鏈異常（第 ${chainFails} 次；程式或環境問題，不計失敗、不停用，修復後重抓）：${oneline(e?.message, 160)}`)
                 },
             })
             for (const e of r.errors) ctx.log.warn(`listFetch 逐來源異常：${e}`)
-            if (r.left > 0) ctx.log.warn(`輪抓：逾時間預算，${r.left} 個來源未取件留下輪`)
+            // 因保留而延後:INFO 寫明(不是逾整輪預算,不印「逾時間預算」之 WARN);來源原樣留佇列(lastFetchAt 不動,下輪仍為最舊優先)
+            const reserveDeferred = reserveCut ? r.left : 0
+            if (reserveDeferred > 0) ctx.log.info(`輪抓：${reserveNoteOf(gate, stepMs)}，${r.left} 個來源未取件留下輪`)
+            else if (r.left > 0) ctx.log.warn(`輪抓：逾時間預算，${r.left} 個來源未取件留下輪`)
             if (r.stats.netDeferred) ctx.log.warn(`輪抓：本機網路不通（${ctx.deps.netGuard?.describe?.() || '-'}），${r.stats.netDeferred} 個來源之失敗不計，本段提前停止`)
             // 剔除計數(靜默剔除改計數,皆入 report detail):抓取器自行略過(逐因)、契約不符、業務過濾、同一內容(CS10)
             const dropped = {}
@@ -402,6 +424,8 @@ export function stageListFetch(opt = {}) {
                     sourcesTried: due.length - r.left,
                     newDocs: r.stats.newDocs || 0,
                     left: r.left,
+                    // 因保留給後段之時間而留下輪之來源數(僅確因保留延後時才有此欄,report 欄集於平時不變)
+                    ...(reserveDeferred > 0 ? { reserveDeferred } : {}),
                     netDeferred: r.stats.netDeferred || 0, // 失敗時本機網路不通而不計之來源
                     chainFailed: r.fails || 0, // 逐來源鏈異常(不計失敗、不停用)
                     dropped,

@@ -6,6 +6,13 @@
 //   筆記集合(stores.notes)為選配:未開時候選只取線索(不拋錯)。
 // 【排在抓取物件最末】AI 呼叫放在 listFetch 之前會以席位遞補鏈之總逾時阻塞整段抓取;
 //   且以整輪剩餘時間守門、單次封頂,保護後段處理。
+// 【時間:兩道獨立之保護】①本段自有之下限 AREA_MIN_REMAINING_MS(整輪剩餘 < 25 分即不發現,不論有無保留;此為「發現值得做」之最低餘裕,不取代保留);
+//   ②組裝者保留給後段之時間(core/util/stageReserve:opt.reserveMs 明給者優先、未給取每輪依賴 ctx.deps.reserveMs、皆未給為 0;本段不讀他工作之設定):
+//   保留 > 0 時開工須「整輪剩餘 − 保留 ≥ 發現席位鏈首家之單次逾時(一次 AI 呼叫之估計)」,且 AI 呼叫預算再以「整輪剩餘 − 保留」封頂,不吃進保留;
+//   不足即本輪不發現(skipped 寫明、detail.reserveDeferred:true、發現窗口不推進,下輪照常到期);AI 判定後逐候選之 OpenAlex 驗證(每候選至多約半分鐘)
+//   亦於每個候選前判(須整輪未逾期且「整輪剩餘 − 保留 ≥ 一次驗證之估計」),不足即停止驗證、其餘候選不入帳(下一窗口再被提出)、detail.reserveDeferred:true
+//   (保留為 0 時此迴圈不判時間,同現版)。兩道並存:①先判(剩餘不足下限者歸因整輪剩餘時間不足,
+//   不算因保留而延後),②後判;保留為 0 時行為與無此機制前相同。發現以外之工作(品質回饋、重探、來源同步、投影)為本機作業,不受影響。
 // 【頻率與額度持久化】發現時刻、當日新增數存於領域集合之中繼記錄(_meta),跨行程重啟不重置。
 // 【AI 失敗即等下一窗口】不退回關鍵詞抽取:未經語意判定之查詢會產生冗餘領域。
 // 【無動作鏈】機制性子階段,無 hook 錨點:opt.tap／chain 給了即拋錯(不在 captureObject 之 CAPTURE_TAP_STAGE_KEYS)。
@@ -18,7 +25,8 @@ import isfun from 'wsemi/src/isfun.mjs'
 import fsCreateFolder from 'wsemi/src/fsCreateFolder.mjs'
 import fetchWebByCurl from 'w-fetch-web/src/fetchWebByCurl.mjs'
 import { stdReport, rejectChainOpts, stageFields } from '../core/kernel.mjs'
-import { budgetOf, oneline } from '../core/runnerPackage.mjs'
+import { oneline } from '../core/runnerPackage.mjs'
+import { stageReserveFnOf, stageReserveGateOf, captureCallMsOf, reserveNoteOf } from '../core/util/stageReserve.mjs'
 import { sha1 } from '../core/util/text.mjs'
 import { ensureSeedSources } from '../stores/sourcePolicy.mjs'
 import { AREA_META_ID, areaIdOf, syncAreaSources, pickAreaCandidates, areaQualityCfgOf, reviewAutoAreas, reprobeAutoAreas, reopenArea, activeAreaCount, renderAreasMd } from '../stores/areaPolicy.mjs'
@@ -27,12 +35,16 @@ import { openAlexGet, openAlexAuthOf, isOpenAlexQuota, OPENALEX_QUOTA_MESSAGE } 
 import { scriptOf } from '../core/locale.mjs'
 import { netDownAtStart } from '../core/util/netGuard.mjs'
 
-/** 發現所需之整輪剩餘時間下限(保護後段) */
+/** 發現所需之整輪剩餘時間下限(保護後段;與組裝者注入之保留並存,見檔頭【時間】) */
 export const AREA_MIN_REMAINING_MS = 25 * 60_000
 /** 發現之 AI 一次嘗試之時間上限(整個呼叫之預算為其 2 倍,容得下首家逾時後一次遞補;見 discover) */
 export const AREA_AI_BUDGET_MS = 5 * 60_000
 /** 發現失敗後之重試間隔上限(與發現間隔取小者;失敗不作廢當日窗口) */
 export const DISCOVER_RETRY_MS = 3 * 3_600_000
+/** 領域候選之 OpenAlex 驗證單次請求之逾時(毫秒;validateAreaQuery 與下列一次驗證之估計同取) */
+const VALIDATE_TIMEOUT_MS = 15_000
+/** 一次候選驗證之最壞耗時(毫秒;保留 > 0 時驗證迴圈每個候選前之開工門檻):逾時 × 2 次嘗試(maxRetries 1)＋重試等待 5 秒 */
+const AREA_VALIDATE_STEP_MS = 2 * VALIDATE_TIMEOUT_MS + 5_000
 
 /**
  * 寫領域清單之投影 <dirs.knowledge>/areas.md(唯一寫法:領域子階段每輪末與領域維運工具〔暫停／恢復後重繪〕共用;投影可由資料庫重建)
@@ -102,7 +114,7 @@ export async function validateAreaQuery(query, ctx, opt = {}) {
     const u = `${base}/works?search=${encodeURIComponent(query)}&per-page=8&select=id,doi,primary_location,abstract_inverted_index` +
         (fields ? `&filter=${encodeURIComponent(`primary_topic.field.id:${fields}`)}` : '') + mailto
     // 金鑰:opt.openAlexAuth(測試或自訂注入)優先,否則取每輪依賴 deps.openAlexAuth(總組裝依 capture.services.openAlex.apiKeyEnv 與金鑰檔建立);都沒有＝不帶金鑰
-    const r = await openAlexGet(fetchFn, u, { auth: openAlexAuthOf(opt.openAlexAuth ?? ctx.deps.openAlexAuth), timeoutMs: 15_000, maxRetries: 1 })
+    const r = await openAlexGet(fetchFn, u, { auth: openAlexAuthOf(opt.openAlexAuth ?? ctx.deps.openAlexAuth), timeoutMs: VALIDATE_TIMEOUT_MS, maxRetries: 1 })
     // 429 以固定字樣為原因(OPENALEX_QUOTA_MESSAGE:額度用盡或每秒超限)並標 quota:true;仍屬暫時性失敗(不冷卻)
     if (isOpenAlexQuota(r)) return { ok: false, count: 0, abstracts: 0, overlap: 0, reason: OPENALEX_QUOTA_MESSAGE, transient: true, quota: true }
     if (r?.status !== 'success') return { ok: false, count: 0, abstracts: 0, overlap: 0, reason: `OpenAlex 驗證失敗：${oneline(r?.message || r?.reason, 80)}`, transient: true }
@@ -140,8 +152,13 @@ export async function validateAreaQuery(query, ctx, opt = {}) {
  * @param {Function} [opt.validate] 輸入候選查詢之驗證器 (query, ctx, opt) => Promise<{ ok, reason, transient? }>(預設 validateAreaQuery:OpenAlex);
  *   非學術目錄之領域由使用端注入自己的驗證
  * @param {Function} [opt.now] 輸入現在時刻毫秒函數(測試注入)
+ * @param {Number|Function} [opt.reserveMs] 輸入保留給後段之毫秒數(非負)，或 (ctx) => 毫秒數(每輪求值):> 0 時發現須「整輪剩餘 − 保留 ≥ 發現席位首家之單次逾時」才開工,
+ *   AI 呼叫預算再以「整輪剩餘 − 保留」封頂;不足即本輪不發現(detail.skipped 寫明、detail.reserveDeferred:true、窗口不推進)。與本段自有之 25 分下限
+ *   AREA_MIN_REMAINING_MS 並存(見檔頭【時間】)。由組裝者注入(如後段工作之最低時間),本段不讀他工作之設定。未給(或 null)則取每輪依賴之 ctx.deps.reserveMs,
+ *   皆未給為 0(行為不變);明給 0 優先於依賴
  * @returns {Object} 回傳階段物件 { name:'areas', run(ctx) }(階段契約欄位 enabled／when 等見 core/kernel stageFields)
  * @throws {MwContractError} opt.tap／opt.chain 給了時拋出(本子階段無動作鏈)
+ * @throws {Error} opt.reserveMs 非非負毫秒數亦非函數時建構即拋出(deps.reserveMs 不合、函數回傳不合者於該輪開工時拋出)
  * @example
  * let stage = stageAreas()
  * console.log(stage.name, stage.onError, typeof stage.run)
@@ -159,11 +176,14 @@ export function stageAreas(opt = {}) {
     }
     rejectChainOpts('areas', opt)
 
+    // 保留時間:opt 明給者優先(建構即檢核);未給者每輪取 ctx.deps.reserveMs(組裝者之依賴);取值規則各段同一份(core/util/stageReserve)
+    const reserveFn = stageReserveFnOf(opt, 'stageAreas')
     return {
         ...stageFields(opt, { name: 'areas' }),
         run: async (ctx) => {
             const { stores, settings, clock, dirs } = ctx.deps
             if (!stores?.areas) return stdReport({ detail: { disabled: true, reason: '未開啟 areas 集合' } })
+            const keepMs = reserveFn(ctx) // 本輪之保留(不合法即於此拋出,不先動任何領域)
             const cap = settings.capture
             const sp = cap.sources || {}
             const nowIso = clock.iso8()
@@ -199,7 +219,9 @@ export function stageAreas(opt = {}) {
             //   (失敗亦寫 lastDiscoverAt 的話,斷網或供應商故障一次即等一整個間隔)
             const failMs = Date.parse(meta.discoverFailAt || '')
             const retryMs = Math.min(everyMs, DISCOVER_RETRY_MS)
-            const budget = budgetOf(ctx)
+            // 守門閘(core/util/stageReserve):整輪預算與保留皆經此;發現席位首家之單次逾時＝一次 AI 呼叫之估計(保留 > 0 時之開工門檻)
+            const gate = stageReserveGateOf(ctx, keepMs)
+            const callMs = captureCallMsOf(settings, cap.discover.ai)
             areas = (await stores.areas.select()).filter((a) => a.id !== AREA_META_ID)
             const activeN = activeAreaCount(areas, srcById)
             if (everyMs <= 0 || cap.discover.newPerDay <= 0) detail.skipped = '自動發現停用'
@@ -208,13 +230,18 @@ export function stageAreas(opt = {}) {
             else if (Number.isFinite(failMs) && nowMs - failMs < retryMs) detail.skipped = '上次發現失敗，未到重試間隔'
             else if (addedToday >= cap.discover.newPerDay) detail.skipped = '已達每日新增上限'
             else if (activeN >= cap.areas.maxActive) detail.skipped = `啟用中領域已達上限 ${cap.areas.maxActive}`
-            else if (budget.remainingMs() < AREA_MIN_REMAINING_MS) detail.skipped = '整輪剩餘時間不足'
+            else if (gate.roundMs() < AREA_MIN_REMAINING_MS) detail.skipped = '整輪剩餘時間不足'
+            // 扣保留後不足一次 AI 呼叫:本輪不發現(窗口不推進,下輪照常到期;整輪剩餘不足下限者已於上條歸因,不在此)
+            else if (gate.cut(callMs)) {
+                detail.skipped = `扣保留後剩餘時間不足一次 AI 呼叫（${reserveNoteOf(gate, callMs)}）`
+                detail.reserveDeferred = true
+            }
             // 本機網路不通:只略過發現(品質回饋、重探、來源同步、投影皆不需網路,照跑)
             else if (await netDownAtStart(ctx, '領域發現')) detail.skipped = '本機網路不通'
             else {
                 detail.discovered = true
                 try {
-                    const r = await discover(ctx, { opt, areas, nowMs, nowIso, budget, room: Math.min(cap.discover.newPerDay - addedToday, cap.areas.maxActive - activeN) })
+                    const r = await discover(ctx, { opt, areas, nowMs, nowIso, gate, room: Math.min(cap.discover.newPerDay - addedToday, cap.areas.maxActive - activeN) })
                     Object.assign(detail, r)
                 }
                 catch (e) {
@@ -253,7 +280,7 @@ export function stageAreas(opt = {}) {
  * AI 席位取 settings.capture.discover.ai({ use, fallback, timeoutMs? })。
  *
  * @param {Object} ctx 輸入管道脈絡
- * @param {Object} o 輸入 { opt, areas, nowMs, nowIso, budget, room }
+ * @param {Object} o 輸入 { opt, areas, nowMs, nowIso, gate(stageReserveGateOf 之守門閘), room }
  * @returns {Promise} 回傳 Promise，resolve 回傳 { candidates, proposed, added, rejected, aiCalls }
  */
 async function discover(ctx, o) {
@@ -278,11 +305,12 @@ async function discover(ctx, o) {
     const prompt = domain.buildPrompt(cands, o.areas.filter((a) => a.status === 'active' || a.status === 'paused'))
     const check = (d) => isarr(d) && d.some((it) => domain.isValidItem(it, cands.length))
     // 預算須容得下一次遞補:若上限只等於首家逾時,首家逾時即預算用盡、遞補鏈開不了工(當日窗口作廢);
-    //   故上限取 2×AREA_AI_BUDGET_MS;保護後段之界線不變(至多吃進保留 AREA_AI_BUDGET_MS)
-    const budgetMs = Math.max(30_000, Math.min(2 * AREA_AI_BUDGET_MS, o.budget.remainingMs() - AREA_MIN_REMAINING_MS + AREA_AI_BUDGET_MS))
+    //   故上限取 2×AREA_AI_BUDGET_MS;本段下限之界線不變(至多吃進下限 AREA_MIN_REMAINING_MS 之 AREA_AI_BUDGET_MS)。
+    //   組裝者之保留(gate.keep > 0)再封頂:預算至多為「整輪剩餘 − 保留」,AI 呼叫不吃進保留;保留為 0 時此封頂為整輪剩餘本身(下限已使其恆大於上式,無作用)
+    const budgetMs = Math.min(Math.max(30_000, Math.min(2 * AREA_AI_BUDGET_MS, o.gate.roundMs() - AREA_MIN_REMAINING_MS + AREA_AI_BUDGET_MS)), o.gate.remainingMs())
     const call = o.opt.callAI || ((p, c, x) => ai.callJson(p, c, { spec: dc.ai, ...x }))
     out.aiCalls = 1
-    const r = await call(prompt, check, { shouldStop: o.budget.shouldStop, budgetMs })
+    const r = await call(prompt, check, { shouldStop: o.gate.expired, budgetMs })
     if (!r?.ok) {
         ctx.log.warn(`領域發現：AI 判定失敗（${oneline(r?.error, 160)}），稍後再試（不作廢窗口）`)
         out.error = `AI 判定失敗：${oneline(r?.error, 120)}`
@@ -313,6 +341,15 @@ async function discover(ctx, o) {
         const label = script.fix(String(it.label).trim()) // 檢定標準 CS12:領域標籤以正體入庫(只改違規處;字形政策依語言設定)
         out.proposed++
         if (known.has(id) && !cooled.has(id)) continue // 同查詢已存在(任何狀態;已拒而冷卻已滿者除外——重驗)
+        // 驗證(每候選一次 OpenAlex 請求,至多約半分鐘):保留 > 0 時每個候選前須整輪未逾期且「整輪剩餘 − 保留 ≥ 一次驗證之估計」,不足即停止驗證——
+        //   未驗證之候選不入帳(不新增、不入已拒),下一窗口再被提出;已驗證者照落帳。保留為 0 時此迴圈不判時間(同現版)
+        if (o.gate.keep > 0 && o.gate.shouldStop(AREA_VALIDATE_STEP_MS)) {
+            if (o.gate.cut(AREA_VALIDATE_STEP_MS)) {
+                out.reserveDeferred = true
+                ctx.log.info(`領域發現：${reserveNoteOf(o.gate, AREA_VALIDATE_STEP_MS)}，其餘候選留待下一窗口驗證`)
+            }
+            break
+        }
         const again = cooled.delete(id) // 本輪只重驗一次(同查詢再被提出即視為已存在)
         // 驗證器可注入(opt.validate;預設 OpenAlex 計數與首頁摘要):非學術目錄之領域由使用端自驗
         const validate = typeof o.opt.validate === 'function' ? o.opt.validate : validateAreaQuery
