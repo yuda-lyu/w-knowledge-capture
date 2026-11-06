@@ -118,7 +118,7 @@ function packListOf() {
 //   註解與字串之內容(含「;」、引號、「import … from …」之字樣、錯誤訊息中之「cfg.<鍵>」)不干擾比對
 
 /** 專案內不屬本套件之目錄名:指定詞以之起頭即引用專案既有程式或資料(含使用端專案之排程殼與下游套件之目錄) */
-const PROJECT_DIRS = ['src', 'test', 'data', 'srcRunner', 'srcSummarize', 'srcRelate', 'srcExtract']
+const PROJECT_DIRS = ['src', 'test', 'data', 'srcShell', 'srcSummarize', 'srcRelate', 'srcExtract']
 
 /** 執行秩序件之單一匯入點 */
 const ORDER_BRIDGE = 'src/core/runnerPackage.mjs'
@@ -200,7 +200,7 @@ describe('unit-package', function() {
             assert.match(classify('test/x.test.mjs', '../../srcSummarize/x.mjs').problem, /跑出套件根/)
             assert.match(classify('src/core/x.mjs', '../nope/none.mjs').problem, /目標不存在/)
             assert.match(classify('src/core/x.mjs', 'srcSummarize/core/kernel.mjs').problem, /引用專案既有程式或資料/)
-            assert.match(classify('src/stages/x.mjs', '../../../srcRunner/WTaskRunner.mjs').problem, /跑出套件根/)
+            assert.match(classify('src/stages/x.mjs', '../../../srcShell/WTaskRunner.mjs').problem, /跑出套件根/)
             assert.match(classify('src/stages/x.mjs', 'w-data-pipeline/src/lock/executionLock.mjs').problem, /須經單一匯入點/)
             assert.match(classify('src/core/ai/adapter.mjs', 'wsemi/src/genClockTZ.mjs').problem, /須經單一匯入點/)
             assert.deepEqual(classify(ORDER_BRIDGE, 'w-data-pipeline/src/lock/executionLock.mjs'), { kind: 'package', pkg: 'w-data-pipeline' })
