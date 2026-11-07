@@ -40,10 +40,13 @@
 
 ## 2. prompt 長度上限:安靜失敗、0ms、不計入逾時
 
-`agy:`(antigravity CLI)以命令列傳 prompt,w-dispatch-ai 之 `dispatchAntigravity.mjs` 設 `MAX_PROMPT_LENGTH = 30000`(Windows 命令列 32,767 上限扣 exe 路徑與旗標之保守值;本套件對應 `src/core/ai/capability.mjs` 之 `KIND_MAX_PROMPT_CHARS.antigravity`)。超過就**未執行即回失敗**(errorType `params`),耗時近 0ms——不像逾時那樣顯眼,健康表上只是多一筆失敗,實際效果是「那個席位從來沒真的工作過」。
+> **2026-11-07 現況**:w-dispatch-ai 1.0.80(Gitea #94)起,`dispatchAntigravity` 之 `promptVia` 預設 `'auto'`——≤30,000 字照舊走命令列 `--print`,**超過者改以 `--input-format stream-json` 自 stdin 傳送,不再回 `prompt too long`**(需 agy ≥ 1.1.15;低於者回 `params` 明確錯誤、attempts 0、不送出;明給 `promptVia:'argv'` 者維持舊行為)。故本套件 `KIND_MAX_PROMPT_CHARS` 已移除 antigravity、表留空,**antigravity 條目預設不因長度被剔除**;機制(條目自帶 `maxPromptChars`、`ai.providerLimits`)保留。以下為該上限存在期間之經驗,其「安靜失敗」之形狀與教訓對任何未送出即失敗之硬上限仍成立(例:明給 `promptVia:'argv'`、將來其他命令列型轉接器)。
+> **教訓(本次)**:在本層硬編碼「上游某轉接器之內部常數」(kind 表)會隨上游改版而失真——表內值若失真,後果是本層**無故剔除可用條目**(使用端要讓長提示詞用到該家額度的需求因此落空),而且不報錯、只是少一個選項。故以測試釘住上游前提(`unit-ai-adapter-ext` 之「上游前提」案),上游變了才會紅。
+
+`agy:`(antigravity CLI)曾以命令列傳 prompt,w-dispatch-ai 之 `dispatchAntigravity.mjs` 設 `MAX_PROMPT_LENGTH = 30000`(Windows 命令列 32,767 上限扣 exe 路徑與旗標之保守值;本套件當時對應 `src/core/ai/capability.mjs` 之 `KIND_MAX_PROMPT_CHARS.antigravity`)。超過就**未執行即回失敗**(errorType `params`),耗時近 0ms——不像逾時那樣顯眼,健康表上只是多一筆失敗,實際效果是「那個席位從來沒真的工作過」。
 
 - **踩過三次,同一原因、不同席位**(皆下游批次呼叫:多候選批次、多份草稿之整合):實測 prompt 約 17k～44k 字元,註解寫之「約 1.5 萬字」低估約三倍。批次輸入長度＝各份材料字元總和加固定前綴,故候選數、批量、席位數一變,長度跟著變。
-- **兩條路徑對超限之處置不同**:`callJson` 呼叫前經 `fitChain` 依實際長度剔除放不下之條目、直接改派遞補(未送出、無失敗紀錄);工作流入口經 `seatSpec(seat, promptLen)` 以同一判準預篩,全放不下回 `null`。**預設不計入條目與 kind 之固有上限**——須建構選項 `capability: true`,或以 `ai.providerLimits` 明給逐 id 上限;未開時長 prompt 照常送交轉接器,由其回 `params` 後才遞補。
+- **兩條路徑對超限之處置不同**:`callJson` 呼叫前經 `fitChain` 依實際長度剔除放不下之條目、直接改派遞補(未送出、無失敗紀錄);工作流入口經 `seatSpec(seat, promptLen)` 以同一判準預篩,全放不下回 `null`。**預設不計入條目固有之上限(條目自帶 `maxPromptChars`;kind 硬上限表現為空)**——須建構選項 `capability: true`,或以 `ai.providerLimits` 明給逐 id 上限;未開時長 prompt 照常送交轉接器,由其回 `params` 後才遞補。
 - `params` 不計入健康降序(席位設定與供應商能力不相容,冷卻無益;另計 mismatch 供執行摘要揭露);`validateSeats` 對「全鏈條目皆有上限」之席位回警告(長 prompt 無處可去)。
 - **教訓**:prompt 長度一律以真實材料實測,不憑印象估;改動候選數、批量、席位數時回頭重量。
 

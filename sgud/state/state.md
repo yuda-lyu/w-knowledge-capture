@@ -1,4 +1,4 @@
-# 現況（w-knowledge-capture）— 2026-11-05
+# 現況（w-knowledge-capture）— 2026-11-07
 
 > 只記現況，不寫過程（過程在 `../exp/`）。接續工作先讀本檔；完成一項功能或結束一輪工作即更新。規則見 `../rule/rulebook.md`，兩者比對即知尚未做到者。
 > 路徑一律為 repo 相對路徑：原始碼 `src/`、測試 `test/`、工具 `toolg/`、範例 `g.mjs`。
@@ -8,7 +8,7 @@
 - npm `w-knowledge-capture`、版本 1.0.7（`package.json`）；主入口 `src/WKnowledgeCapture.mjs`、總組裝 `createKnowledgeCapture`（`src/createKnowledgeCapture.mjs`）、執行期件 `createCaptureRuntime`（`src/captureRuntime.mjs`）、物件 `src/captureObject.mjs`；`main` 為 `dist/w-knowledge-capture.umd.js`（Node 專用 UMD，發布流程產製）。
 - 套件佈局（依自有套件範本 w-knowledge-extract）：`src/`（原始碼，子目錄 `core/ stages/ stores/ fetchers/ standards/ domain/ ops/ bench/`）、`test/`（`test/tools/` 輔助件隨 npm 包發布）、`toolg/`（`addVersion`、`modifyReadme`、`cleanFolder`、`gDocsExams`、`gDistRollup`）、`g.mjs`（離線範例，輸出附檔末，README Example 為其複本）、根目錄範本檔（`.editorconfig`、`.eslintignore`、`.eslintrc.js`、`.jsdoc`、`babel.config.js`、`SECURITY.md`、`script.txt`）；`模型評比.csv` 留套件根（bench CLI 之 `--board` 輸出，程式不讀）。`package.json` 不設 `exports`／`files`（下游以深層路徑取 `src/…` 與 `test/tools/…`），且不提供 `.npmignore`：發布範圍依 `.gitignore`（npm 包＝git 版控之內容；`sgud/`、`test/`、`docs/` 皆隨包，`CLAUDE*.md`、暫存不入包）。
 - 打包清單（2026-11-02 `npm pack --dry-run`）279 檔：`src/` 81、`test/` 53（含 `test/tools/` 10、測試檔 42、`fixtures/` 1）、`docs/` 110、`sgud/` 16、`toolg/` 5、`dist/` 2、套件根 12；`CLAUDE*.md` 0。`docs/` 約 8.3MB、`test/` 約 1.7MB，皆低於 10MB 門檻（守門 `unit-package` ⑤ 以實際打包清單斷言）。
-- 依賴：`dependencies` 為 opencc-js ^1.4.2、w-data-pipeline ^1.0.29、w-dispatch-ai ^1.0.74、w-dwdata-hub ^1.0.29、w-fetch-web ^1.0.35、w-orm-lmdb ^1.0.55、wsemi ^1.9.49（皆與 `src/` 之實際 import 對帳，守門 `test/unit-package.test.mjs` ⑤）；`devDependencies` 為 w-package-tools ^1.1.23（mocha 隨之安裝）。執行秩序件取自 w-data-pipeline、w-dispatch-ai、wsemi，由 `src/core/runnerPackage.mjs` 以深層路徑取用（名稱 createClock→`genClockTZ`、runJsonCli→`execCliJsonFile`、cliFailDetail→`execCliFailDetail`，其餘同名）；`queueAge` 與 `readJson`／`writeFileAtomic` 在本套件 `src/core/util/{queueAge,fileIo}.mjs`。
+- 依賴：`dependencies` 為 opencc-js ^1.4.2、w-data-pipeline ^1.0.29、w-dispatch-ai ^1.0.80、w-dwdata-hub ^1.0.29、w-fetch-web ^1.0.35、w-orm-lmdb ^1.0.55、wsemi ^1.9.49（皆與 `src/` 之實際 import 對帳，守門 `test/unit-package.test.mjs` ⑤）；`devDependencies` 為 w-package-tools ^1.1.23（mocha 隨之安裝）。執行秩序件取自 w-data-pipeline、w-dispatch-ai、wsemi，由 `src/core/runnerPackage.mjs` 以深層路徑取用（名稱 createClock→`genClockTZ`、runJsonCli→`execCliJsonFile`、cliFailDetail→`execCliFailDetail`，其餘同名）；`queueAge` 與 `readJson`／`writeFileAtomic` 在本套件 `src/core/util/{queueAge,fileIo}.mjs`。
 - 被誰用：下游套件（摘要、關聯、提煉）各經其埠檔以深層路徑取本套件之 `src/…` 與 `test/tools/…`；使用端（宿主專案）以套件取用，抓取即本套件之實作。
 - 發布與版號由使用者處理，不列為待辦。
 
@@ -24,6 +24,7 @@
 
 | 日期 | 項 | 結果 |
 |---|---|---|
+| 2026-11-07 | 升 w-dispatch-ai ^1.0.80、`KIND_MAX_PROMPT_CHARS` 移除 antigravity（超長 prompt 上游改走 stdin，使用端提出，Gitea #94）後全套 `npm test`：新增 4 案（`unit-ai-adapter-ext` 3、`unit-ai-adapter-workflow` 1），機制案改以條目自帶 `maxPromptChars`／逐 id 覆寫重建（斷言與意圖不變）；修前對現況碼新案 3 ✗（`maxPromptCharsOf` 回 30000 非 Infinity、長 prompt 之 antigravity 條目被剔除）、上游前提案 ✓（對不存在之 exe 實呼 `dispatchAntigravity`：預設不回 `prompt too long`，`promptVia:'argv'` 維持舊行為） | **1249 ✓、0 ✗、5 pending**；未呼叫任何模型、未跑真 agy；agy 版本把關（≥ 1.1.15）屬上游，本層未測 |
 | 2026-11-05 | OpenAlex 多把金鑰(CAP-16 延伸)落地後全套 `npm test`(新增 `test/unit-capture-openalex-keys.test.mjs` 38 案;`unit-capture-openalex` 依陣列形狀更新;`logContract` 增須見字樣);修前對現況碼兩檔合計 43 ✗;對修正處植入 33 種變異(第一輪 26、獨立審查後第二輪 7),32 種擊殺、1 種為等價變異(回溯回應片段先截後遮:該訊息只露前 120 字,跨第 160 字截點之前綴不可見);以編造之假金鑰實連 OpenAlex 5 次(確認 401／無金鑰 429 之回應形狀,未帶真金鑰);獨立唯讀審查(sonnet)8 點,採納 6 點(金鑰無效訊息措辭、終止保險、舊形狀載體拋錯、逐項剝引號、先遮罩再截斷、改走 arXiv 之來源 WARN),2 點列為已知限制 | **1244 ✓、0 ✗、5 pending**(前次 1206;增 38＝新檔);帶真金鑰之實連驗證屬使用端,未測 |
 | 2026-11-05 | 耗時子階段扣保留(CAP-17)落地後全套 `npm test`(新增 `unit-capture-reserve`、`-gate`、`-guard` 三檔 64 案;`README` 與 `sgud` 同步);修前對現況碼之新階段測試 26 ✗／10 ✓(10 ✓＝保留未給之行為不變與不誤報之守門案)、守護測試對現況碼 3 ✗；對修正處植入 66 種變異,補測後全數擊殺(含獨立審查採納 6 點後補之案);保留未給時 report 欄集不變、`ctx.remainingMs` 探詢次數不變(以案釘住) | **1206 ✓、0 ✗、5 pending**(前次 1142;增 64＝新檔);未呼叫任何模型、未連網;下游套件全套未跑(其經 `node_modules` 取已安裝之本套件版本,非本工作樹) |
 | 2026-11-04 | 預設受測名單之免費判準排除走付費訂閱額度者（`isSubscriptionEntry`；w-dispatch-ai 1.0.74 加入之 `ocgo:` 條目帶 free 字樣致 `unit-bench` 紅 1）後全套 `npm test`（`unit-bench` 增 1 案）；變異 7 種（判準不排除、各訊號單獨去除 3、provider 精確比對、過度排除匿名池、名單少一條＝目錄新增匿名免費條目）皆被擊殺 | **1142 ✓、0 ✗、5 pending**（前次 1141；增 1＝新案）；修前 `unit-bench` 紅 1（推得者比名單多 `ocgo:opencode-go/beam-free`、`iceman-contributor-free`）；`DEFAULT_FREE_MODELS` 8 條內容 0 變動，皆在 1.0.74 目錄且內建調度層無金鑰可解析；未呼叫任何模型 |
@@ -45,7 +46,7 @@
 | 正文健全閘、瀏覽器分流（Playwright／Camofox）、判死類別、退避 | 落地 | STD-09、CAP-04；`unit-capture-fetch-checks`、`unit-capture-browser`、`unit-capture-policies` |
 | 無效文章處置、原文另存（docTexts）、死件回收、剔除清單 | 落地（`src/ops/{reviveDocs,refetchSources,docStockFix}.mjs`、`src/rejects.mjs`） | CAP-13、STD-03；`unit-capture-fix`、`unit-capture-refetch`、`unit-rejects` |
 | 本機網路不通之判斷（netGuard） | 落地 | CAP-12；`unit-capture-netguard` |
-| AI 調度層（唯一一份）：遞補、冷卻、健康、免費池額度、能力預篩、JSON 取最後一段、斷網不計、工作流 | 落地 | AI-01～11；`unit-ai-adapter*`、`unit-ai-json-reply` |
+| AI 調度層（唯一一份）：遞補、冷卻、健康、免費池額度、能力預篩、JSON 取最後一段、斷網不計、工作流 | 落地；能力預篩之 kind 硬上限表 `KIND_MAX_PROMPT_CHARS` **留空**（2026-11-07 起：antigravity 隨 w-dispatch-ai 1.0.80 超長 prompt 改走 stdin，不再因長度剔除；機制〔條目自帶 `maxPromptChars`、`ai.providerLimits`〕保留；agy 須 ≥ 1.1.15，低者上游回 `params` 後遞補） | AI-01～11（AI-02 見上）；`unit-ai-adapter*`、`unit-ai-json-reply` |
 | 檢定標準 CS1～CS12 之掃描與存量處置（CS10 重複、CS12 線索簡體） | 落地 | STD-09／22／25／26；`unit-capture-standards`、`unit-cs10fix`、`unit-cs12fix` |
 | 領域發現（CS8；席位 `capture.discover.ai`） | 落地 | CAP-11；`unit-capture-areas`、`api-area-ai`（真 AI） |
 | 健全閘偵測器陣列注入（`capture.standards.detectors`；內建 `GATE_DETECTORS_DEFAULT` 對外；自訂者帶 `module`，瀏覽器子行程依規格重建）；站台 adapter 帶 `module` 者亦達瀏覽器層 | 落地（2026-10-31） | CAPX-10；`unit-capture-browser`、`unit-settings`、`unit-assembly` |

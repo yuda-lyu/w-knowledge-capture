@@ -86,7 +86,7 @@ const CAT = [
     rest('w:own', 'ops', { timeoutMs: 3000 }), // 條目自帶逾時
     rest('w:slow', 'ops~400', { timeoutMs: 100 }), // 條目自帶逾時短於回應時間
     { id: 'w:dead', kind: 'api-openai-compat', baseURL: DEAD_BASE, model: 'ops' }, // 死埠:連線被拒
-    { id: 'agy:x', kind: 'antigravity', model: 'x', exe: 'c:/no-such-dir/no-such-agy.exe' }, // antigravity:kind 固有上限 30,000 字(不送出)
+    { id: 'agy:x', kind: 'antigravity', model: 'x', exe: 'c:/no-such-dir/no-such-agy.exe', maxPromptChars: 30_000 }, // 條目自帶上限 30,000 字(模擬命令列型轉接器之硬上限;capability 開啟才計);exe 不存在,不呼叫真 CLI
 ]
 // 提煉差量之外包物件(各棒之 check 形態;只認嚴格 true)
 const opsCheck = (j) => !!j && typeof j === 'object' && Array.isArray(j.ops)
@@ -318,18 +318,31 @@ describe('unit-ai-adapter-workflow', function() {
             for (const len of [undefined, NaN, 'x', Infinity]) assert.equal(ad.seatSpec({ use: 'w:ops' }, len).use, 'w:ops', `promptLen=${String(len)}:不預篩`)
         })
 
-        it('固有上限(antigravity 30,000 字)於 capability 開啟才計:開 → 剔除、全鏈皆 antigravity 回 null;未開 → 不剔除;判準同 callJson', async () => {
+        it('條目自帶上限(agy:x 之 30,000 字)於 capability 開啟才計:開 → 剔除、全鏈皆放不下回 null;未開 → 不剔除;判準同 callJson', async () => {
             const on = mk({ workflow: true, capability: true })
             const off = mk({ workflow: true })
             const seat = { use: 'agy:x', fallback: ['w:ops'] }
             assert.deepEqual([on.seatSpec(seat, 31_000).use, on.seatSpec(seat, 31_000).fallback], ['w:ops', []])
             assert.equal(on.seatSpec({ use: 'agy:x' }, 31_000), null)
             assert.deepEqual([on.seatSpec(seat, 100).use, on.seatSpec(seat, 100).fallback], ['agy:x', ['w:ops']], '短提示詞照常保留')
-            assert.deepEqual([off.seatSpec(seat, 31_000).use, off.seatSpec(seat, 31_000).fallback], ['agy:x', ['w:ops']], '未開不計固有上限')
+            assert.deepEqual([off.seatSpec(seat, 31_000).use, off.seatSpec(seat, 31_000).fallback], ['agy:x', ['w:ops']], '未開不計條目固有上限')
             // 同一判準:callJson 以同一長度呼叫時剔除同一家(未送出)
             const tries = []
             const r = await on.callJson('長'.repeat(31_000), opsCheckJson, { spec: seat, onEvent: (ev) => (ev.type === 'try' ? tries.push(ev.providerId) : null) })
             assert.deepEqual([r.ok, tries], [true, ['w:ops']])
+        })
+
+        it('未自帶上限之 antigravity 條目:capability 開啟時長提示詞亦不剔除(上游 1.0.80 起超長改走 stdin);seatSpec 全鏈皆此類亦非 null;callJson 同一判準(送交、不計 oversize)', async () => {
+            const free = { id: 'agy:free', kind: 'antigravity', model: 'x', exe: 'c:/no-such-dir/no-such-agy.exe' }
+            const over = []
+            const on = mk({ workflow: true, capability: true, catalogue: [...CAT, free], onOversize: (ev) => over.push(ev) })
+            const seat = { use: 'agy:free', fallback: ['w:ops'] }
+            assert.deepEqual([on.seatSpec(seat, 31_000).use, on.seatSpec(seat, 31_000).fallback], ['agy:free', ['w:ops']], '長提示詞不剔除')
+            assert.equal(on.seatSpec({ use: 'agy:free' }, 1_000_000).use, 'agy:free', '全鏈皆此類:非 null')
+            const tries = []
+            const r = await on.callJson('長'.repeat(31_000), opsCheckJson, { spec: seat, onEvent: (ev) => (ev.type === 'try' ? tries.push(ev.providerId) : null) })
+            assert.deepEqual([r.ok, r.providerId, tries], [true, 'w:ops', ['agy:free', 'w:ops']], '送交 agy:free(本例之執行檔不存在而失敗)後遞補')
+            assert.deepEqual(over, [], '未剔除:onOversize 不作用')
         })
 
         it('timeoutMs／budgetMs／minAttemptMs 之取值:①席位給值即用之 ②未給取留存條目之逾時之最大(預篩後重算)、預算＝逾時×留存數 ③條目與 ai 段皆無逾時取 300,000;④未給 minAttemptMs 者取 min(20 秒, 逾時之一半),等於 20 秒者不帶', () => {

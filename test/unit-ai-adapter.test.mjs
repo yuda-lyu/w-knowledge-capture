@@ -921,17 +921,18 @@ describe('unit-ai-adapter', function() {
             assert.deepEqual(reads.filter((p) => /opencode[\\/]log/i.test(p)), [], '未讀 opencode 日誌')
         })
 
-        it('未給 capability 且 ai.providerLimits 為預設 {}:不依 prompt 長度預先剔除(長 prompt 照常送交 antigravity 轉接器,由其於啟動前回 params 後遞補);validateSeats 無長度警告;onOversize 不作用', async () => {
-            // antigravity 條目:轉接器於啟動子行程之前即擋下逾 30,000 字之 prompt;exe 另指向不存在之路徑(萬一啟動亦只得 ENOENT,不呼叫真 CLI)
-            const agy = (id) => ({ id, kind: 'antigravity', model: 'x', exe: `${TMP}/no-such-agy.exe` })
+        it('未給 capability 且 ai.providerLimits 為預設 {}:不依 prompt 長度預先剔除(條目自帶上限不計,長 prompt 照常送交條目,失敗後遞補);validateSeats 無長度警告;onOversize 不作用', async () => {
+            // antigravity 條目以自帶 maxPromptChars 30,000 模擬命令列型轉接器之硬上限(kind 之固有上限表目前留空;上游 antigravity 轉接器超長改走 stdin、本身不擋);
+            // exe 指向不存在之路徑(送交者只得 ENOENT 而失敗後遞補,不呼叫真 CLI)
+            const agy = (id) => ({ id, kind: 'antigravity', model: 'x', exe: `${TMP}/no-such-agy.exe`, maxPromptChars: 30_000 })
             const oversize = []
             const ad = mk({ catalogue: [agy('agy:fake'), agy('agy:fake2'), ...CAT], onOversize: (ev) => oversize.push(ev) })
-            assert.deepEqual(ad.validateSeats({ s: { use: 'agy:fake', fallback: ['agy:fake2'] } }), { ok: true, warnings: [] }, '全鏈皆為 antigravity 亦不警告(固有上限未開)')
+            assert.deepEqual(ad.validateSeats({ s: { use: 'agy:fake', fallback: ['agy:fake2'] } }), { ok: true, warnings: [] }, '全鏈條目皆自帶上限亦不警告(固有上限未開)')
             const tries = []
             const r = await ad.callJson('長'.repeat(31_000), arrCheck, { spec: { use: 'agy:fake', fallback: ['fake:ok'] }, onEvent: (ev) => (ev.type === 'try' ? tries.push(ev.providerId) : null) })
             assert.equal(r.ok, true, r.error)
             assert.equal(r.providerId, 'fake:ok')
-            assert.deepEqual(tries, ['agy:fake', 'fake:ok'], '未預先剔除:antigravity 照鏈序送交')
+            assert.deepEqual(tries, ['agy:fake', 'fake:ok'], '未預先剔除:自帶上限之 antigravity 條目照鏈序送交')
             assert.deepEqual([r.attempts, oversize], [2, []])
         })
     })

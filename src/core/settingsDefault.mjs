@@ -57,7 +57,7 @@ export const AI_DEFAULT = {
     // 供應商健康降序(core/ai/providerHealth):連續幾次「整組皆敗」即降至鏈尾;0＝不開
     healthStreak: 0,
     // prompt 長度上限之逐條目覆寫 { 條目 id: 字元數 }(core/ai/capability):列出者於呼叫前依實際長度剔除放不下者;0＝解除該條目之固有上限;
-    //   {}＝不剔除。條目與 kind 之固有上限(如 antigravity 之 30,000)另由調度層之建構選項 capability 開啟
+    //   {}＝不剔除。條目固有之上限(條目自帶 maxPromptChars;kind 之硬上限表目前留空)另由調度層之建構選項 capability 開啟
     providerLimits: {},
 }
 

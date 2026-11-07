@@ -392,7 +392,7 @@ createKnowledgeCapture({
   | 失敗預覽 | 建構選項 `preview: true` | 失敗形狀另帶 `preview`(最後一次失敗嘗試之 stdout 前 120 字;未送出者為 `''`) |
   | 免費池當日額度 | `ai.pools.oc` | opencode 日誌回報當日額度用盡之 opencode 條目降至鏈尾(不移除)至每日重置;本行程見其成交即恢復;`onPool` 每條目一次 |
   | 供應商健康降序 | `ai.healthStreak` 正整數 | 連續 N 次整組皆敗即降至鏈尾、`onHealth` 回呼;回傳另帶 `health`,`drainStats` 與 run.json(`ai.health`)附健康摘要。本套件預設 0＝不開(高頻呼叫之下游總組裝於其 ai 段預設另給) |
-  | prompt 長度能力預篩 | `ai.providerLimits`(逐條目上限,恆生效);建構選項 `capability: true` 另計條目與 kind 之固有上限(如 antigravity 30,000 字) | 呼叫前剔除放不下之條目(鏈序不變;全部放不下即失敗不送出);`onOversize` 每條目一次;`validateSeats` 對全鏈皆有上限之席位回警告 |
+  | prompt 長度能力預篩 | `ai.providerLimits`(逐條目上限,恆生效);建構選項 `capability: true` 另計條目固有上限(條目自帶 `maxPromptChars`;kind 之固有上限表目前留空——antigravity 自 w-dispatch-ai 1.0.80 起超長 prompt 改自 stdin 傳送〔需 agy ≥ 1.1.15〕,不再剔除) | 呼叫前剔除放不下之條目(鏈序不變;全部放不下即失敗不送出);`onOversize` 每條目一次;`validateSeats` 對全鏈皆有上限之席位回警告 |
   | 多棒工作流之呼叫入口 | 建構選項 `workflow: true` | 另回 `getWkf()`(w-dispatch-ai 工作流之 `callAi`／`runFanout`,快取;與 `callJson` 共用游標、冷卻、健康、用量與工作目錄之確保;定義表去掉條目逾時;呼叫端之 `onEvent` 串在本層之後、不取代;整鏈皆敗且本機網路不通者回 `skipped:true, netDown:true`)與 `seatSpec(seat, promptLen)`(依長度預篩遞補鏈〔判準與計帳同 `callJson`〕、全放不下回 `null`;帶席位之 `timeoutMs`〔未給取留存條目之最大〕、`budgetMs`〔未給＝逾時×留存數〕、`minAttemptMs`〔未給者取 min(20 秒, 逾時之一半),同 `callJson`——預算不足 20 秒之席位否則一次都不送出〕) |
 - 上表之免費池額度、健康降序、能力預篩開啟時,總組裝把事件各以 WARN 一行寫入當輪日誌(字樣「供應商額度：」「供應商健康：」「供應商能力：」;未開即無;並發時寫入最近開始且仍在執行之輪;注入 `cfg.aiAdapter` 時不接)。前兩者屬常態(已列日誌契約 `CAPTURE_LOG_KNOWN`),逾長剔除須看見故不列。
 - 未開免費池額度時:opencode 免費額度用盡,該次呼叫會等滿逾時,之後在同一行程內移到鏈尾(`cooldownMs`)。

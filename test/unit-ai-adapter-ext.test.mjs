@@ -24,6 +24,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import http from 'node:http'
 import NO_SIDE_EFFECT from 'w-dispatch-ai/src/wkf/noSideEffectPrefix.mjs'
+import dispatchAntigravity from 'w-dispatch-ai/src/dispatchAntigravity.mjs'
 import { createAiAdapter } from '../src/core/ai/adapter.mjs'
 import { QUOTA_PATTERNS, parseQuotaLines, resetStartMs, createPoolQuota, defaultOpencodeLog } from '../src/core/ai/poolQuota.mjs'
 import { createProviderHealth } from '../src/core/ai/providerHealth.mjs'
@@ -1121,26 +1122,27 @@ describe('unit-ai-adapter-ext', function() {
 
     describe('能力預篩(規則⑧)', function() {
 
-        const agy = { id: 'agy:g', kind: 'antigravity' }
+        // agy 以條目自帶 maxPromptChars 30,000 模擬「命令列型轉接器之硬上限」(kind 之固有上限表目前留空,見 capability.mjs 檔頭;上游 antigravity 自 1.0.80 起超長 prompt 改走 stdin);
+        // agyFree 為未自帶上限者(其長 prompt 不剔除)
+        const agy = { id: 'agy:g', kind: 'antigravity', maxPromptChars: 30_000 }
+        const agyFree = { id: 'agy:g', kind: 'antigravity' }
         const son = { id: 'claude:sonnet', kind: 'claude' }
         const cdx = { id: 'codex:luna', kind: 'codex' }
 
-        it('上限來源:kind 硬上限 → 條目自帶 → 逐 id 覆寫;未知 kind 無上限;inherent:false 只認逐 id 覆寫', () => {
-            assert.equal(KIND_MAX_PROMPT_CHARS.antigravity, 30_000, '來源:w-dispatch-ai dispatchAntigravity.mjs MAX_PROMPT_LENGTH')
-            assert.equal(maxPromptCharsOf(agy), 30_000)
+        it('上限來源:條目自帶 → 逐 id 覆寫(逐 id 優先於一切);未自帶者與 claude／codex 無上限;inherent:false 只認逐 id 覆寫', () => {
+            assert.equal(maxPromptCharsOf(agy), 30_000, '條目自帶')
             assert.equal(maxPromptCharsOf(son), Infinity, 'claude 走 stdin,無命令列長度上限')
             assert.equal(maxPromptCharsOf(cdx), Infinity, 'codex 走 stdin')
-            assert.equal(maxPromptCharsOf({ id: 'x', kind: 'antigravity', maxPromptChars: 12_000 }), 12_000, '條目自帶優先於 kind')
-            assert.equal(maxPromptCharsOf(agy, { 'agy:g': 20_000 }), 20_000, '逐 id 覆寫優先於一切')
+            assert.equal(maxPromptCharsOf({ id: 'x', kind: 'antigravity', maxPromptChars: 12_000 }), 12_000, '條目自帶(任一 kind)')
+            assert.equal(maxPromptCharsOf(agy, { 'agy:g': 20_000 }), 20_000, '逐 id 覆寫優先於條目自帶')
             assert.equal(maxPromptCharsOf(agy, { 'agy:g': 0 }), Infinity, '覆寫為 0／null＝明示解除上限')
             assert.equal(maxPromptCharsOf(null), Infinity)
             assert.equal(maxPromptCharsOf(agy, null), 30_000, '覆寫表非物件視為無覆寫')
-            assert.equal(maxPromptCharsOf(agy, {}, { inherent: false }), Infinity, 'kind 之固有上限不計')
-            assert.equal(maxPromptCharsOf({ id: 'x', kind: 'antigravity', maxPromptChars: 12_000 }, {}, { inherent: false }), Infinity, '條目自帶之固有上限不計')
+            assert.equal(maxPromptCharsOf(agy, {}, { inherent: false }), Infinity, '條目自帶之固有上限不計')
             assert.equal(maxPromptCharsOf(son, { 'claude:sonnet': 500 }, { inherent: false }), 500, '逐 id 覆寫照常生效')
         })
 
-        it('fitChain:超過上限者剔除、鏈序不變;放得下者全留;恰等於上限者放行;inherent:false 不計 kind 上限', () => {
+        it('fitChain:超過上限者剔除、鏈序不變;放得下者全留;恰等於上限者放行;inherent:false 不計條目自帶上限', () => {
             const chain = [agy, son, cdx]
             const small = fitChain(chain, 10_000)
             assert.deepEqual(small.kept.map((x) => x.id), ['agy:g', 'claude:sonnet', 'codex:luna'])
@@ -1154,7 +1156,7 @@ describe('unit-ai-adapter-ext', function() {
         })
 
         it('fitChain:全鏈皆放不下時 kept 為空(呼叫端據此回失敗,不送出);空鏈與非陣列為空鏈;promptLen 非有限數值視為 0(全數保留)', () => {
-            const r = fitChain([agy, { id: 'agy:h', kind: 'antigravity' }], 50_000)
+            const r = fitChain([agy, { id: 'agy:h', kind: 'antigravity', maxPromptChars: 30_000 }], 50_000)
             assert.deepEqual(r.kept, [])
             assert.equal(r.dropped.length, 2)
             assert.deepEqual(fitChain([], 10), { kept: [], dropped: [] })
@@ -1166,9 +1168,11 @@ describe('unit-ai-adapter-ext', function() {
             }
         })
 
-        // ── 調度層接線(真實派送路徑):antigravity 條目之轉接器於啟動子行程之前即擋下逾 30,000 字之 prompt;exe 另指向不存在之路徑(不呼叫真 CLI)──
-        const agyEntry = (id) => ({ id, kind: 'antigravity', model: 'x', exe: `${TMP}/no-such-agy.exe` })
+        // ── 調度層接線(真實派送路徑):條目自帶 maxPromptChars 30,000 模擬命令列型轉接器之硬上限(limit 給 0 者不自帶);
+        //    exe 指向不存在之路徑——送交者只得 ENOENT 而失敗後遞補(不呼叫真 CLI)──
+        const agyEntry = (id, limit = 30_000) => ({ id, kind: 'antigravity', model: 'x', exe: `${TMP}/no-such-agy.exe`, ...(limit > 0 ? { maxPromptChars: limit } : {}) })
         const catAgy = () => [agyEntry('agy:a'), agyEntry('agy:b'), ...CAT]
+        const catAgyFree = () => [agyEntry('agy:a', 0), agyEntry('agy:b', 0), ...CAT]
         const LONG = '長'.repeat(31_000)
         const lenOf = (p) => NO_SIDE_EFFECT.length + p.length
 
@@ -1187,7 +1191,7 @@ describe('unit-ai-adapter-ext', function() {
             return { r, tries }
         }
 
-        it('capability 開啟:放不下之 antigravity 條目於呼叫前剔除(不送出)、遞補照原順序;onOversize 每條目每實例一次;健康層計「prompt 逾長跳過」;短 prompt 照常保留', async () => {
+        it('capability 開啟:放不下之條目(本例為自帶上限之 antigravity 條目)於呼叫前剔除(不送出)、遞補照原順序;onOversize 每條目每實例一次;健康層計「prompt 逾長跳過」;短 prompt 照常保留', async () => {
             const over = []
             const ai = mk({ capability: true, catalogue: catAgy(), onOversize: (ev) => over.push(ev) }, { healthStreak: 2 })
             for (let i = 0; i < 2; i++) {
@@ -1208,23 +1212,25 @@ describe('unit-ai-adapter-ext', function() {
             assert.equal(r.error, `prompt ${lenOf(LONG)} 字元超過本席位全部條目之上限（agy:a≤30000、agy:b≤30000）：縮短輸入或於遞補鏈加入無上限之條目`)
         })
 
-        it('ai.providerLimits 之逐 id 上限恆生效(未開 capability 亦然):逾上限即剔除、恰等於上限者放行、未列出者不受 kind 上限;capability 開啟時逐 id 覆寫可放寬 kind 上限', async () => {
+        it('ai.providerLimits 之逐 id 上限恆生效(未開 capability 亦然):逾上限即剔除、恰等於上限者放行、未列出者不受條目自帶上限;capability 開啟時逐 id 覆寫可放寬條目自帶上限', async () => {
             const p = 'q'.repeat(100)
             const a = await run(mk({}, { providerLimits: { 'rest:plain': lenOf(p) - 1 } }), p, { use: 'rest:plain', fallback: ['rest:ok'] })
             assert.deepEqual(a.tries, ['rest:ok'], '逾上限 1 字即剔除')
             const b = await run(mk({}, { providerLimits: { 'rest:plain': lenOf(p) } }), p, { use: 'rest:plain', fallback: ['rest:ok'] })
             assert.deepEqual(b.tries, ['rest:plain', 'rest:ok'], '恰等於上限者放行')
             const c = await run(mk({ catalogue: catAgy() }, { providerLimits: { 'rest:plain': 1 } }), LONG, { use: 'agy:a', fallback: ['rest:ok'] })
-            assert.deepEqual(c.tries, ['agy:a', 'rest:ok'], 'capability 未開:未列出之 antigravity 不受 kind 上限,照常送交(轉接器回 params 後遞補)')
+            assert.deepEqual(c.tries, ['agy:a', 'rest:ok'], 'capability 未開:未列出者不受條目自帶上限,照常送交(本例之執行檔不存在而失敗後遞補)')
             const d = await run(mk({ capability: true, catalogue: catAgy() }, { providerLimits: { 'agy:a': 40_000 } }), LONG, { use: 'agy:a', fallback: ['rest:ok'] })
-            assert.deepEqual(d.tries, ['agy:a', 'rest:ok'], '逐 id 覆寫(40,000)優先於 kind 上限:未剔除')
+            assert.deepEqual(d.tries, ['agy:a', 'rest:ok'], '逐 id 覆寫(40,000)優先於條目自帶上限(30,000):未剔除')
+            const e = await run(mk({ catalogue: catAgyFree() }, { providerLimits: { 'agy:a': 20_000 } }), LONG, { use: 'agy:a', fallback: ['rest:ok'] })
+            assert.deepEqual(e.tries, ['rest:ok'], '未自帶上限之條目:逐 id 上限(20,000)恆生效,未開 capability 亦剔除')
         })
 
         it('validateSeats:全鏈條目皆有上限之席位回警告(上限取法同呼叫);首選有上限而遞補無上限者不警告;未開 capability 且無逐 id 上限者恆無警告;警告不影響問題席位之彙整', () => {
             const on = mk({ capability: true, catalogue: catAgy() })
             const w = on.validateSeats({ 'x.ai': { use: 'agy:a', fallback: ['agy:b'] }, 'y.ai': { use: 'agy:a', fallback: ['rest:ok'] } })
             assert.deepEqual(w, { ok: true, warnings: ['x.ai 之全鏈條目皆有 prompt 長度上限（agy:a≤30000、agy:b≤30000）：prompt 超過時本席位無處可去、呼叫即失敗；建議遞補鏈至少留一家無上限者'] })
-            assert.deepEqual(mk({ catalogue: catAgy() }).validateSeats({ 'x.ai': { use: 'agy:a', fallback: ['agy:b'] } }).warnings, [], '固有上限未開')
+            assert.deepEqual(mk({ catalogue: catAgy() }).validateSeats({ 'x.ai': { use: 'agy:a', fallback: ['agy:b'] } }).warnings, [], '條目固有上限未開(capability 未給)')
             const lim = mk({}, { providerLimits: { 'rest:ok': 1000, 'rest:plain': 2000 } })
             assert.deepEqual(lim.validateSeats({ s: { use: 'rest:ok', fallback: ['rest:plain'] } }).warnings, ['s 之全鏈條目皆有 prompt 長度上限（rest:ok≤1000、rest:plain≤2000）：prompt 超過時本席位無處可去、呼叫即失敗；建議遞補鏈至少留一家無上限者'])
             assert.throws(() => on.validateSeats({ 'x.ai': { use: 'agy:a', fallback: ['agy:b'] }, bad: { use: 'nope:x' } }), /^Error: AI 席位於啟動期檢核失敗（1 席）：bad → 席位引用了不可用的條目：nope:x/)
@@ -1248,6 +1254,41 @@ describe('unit-ai-adapter-ext', function() {
             })
             const r = await ai.callJson(LONG, check, { spec: { use: 'agy:a', fallback: ['rest:ok'] } })
             assert.deepEqual([r.ok, r.providerId], [true, 'rest:ok'])
+        })
+
+        // ── kind 不列固有上限:w-dispatch-ai 1.0.80(使用端提出,Gitea #94)起,antigravity 轉接器對超過 30,000 字之 prompt 改自 stdin 傳送、不再回 prompt too long ──
+
+        it('kind 不列固有上限:KIND_MAX_PROMPT_CHARS 為空表(機制保留)、未自帶上限之 antigravity 條目為 Infinity 且任何長度皆不剔除;條目自帶上限與逐 id 覆寫照常生效', () => {
+            assert.equal(maxPromptCharsOf(agyFree), Infinity)
+            assert.equal(maxPromptCharsOf(agyFree, {}, { inherent: false }), Infinity)
+            assert.deepEqual(fitChain([agyFree, son], 1_000_000).dropped, [], '超長 prompt 亦不剔除')
+            assert.deepEqual(Object.keys(KIND_MAX_PROMPT_CHARS), [], '表留空:目前無命令列型轉接器列入')
+            assert.equal(maxPromptCharsOf({ ...agyFree, maxPromptChars: 12_000 }), 12_000, '條目自帶上限照常生效')
+            assert.equal(maxPromptCharsOf(agyFree, { 'agy:g': 20_000 }), 20_000, '逐 id 覆寫照常生效')
+        })
+
+        it('未自帶上限之 antigravity 條目:capability 開啟時長 prompt 亦不剔除(依鏈序送交、不計 oversize、無 onOversize 回呼);全鏈皆此類不回 oversize 失敗,validateSeats 無長度警告', async () => {
+            const over = []
+            const ai = mk({ capability: true, catalogue: catAgyFree(), onOversize: (ev) => over.push(ev) }, { healthStreak: 2 })
+            const a = await run(ai, LONG, { use: 'agy:a', fallback: ['rest:ok'] })
+            assert.deepEqual([a.r.ok, a.r.providerId, a.r.attempts, a.tries], [true, 'rest:ok', 2, ['agy:a', 'rest:ok']], '送交 agy:a(本例之執行檔不存在而失敗)後遞補')
+            assert.deepEqual(over, [], '未剔除:onOversize 不作用')
+            assert.equal(ai.health.snapshot().counts['agy:a']?.oversize ?? 0, 0, '健康層不計 prompt 逾長跳過')
+            assert.deepEqual(ai.validateSeats({ 'x.ai': { use: 'agy:a', fallback: ['agy:b'] } }), { ok: true, warnings: [] }, '全鏈皆 antigravity 亦無長度警告')
+            const all = await run(ai, LONG, { use: 'agy:a', fallback: ['agy:b'] })
+            assert.deepEqual([all.r.ok, 'oversize' in all.r, all.tries], [false, false, ['agy:a', 'agy:b']], '全鏈皆送交而失敗(非 oversize 未送出)')
+        })
+
+        it('上游前提(上列「kind 不列固有上限」所依):dispatchAntigravity 預設對超過 30,000 字之 prompt 不回 prompt too long;明給 promptVia:argv 者維持舊行為(params、未送出);exe 指向不存在之路徑,不呼叫真 CLI', async () => {
+            const exe = `${TMP}/no-such-agy.exe`
+            const p = '長'.repeat(31_000)
+            const d = await dispatchAntigravity(p, { exe, timeoutMs: 20_000, maxRetries: 0 })
+            assert.equal(d.ok, false, '前提:不存在之執行檔不可能成功')
+            assert.doesNotMatch(String(d.error), /prompt too long/, '預設(auto):超長改走 stdin,不再擋於命令列長度')
+            assert.notEqual(d.errorType, 'params')
+            const a = await dispatchAntigravity(p, { exe, promptVia: 'argv', timeoutMs: 20_000, maxRetries: 0 })
+            assert.deepEqual([a.ok, a.errorType, a.attempts], [false, 'params', 0], 'promptVia:argv 維持舊行為:未送出')
+            assert.match(String(a.error), /^prompt too long \(31000 chars > 30000\)/)
         })
     })
 })
