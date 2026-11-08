@@ -840,7 +840,10 @@ describe('unit-assembly', function() {
             })
             const rep = await flow.run()
             assert.deepEqual(order, ['stage', 'afterRun'])
-            assert.deepEqual(Object.keys(args[0]).sort(), ['deps', 'log', 'report', 'summaryFile'])
+            // 刻意更新(產出鏈規格 §5.4):收尾鉤子之引數加 stamp,與該輪 run.json 之 stamp 同值;其餘鍵不變
+            assert.deepEqual(Object.keys(args[0]).sort(), ['deps', 'log', 'report', 'stamp', 'summaryFile'])
+            assert.equal(args[0].stamp, readJsonFile(rep.summaryFile).stamp)
+            assert.match(args[0].stamp, /^\d{14}$/)
             assert.equal(args[0].summaryFile, rep.summaryFile)
             assert.equal(args[0].report, rep, '收尾鉤子收到之 report 即回傳者')
             assert.deepEqual(rep.afterRun, { ok: true, sawSummary: true, sawStandards: true, sawStage: '抓取' })

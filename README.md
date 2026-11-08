@@ -174,6 +174,49 @@ await test()
 
 **自我擴充之輸入**:本套件**消化**線索(`expand`、`areas`),但不從文章內容產生線索——內建管線中寫入線索者是下游(例如摘要時 AI 列出之相關網站與關鍵詞)。沒有下游、也沒有使用方寫入線索時,擴充只剩種子來源與網格主題,領域發現沒有候選。
 
+### 產出鏈(produced)共用件
+
+知識庫之筆記、邊、核心版本須記「哪一輪、哪個席位、實際由哪個條目成交、提示詞版本、套件版」(使用端需求,Gitea #107～#109),供依紀錄定位、成批重處理或移除。下游套件資料結構同一,故結構之組出、檢核、歷史上限與套件版取得集中於本套件,皆自主入口匯出:
+
+| 名稱 | 做什麼 |
+|---|---|
+| `makeProduced(o)` | 檢核並組出 `produced`。單一產出者:`{ v:1, stamp, stage, seat, provider, promptFp?, pkg, at }`;多步產出(給 `steps`):`{ v:1, stamp, stage, pkg, at, steps:[{ role, seat, provider, promptFp? }], failures:[{ role, seat, provider, type }] }`。拒絕未知鍵與缺必填;`stamp` 必明給(輪次外為 `null`);**不呼叫 AI 之寫入**(確定性修正等)單一產出者之 `seat` 與 `provider` 須**同時明給 `null`**(語意＝該次寫入無 AI 呼叫;兩鍵仍寫入、值為 `null`;只其一為 `null` 或缺省皆拒);`at` 未給取現在(機器本地時區,格式 `YYYY-MM-DDTHH:mm:ss±hh:mm`,與時鐘物件 `iso8()` 同;有時鐘者宜明給 `clock.iso8()`);輸入無效即拋 `invalid <名稱>: must be <種類描述>`(不含輸入值) |
+| `appendProduced(rec, produced, { max = 50 })` | 回傳 `{ produced, producedHistory, producedHistoryDropped }`:每次寫入追加一筆(舊→新,最末筆即 `produced`),超過 `max` 捨去最舊並累計捨去數;不改輸入。舊記錄(無 `produced`)從頭起算、不回填 |
+| `pkgIdOf(import.meta.url)` | 自模組位置往上找最近之 `package.json`,回 `name@version`(行程內快取);非 `file:` URL、祖先皆無、最近之 `package.json` 無法解析時回 `null`;傳入非 URL 字串即拋。**dist(UMD)**:Node 載入之 UMD 內 rollup 把 `import.meta.url` 改寫為該 dist 檔之 file URL,dist 位於套件目錄內,結果與原始碼下相同;瀏覽器載入之 UMD 取不到磁碟位置,回 `null` |
+| `createPromptFpCache({ onFail })` → `{ promptFpOf(role, { vocab, roleOpt }) }` | 提示詞指紋之輪次快取:一個實例＝一輪。指紋即評比機制之 `planBench(role, { vocab, roleOpt }).promptFp`(`benchPromptFpOf` 對該角色內建題組以現行詞彙組出之各頁提示詞),每輪每角色(每組詞彙)只算一次;角色無內建題組者回 `null`;算不出者回 `null` 並經 `onFail(roleId, error)` 告知一次。語意為「角色內建題組＋現行詞彙組出之提示詞」之指紋(提示詞版本),不是該次呼叫實際送出內容之指紋。**角色須與 `promptFpOf` 出自同一份本套件**(已定義之角色只被定義它的那份模組認得;巢狀安裝之兩份互不認得,`promptFpOf` 以 `invalid role` 拒收)。**經 dist(UMD)取用時**內建題組檔不在打包產物旁,內建角色之指紋回 `null`(`onFail` 告知題組檔讀取失敗);要有指紋請由 `src/` 深層路徑取用 |
+
+**輪次 stamp**:輪次執行器(`createRoundRunner`)呼叫各段時,於該段收到之 `ctx` 掛 `ctx.stamp`(14 碼,與該輪 `run.json`、`run.start.json`、日誌檔名之 stamp 同一值;`when(ctx)` 與 `run(ctx)` 皆見;子階段序列傳遞同一 `ctx` 故同見)。`scan.audit({ stores, deps, log, stamp })` 與 `afterRun({ report, summaryFile, log, deps, stamp })` 兩個回呼之引數亦帶同一個 `stamp`。輪次外(手動維運、命令列)之呼叫無 `stamp`,以 `ctx.stamp ?? null` 交給 `makeProduced`。限制:段本身為巢狀管線時其內層段之 `ctx` 不繼承 `stamp`。
+
+下游寫入記錄時之取用範例:
+
+```js
+import { makeProduced, appendProduced, pkgIdOf, createPromptFpCache } from 'w-knowledge-capture/src/WKnowledgeCapture.mjs'
+
+//每輪一次(下游 buildDeps 內建立,存於 deps):
+let fp = createPromptFpCache({ onFail: (id, e) => log.warn(`提示詞指紋算不出(${id}):${e.message}`) })
+
+//段內寫入時(ctx 為輪次執行器交給該段者):
+let r = await ai.callJson(prompt, check, { spec: 'demo.ai' }) //r.providerId 即實際成交條目(遞補時為遞補者)
+let produced = makeProduced({
+    stamp: ctx.stamp ?? null,
+    stage: 'note-write',
+    seat: 'demo.ai',
+    provider: r.providerId,
+    promptFp: fp.promptFpOf(demoBenchRole, { vocab }), //角色無內建題組時為 null,自動省略
+    pkg: pkgIdOf(import.meta.url),
+    at: clock.iso8(),
+})
+let { produced: p, producedHistory, producedHistoryDropped } = appendProduced(oldRec ?? {}, produced)
+await stores.notes.patch(id, { produced: p, producedHistory, producedHistoryDropped })
+
+//不呼叫 AI 之寫入(確定性修正等):seat 與 provider 同時給 null
+let fixed = makeProduced({ stamp: ctx.stamp ?? null, stage: 'note-fix', seat: null, provider: null, pkg: pkgIdOf(import.meta.url), at: clock.iso8() })
+
+//收尾鉤子或符合度掃描回呼內寫入時,stamp 取自回呼之引數:
+//cfg.afterRun = async ({ report, summaryFile, log, deps, stamp }) => { makeProduced({ stamp, … }) }
+//下游自組 createRoundRunner 時,其 scan.audit 同:async ({ stores, deps, log, stamp }) => { makeProduced({ stamp, … }) }
+```
+
 ---
 
 ## 2. 安裝與執行環境
@@ -419,7 +462,7 @@ createKnowledgeCapture({
 | 自訂領域驗證(非學術目錄) | `stageOpts.areas.validate(query, ctx, opt)` → `{ ok, reason, transient? }`(取代 OpenAlex);不用 AI 時 `capture.discover.ai: null` |
 | 調度層之安裝端資產 | `cfg.aiOptions`:`providerPick`(可用池)、`exes`(逐 kind 之 CLI 路徑)、`persistStore`／`usageCounter`(跨行程之狀態與用量;如 w-dispatch-ai 之 `createFileStore`／`createUsageCounter`) |
 | 換儲存 | `cfg.lmdb.WOrm` 給相容之 ORM 建構函數 |
-| 收尾通知／巡檢 | `cfg.afterRun({ report, summaryFile, log, deps })`(管線之外、摘要之後;失敗只記 WARN) |
+| 收尾通知／巡檢 | `cfg.afterRun({ report, summaryFile, log, deps, stamp })`(管線之外、摘要之後;失敗只記 WARN;`stamp` 為本輪 stamp,與 `run.json` 之 `stamp` 同值) |
 
 **下游套件共用之件**(與抓取內容無關之機制與多工作同讀之規則;下游知識處理套件經主入口取用,不另寫一份——同名即同義):
 - 總組裝共用件 `core/assemblyKit.mjs`:鍵檢核、目錄(`resolveDirsCfg` 之 extra 供下游目錄)、時鐘、提示詞鍵、子階段設定、選開集合、lmdb、管線名(`pipelineNameOf`:`cfg.name` 取代內建名)、日誌、調度層與其事件日誌(所需之函數以 `need` 宣告)、啟動期警告、集合開關、每輪 run、info 共同欄、功能表之必填檢核(`featuresOnOf`／`featureProblemsOf`:同一判定小組之功能共用一句、一次列全)、domain 之注入與合併(`mergeDomains`,只收 opt.domains)、`cfg.data` 之鍵集與解析(`checkDataKeys`／`resolveDataCfg`)、提示詞覆寫與注入 domain 之衝突(`promptDomainConflicts`)——下游以參數帶入自己之鍵集與回呼,本套件之總組裝即以之組成。提示詞覆寫之驗證與套用在 `core/prompts.mjs`(`promptSigText`／`promptSigsProblem`／`promptOverridesOf`／`promptTextOf`;覆寫之末參數 `promptCtxOf(vocab, kbLabel, defaultPrompt)`、可覆寫之 domain 成員 `overridablePrompt(custom, key, builtin, { check, norm, ctxOf })`〔未覆寫即內建本身;覆寫者收正規化之原參數＋ctx,回傳經 check〕、提示詞之鍵 → domain `promptDomainOf({ domain: SIGS })`、某 domain 之覆寫子集 `promptsForDomain`;cfg 層、執行期件、domain 工廠同一份);交執行期生效值之鍵 `RUNTIME_CFG_KEYS`／`runtimeCfgOf`(`core/runtime.mjs`);主入口之合成 `composeNamespaces(name, namespaces)`(`core/util/entry.mjs`:各公開模組之命名空間併為預設匯出物件,同名不同實體即拋——四套件之主入口同一件)。

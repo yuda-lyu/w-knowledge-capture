@@ -35,6 +35,7 @@ import { expandDirs } from '../src/core/dirs.mjs'
 import { resolveRuntime, RUNTIME_CFG_KEYS, runtimeCfgOf } from '../src/core/runtime.mjs'
 import { acquireLock } from '../src/core/runnerPackage.mjs'
 import { stdReport } from '../src/core/kernel.mjs'
+import { runSubStages } from '../src/captureObject.mjs'
 import { createKnowledgeCapture } from '../src/createKnowledgeCapture.mjs'
 import { netDownAtStart } from '../src/core/util/netGuard.mjs'
 import { CORE_LOG_KNOWN, CORE_LOG_MUST_SEE, CAPTURE_LOG_KNOWN, CAPTURE_LOG_MUST_SEE } from '../src/logContract.mjs'
@@ -580,7 +581,7 @@ describe('unit-assembly-kit', function() {
          * 以共用件組一個最小之總組裝(下游示意):下游目錄 notes、集合 docs／notes(＋選開之 cores)、記錄型日誌、執行順序之記錄
          *
          * @param {String} wd 輸入 workDir
-         * @param {Object} [o={}] 輸入 { stages, lock, limit(排程上限;未給為 55、null 為不給), deadlineMs, cores, scan, afterRun, afterRunNote, ai, warnings, now }
+         * @param {Object} [o={}] 輸入 { stages, lock, limit(排程上限;未給為 55、null 為不給), deadlineMs, cores, scan, afterRun, afterRunNote, ai, warnings, now(字串或每輪呼叫之函數) }
          * @returns {Object} 回傳 { run, order, logs, deps, roundLog, dirs, runtime, names }
          */
         const assemble = (wd, o = {}) => {
@@ -601,7 +602,7 @@ describe('unit-assembly-kit', function() {
                 clock: FIXED_CLOCK,
                 mkLog: () => {
                     const l = recLog()
-                    if (o.now) l.now = o.now
+                    if (o.now) l.now = typeof o.now === 'function' ? o.now() : o.now
                     logs.push(l)
                     return l
                 },
@@ -664,7 +665,9 @@ describe('unit-assembly-kit', function() {
             assert.equal(seen.scan.deps, a.deps[0])
             assert.equal(seen.after.deps, a.deps[0], '收尾鉤子收到之 deps 即組裝所建')
             assert.equal(seen.after.log, a.logs[0])
-            assert.deepEqual(seen.after.keys, ['deps', 'log', 'report', 'summaryFile'])
+            // 刻意更新(產出鏈規格 §5.4):收尾鉤子之引數加 stamp(與 run.json 同值);其餘鍵不變
+            assert.deepEqual(seen.after.keys, ['deps', 'log', 'report', 'stamp', 'summaryFile'])
+            assert.equal(seen.after.sum.stamp, '20260102030405')
             assert.deepEqual(seen.after.sum.standards.counts.X1, { v: 1, total: 1, violation: 1 }, '收尾讀 run.json 時當輪之計數已在')
             assert.equal(seen.after.sum.standards.at, FIXED_CLOCK.iso8())
             assert.equal(rep.ok, true)
@@ -680,6 +683,102 @@ describe('unit-assembly-kit', function() {
             assert.ok(lines.some((l) => /^INFO 收尾完成（[\d.]+s）$/.test(l)), lines.join('\n'))
             for (const d of ['db', 'log', 'tmp', 'state', 'knowledge', 'knowledge/notes']) assert.ok(fs.existsSync(`${wd}/${d}`), d)
             assert.equal(a.roundLog.current(), null, '輪後當輪日誌已移除')
+        })
+
+        it('stamp 交各段(產出鏈規格 §5.4):每段 ctx.stamp(when 與 run 皆見)等於該輪 run.json 與 run.start.json 之 stamp;每輪各自一值;子階段共用同一 ctx;階段物件不被改;段之簽名與回報不變', async () => {
+            const seenRun = []
+            const seenWhen = []
+            const seenSub = []
+            const stages = [
+                { name: 'a', when: (ctx) => { seenWhen.push(['a', ctx.stamp]); return true }, run: async (ctx) => { seenRun.push(['a', ctx.stamp]); return stdReport() } },
+                { name: 'skipped', when: (ctx) => { seenWhen.push(['skipped', ctx.stamp]); return false }, run: async () => { throw new Error('when 為 false 不應執行') } },
+                { name: 'b', run: async (ctx) => {
+                    seenRun.push(['b', ctx.stamp])
+                    const reps = await runSubStages([{ name: 'sub', run: async (c) => { seenSub.push(c.stamp); return stdReport() } }], ctx)
+                    return stdReport({ detail: reps })
+                } },
+            ]
+            const before = stages.map((s) => ({ ...s }))
+            const stamps = ['20261108100000', '20261108110000']
+            let n = 0
+            const wd = dirOf('stamp')
+            const a = assemble(wd, { stages, now: () => stamps[n++] })
+            const r1 = await a.run()
+            const r2 = await a.run()
+            // 規格 §5.4:各段 ctx 帶 stamp,與該輪 run.json 之 stamp 同一值
+            for (const [i, r] of [r1, r2].entries()) {
+                const sum = readJsonFile(r.summaryFile)
+                assert.equal(sum.stamp, stamps[i], `第 ${i + 1} 輪 run.json 之 stamp`)
+                assert.deepEqual(seenRun.filter((_, k) => Math.floor(k / 2) === i), [['a', sum.stamp], ['b', sum.stamp]], `第 ${i + 1} 輪各段 ctx.stamp 等於 run.json 之 stamp`)
+                assert.deepEqual(seenWhen.filter((_, k) => Math.floor(k / 2) === i), [['a', sum.stamp], ['skipped', sum.stamp]], `第 ${i + 1} 輪 when 亦見 stamp(含被略過之段)`)
+                assert.equal(seenSub[i], sum.stamp, '子階段(runSubStages 傳遞同一 ctx)亦見')
+                const startFiles = findFiles(`${wd}/log`, `${sum.stamp}-run.start.json`)
+                assert.equal(startFiles.length, 1, 'run.start.json 檔名之 stamp 同一值')
+                assert.equal(readJsonFile(startFiles[0]).stamp, sum.stamp)
+                assert.deepEqual(r.stages.map((s) => [s.name, s.status]), [['a', 'ok'], ['skipped', 'skip'], ['b', 'ok']], '各段之回報與略過語意不變')
+            }
+            assert.notEqual(seenRun[0][1], seenRun[2][1], '每輪各自一值')
+            // 階段物件不被改(跨輪重用):鍵與函數皆原樣
+            stages.forEach((s, i) => {
+                assert.deepEqual(Object.keys(s), Object.keys(before[i]))
+                assert.equal(s.run, before[i].run)
+                assert.equal(s.when, before[i].when)
+                assert.ok(!('stamp' in s))
+            })
+        })
+
+        it('stamp 取自日誌之 now(自訂日誌工廠有 now 者)或時鐘 stamp8(無 now 者),與 run.json 同值;停止後之 always 段、巢狀管線作為段亦照常執行', async () => {
+            const seen = []
+            const sub = W.definePipeline({ name: 'nested', stages: [{ name: 'inner', run: async () => { seen.push('inner'); return stdReport() } }] })
+            const stages = [
+                { name: 'halt', run: async (ctx) => { seen.push(['halt', ctx.stamp]); return { ...stdReport(), stop: true, reason: '測試停止' } } },
+                { name: 'skipme', run: async () => { throw new Error('停止後不應執行') } },
+                { name: 'fin', always: true, run: async (ctx) => { seen.push(['fin', ctx.stamp]); return stdReport() } },
+            ]
+            const a = assemble(dirOf('stamp2'), { stages }) // 無 now:取 FIXED_CLOCK.stamp8()
+            const rep = await a.run()
+            const sum = readJsonFile(rep.summaryFile)
+            assert.equal(sum.stamp, FIXED_CLOCK.stamp8())
+            assert.deepEqual(seen, [['halt', sum.stamp], ['fin', sum.stamp]], '停止後 always 段照常執行且見 stamp')
+            assert.deepEqual(rep.stages.map((s) => [s.name, s.status]), [['halt', 'ok'], ['skipme', 'skip'], ['fin', 'ok']])
+            const nested = assemble(dirOf('stamp3'), { stages: [sub], now: '20261201000000' })
+            const rep2 = await nested.run()
+            assert.equal(rep2.ok, true, '巢狀管線(__kind:pipeline)包裝後仍照常執行')
+            assert.deepEqual(seen.slice(2), ['inner'])
+            assert.equal(readJsonFile(rep2.summaryFile).stamp, '20261201000000')
+        })
+
+        it('scan.audit 與 afterRun 之引數亦帶 stamp(產出鏈規格 §5.4):與該輪 run.json 之 stamp 同值,每輪各自一值;引數鍵集為既有鍵加 stamp,其餘鍵與值不變', async () => {
+            const auditArgs = []
+            const afterArgs = []
+            const stamps = ['20261108120000', '20261108130000']
+            let n = 0
+            const a = assemble(dirOf('stamp-cb'), {
+                now: () => stamps[n++],
+                scan: { ...COUNTS(0), audit: async (x) => {
+                    auditArgs.push(x)
+                    return { n: 1 }
+                } },
+                afterRun: async (x) => {
+                    afterArgs.push(x)
+                    return { ok: true }
+                },
+            })
+            const r1 = await a.run()
+            const r2 = await a.run()
+            for (const [i, r] of [r1, r2].entries()) {
+                const sum = readJsonFile(r.summaryFile)
+                assert.equal(sum.stamp, stamps[i], `第 ${i + 1} 輪 run.json 之 stamp`)
+                assert.equal(auditArgs[i].stamp, sum.stamp, `第 ${i + 1} 輪 scan.audit 收到之 stamp`)
+                assert.equal(afterArgs[i].stamp, sum.stamp, `第 ${i + 1} 輪 afterRun 收到之 stamp`)
+                assert.deepEqual(Object.keys(auditArgs[i]).sort(), ['deps', 'log', 'stamp', 'stores'])
+                assert.deepEqual(Object.keys(afterArgs[i]).sort(), ['deps', 'log', 'report', 'stamp', 'summaryFile'])
+                assert.equal(afterArgs[i].summaryFile, r.summaryFile, '既有鍵之值不變')
+                assert.equal(afterArgs[i].report, r)
+                assert.equal(afterArgs[i].deps, auditArgs[i].deps, '掃描與收尾取得同一份 deps')
+            }
+            assert.notEqual(auditArgs[0].stamp, auditArgs[1].stamp)
+            assert.deepEqual(a.deps.length, 2)
         })
 
         it('選開之集合 cores:開啟者每輪開集合含 cores(段可讀寫),未開者不含', async () => {

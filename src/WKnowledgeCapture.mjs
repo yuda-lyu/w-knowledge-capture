@@ -61,6 +61,7 @@ import * as localeNs from './core/locale.mjs'
 import * as benchKitNs from './bench/benchKit.mjs'
 import * as benchRolesNs from './bench/benchRoles.mjs'
 import * as areaBenchNs from './bench/areaBench.mjs'
+import * as promptFpNs from './bench/promptFp.mjs'
 // ── 維運(存量處置、原文回溯、剔除清單、孤兒瀏覽器回收、執行摘要、日誌)──
 import * as reviveDocsNs from './ops/reviveDocs.mjs'
 import * as refetchSourcesNs from './ops/refetchSources.mjs'
@@ -69,6 +70,7 @@ import * as rejectsNs from './rejects.mjs'
 import * as logContractNs from './logContract.mjs'
 import * as browserHygieneNs from './core/ops/browserHygiene.mjs'
 import * as runSummaryNs from './core/ops/runSummary.mjs'
+import * as provenanceNs from './core/ops/provenance.mjs'
 // ── 執行秩序件(鎖、時間預算、截止公式、日誌、單行化、AI 目錄展開、時鐘、子行程 JSON 執行、CLI 失敗摘要;取自自有套件,經單一匯入點原名轉出)──
 import * as runnerPackageNs from './core/runnerPackage.mjs'
 // ── 核心件(管線秩序、路徑、執行期生效值、詞彙、存取政策、工具)──
@@ -144,6 +146,7 @@ export * from './core/locale.mjs'
 export * from './bench/benchKit.mjs'
 export * from './bench/benchRoles.mjs'
 export * from './bench/areaBench.mjs'
+export * from './bench/promptFp.mjs'
 export * from './ops/reviveDocs.mjs'
 export * from './ops/refetchSources.mjs'
 export * from './ops/docStockFix.mjs'
@@ -151,6 +154,7 @@ export * from './rejects.mjs'
 export * from './logContract.mjs'
 export * from './core/ops/browserHygiene.mjs'
 export * from './core/ops/runSummary.mjs'
+export * from './core/ops/provenance.mjs'
 export * from './core/runnerPackage.mjs'
 export * from './core/kernel.mjs'
 export * from './core/assemblyKit.mjs'
@@ -193,8 +197,8 @@ const NAMESPACES = [
     sourcePolicyNs, areaPolicyNs, contentGateNs, healthRecheckNs, contentIndexNs, fetchPolicyNs, ingestGateNs,
     defaultFetchersNs, openAlexNetNs, siteAdaptersNs, articleParseNs, endpointsNs, browserLadderNs, browserFetcherNs,
     docStandardsNs, registryNs, auditNs, cs10FixNs, cs12FixNs, verdictNs, textFormsNs, localeNs,
-    benchKitNs, benchRolesNs, areaBenchNs,
-    reviveDocsNs, refetchSourcesNs, docStockFixNs, rejectsNs, logContractNs, browserHygieneNs, runSummaryNs, runnerPackageNs,
+    benchKitNs, benchRolesNs, areaBenchNs, promptFpNs,
+    reviveDocsNs, refetchSourcesNs, docStockFixNs, rejectsNs, logContractNs, browserHygieneNs, runSummaryNs, provenanceNs, runnerPackageNs,
     kernelNs, assemblyKitNs, promptsNs, runtimeNs, dirsNs, vocabDefaultNs, vocabKitNs, docPolicyNs, docTextsNs, noteFieldsNs, frontierPolicyNs, holdsNs, stockLedgerNs, jsonlNs,
     fileIoNs, queueAgeNs, netGuardNs, stageReserveNs, textNs, valuesNs, cliNs, tableNs, webNs, recordsNs, patternsNs, injectablesNs, entryNs,
 ]

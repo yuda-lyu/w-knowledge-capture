@@ -868,6 +868,12 @@ export function pipelineNameOf(name, builtin) {
 /**
  * 建立每輪之執行函數(序列見檔頭【每輪序列】)
  *
+ * 每輪之 stamp(14 碼;與日誌檔名、run.start.json、run.json 之 stamp 同一值)於呼叫各段時掛在該段收到之 ctx 上:
+ * 各段之 when(ctx) 與 run(ctx) 皆可讀 ctx.stamp(產出鏈之 makeProduced 取之,見 core/ops/provenance);輪次外(手動 ops／CLI)之呼叫 ctx 無此欄。
+ * 其餘簽名與行為不變。段本身若為巢狀管線(definePipeline 產物),其內層段另有自己的 ctx、不繼承此欄。
+ * scan.audit 與 afterRun 回呼之引數亦帶 stamp(同值):`audit({ stores, deps, log, stamp })`、`afterRun({ report, summaryFile, log, deps, stamp })`;
+ * 其餘引數鍵與值不變(cfg.afterRun 與本函數之檢核錯誤訊息逐字不變,其內所列簽名為既有鍵,不含 stamp)。
+ *
  * @param {Object} p 輸入參數物件
  * @param {String} p.name 輸入管線名(日誌與執行摘要 run.json 之 name)
  * @param {Object} p.dirs 輸入目錄物件(每輪先建全部目錄;開工標記與執行摘要落 dirs.log)
@@ -881,9 +887,9 @@ export function pipelineNameOf(name, builtin) {
  * @param {Array} p.stages 輸入管線之段(各為 { name, run(ctx) };每輪以同一組建管線)
  * @param {Object} [p.ai] 輸入 AI 調度層(執行摘要取其 aiUsageToday／health／drainStats)
  * @param {Object} [p.roundLog] 輸入當輪日誌之轉接(createRoundLog 之產物;每輪 enter、結束 leave)
- * @param {Object} [p.scan] 輸入符合度掃描(未給即不掃) { enabled:布林值或 () => 布林值(每輪判定), audit:async ({ stores, deps, log }) => 掃描結果,
+ * @param {Object} [p.scan] 輸入符合度掃描(未給即不掃) { enabled:布林值或 () => 布林值(每輪判定), audit:async ({ stores, deps, log, stamp }) => 掃描結果(stamp＝本輪 stamp),
  *   countsOf:(掃描結果, { at, ms }) => { counts:{ 標準 id: { violation, … } }, … } }
- * @param {Function} [p.afterRun] 輸入收尾鉤子 ({ report, summaryFile, log, deps }) => 結果
+ * @param {Function} [p.afterRun] 輸入收尾鉤子 ({ report, summaryFile, log, deps, stamp }) => 結果(stamp＝本輪 stamp,與 summaryFile 之 stamp 同值)
  * @param {Function} [p.afterRunNote] 輸入收尾結果之附註 (結果) => 字串(附於收尾失敗／略過之日誌行;如外部巡檢之紀錄是否已更新)，回空字串或拋錯即不附
  * @returns {Function} 回傳 run():Promise，resolve 回傳 report(w-data-pipeline runPipeline 之產物,另含 summaryFile 與 afterRun(收尾鉤子之回傳值));
  *   未取得執行鎖時 report.lockSkipped 為 true,不掃描、不寫摘要、不觸發收尾鉤子
@@ -969,6 +975,33 @@ export function createRoundRunner(p) {
         }
     }
 
+    /**
+     * 本輪各段:於各段之 when 與 run 被呼叫時,先把本輪 stamp 掛到該段收到之 ctx(ctx.stamp;與 run.json 之 stamp 同一值)——
+     *   產出鏈(core/ops/provenance 之 makeProduced)取之。不改原階段物件(跨輪重用)、不改各段之簽名與回報;
+     *   this 照原階段呼叫方式傳入;非物件或無 run 函數者原樣交給管線(由管線的契約檢查照舊報錯)。
+     *   只掛在管線頂層之 ctx(子階段序列 runSubStages 傳遞同一 ctx 故同見);段本身若為巢狀管線(definePipeline 產物),
+     *   其內層段另有自己的 ctx,不繼承此欄
+     *
+     * @param {Array} list 輸入階段陣列
+     * @param {String} stamp 輸入本輪 stamp
+     * @returns {Array} 回傳包裝後之新階段陣列
+     */
+    const stampedStagesOf = (list, stamp) => list.map((st) => {
+        if (st === null || typeof st !== 'object' || !isfun(st.run)) return st
+        const { run, when } = st
+        return {
+            ...st,
+            when: function(ctx) {
+                ctx.stamp = stamp
+                return isfun(when) ? when.call(this, ctx) : true
+            },
+            run: function(ctx) {
+                ctx.stamp = stamp
+                return run.call(this, ctx)
+            },
+        }
+    })
+
     return async () => {
         for (const d of Object.values(dirs)) fsCreateFolder(d)
         const log = mkLog()
@@ -994,7 +1027,7 @@ export function createRoundRunner(p) {
                     deadlineMs,
                     lock: lockFile ? () => acquireLock(lockFile, { staleMs: lockStaleMs }) : undefined,
                     deps,
-                    stages: [...stages],
+                    stages: stampedStagesOf(stages, stamp),
                 })
                 const startedAt = clock.iso8()
                 const t0Run = Date.now()
@@ -1009,7 +1042,7 @@ export function createRoundRunner(p) {
                     else {
                         const t0 = Date.now()
                         try {
-                            standards = scan.countsOf(await scan.audit({ stores, deps, log }), { at: clock.iso8(), ms: Date.now() - t0 })
+                            standards = scan.countsOf(await scan.audit({ stores, deps, log, stamp }), { at: clock.iso8(), ms: Date.now() - t0 })
                             const bad = Object.entries(standards.counts).filter(([, c]) => c.violation > 0)
                             log.info(`符合度掃描（${((Date.now() - t0) / 1000).toFixed(1)}s）：${bad.length ? `違反 ${bad.map(([id, c]) => `${id} ${c.violation}`).join('、')}` : '各確定性標準皆無違反'}`)
                         }
@@ -1031,7 +1064,7 @@ export function createRoundRunner(p) {
                 if (afterRun) {
                     const t0 = Date.now()
                     try {
-                        const r = await afterRun({ report, summaryFile: file, log, deps })
+                        const r = await afterRun({ report, summaryFile: file, log, deps, stamp })
                         report.afterRun = r
                         const sec = ((Date.now() - t0) / 1000).toFixed(1)
                         if (r && r.ok === false) log.warn(`收尾失敗：${oneline(r.error, 200)}（${sec}s；管線本身不受影響${noteOf(r)}）`)

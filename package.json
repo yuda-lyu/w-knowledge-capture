@@ -1,6 +1,6 @@
 {
   "name": "w-knowledge-capture",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "main": "dist/w-knowledge-capture.umd.js",
   "dependencies": {
     "opencc-js": "^1.4.2",
@@ -9,7 +9,7 @@
     "w-dwdata-hub": "^1.0.30",
     "w-fetch-web": "^1.0.36",
     "w-orm-lmdb": "^1.0.56",
-    "wsemi": "^1.9.51"
+    "wsemi": "^1.9.52"
   },
   "devDependencies": {
     "w-package-tools": "^1.1.23"

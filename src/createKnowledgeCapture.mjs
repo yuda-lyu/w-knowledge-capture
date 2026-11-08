@@ -116,7 +116,7 @@ const PIPELINE_NAME = '知識抓取'
  * @param {Object} [cfg.lmdb] 輸入 { WOrm?, path?(預設 dirs.db), db?(預設 'knowledge'), cls?(集合名覆寫) }
  * @param {Boolean|String} [cfg.notes=false] 輸入筆記集合:true 或集合名 → 加開 notes(領域發現之主概念候選、原文回溯之對象)
  * @param {Function} [cfg.logFactory] 輸入日誌工廠 () => logger，預設每輪一檔 log/<day>/<stamp>-run.log
- * @param {Function|Boolean} [cfg.afterRun] 輸入收尾鉤子 ({ report, summaryFile, log, deps }) => 結果，false 或未給即無
+ * @param {Function|Boolean} [cfg.afterRun] 輸入收尾鉤子 ({ report, summaryFile, log, deps, stamp }) => 結果(stamp＝本輪 stamp，與 run.json 之 stamp 同值)，false 或未給即無
  * @param {Object|null} [cfg.netGuard] 輸入本機網路判斷器(整組置換)；null＝不判斷；未給依 settings.capture.network.probeUrls(預設取 capture.services 三個端點基底之原點)建立
  * @returns {Object} 回傳 { run:Function, openStores:Function, closeStores:Function, info:Function }
  * @throws {Error} cfg.workDir 非有效字串、cfg 含不認得之鍵、settings 各段不合 schema、cfg 各鍵形狀不合(見各檢核)、

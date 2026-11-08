@@ -809,7 +809,8 @@ describe('unit-package', function() {
                 })
                 const rep = await flow.run()
                 // 規則:createKnowledgeCapture.run 之收尾鉤子在管線外、摘要之後,收尾讀 run.json 時當輪的已存在
-                assert.deepEqual(seen, [{ keys: ['deps', 'log', 'report', 'summaryFile'], summaryExists: true, reportOk: true, deps: DEPS_KEYS }])
+                // 刻意更新(產出鏈規格 §5.4):收尾鉤子之引數加 stamp;其餘鍵不變
+                assert.deepEqual(seen, [{ keys: ['deps', 'log', 'report', 'stamp', 'summaryFile'], summaryExists: true, reportOk: true, deps: DEPS_KEYS }])
                 assert.deepEqual(rep.afterRun, { ok: true, tag: 'done' })
                 assert.equal(rep.summaryFile && fs.existsSync(rep.summaryFile), true)
             })
