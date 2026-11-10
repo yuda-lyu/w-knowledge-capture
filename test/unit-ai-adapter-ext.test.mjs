@@ -10,8 +10,9 @@
 //   ④失敗預覽(preview):失敗形狀附最後一次失敗嘗試之 stdout 前 120 字(未送出即失敗者為 '');成功不附
 //   ⑤免費池當日額度(ai.pools.oc):日誌本週期有額度字樣之 opencode 條目降至鏈尾、不移除;onPool 每條目每行程一次;成交即恢復;
 //     字樣判讀、週期起點、增量讀取、檔尾上限、節流
-//   ⑥供應商健康降序(ai.healthStreak):連續 N 次組盡即冷卻(降序)並回呼 onHealth;params 只記 mismatch;逐次失敗只記次數;
-//     多金鑰與並行之計數依上游之組盡事件;回傳帶 health、drainStats 附健康摘要、截斷放行另計、執行摘要帶 ai.health
+//   ⑥供應商健康降序(ai.healthStreak):連續 N 次組盡即冷卻(降序)並回呼 onHealth——連敗之計數與冷卻之寫入屬遞補層(coolAfterFails＝ai.healthStreak,
+//     持久、跨行程;設計 da402 §4.2〈CA〉5),健康層只觀察:不寫 store、onHealth 由 cooled(reason streak)驅動、視窗內之重申不重複回呼;
+//     params 只記 mismatch;逐次失敗只記次數;多金鑰與並行之計數依上游之組盡事件;回傳帶 health、drainStats 附健康摘要、截斷放行另計、執行摘要帶 ai.health
 //   ⑦ai 段之機制鍵(pools／healthStreak／providerLimits)以值開關、預設值即關閉({}／0／{});給了而不合即拋(設定段與調度層同一判準)
 //   ⑧能力預篩:依實際 prompt 長度(含防寫前綴)剔除放不下之條目、鏈序不變;逐 id 上限恆生效,條目與 kind 之固有上限於 capability 開啟時才計;
 //     全鏈放不下即失敗不送出;onOversize 每條目一次、次數計於健康層;validateSeats 警告全鏈皆有上限之席位;先預篩再避開(避開不致使呼叫失敗)
@@ -357,7 +358,9 @@ describe('unit-ai-adapter-ext', function() {
             assert.equal(r.ok, true)
             assert.equal(ps.reads(), 1, '只於第一次取用時讀取持久層')
             const last = ps.saved[ps.saved.length - 1]
-            assert.ok(Number.isFinite(last.cooling?.['rest:rl503']), '限流之冷卻寫回持久層')
+            // 冷卻紀錄之格式屬遞補層(w-dispatch-ai 1.0.85 起為 { at, n, reason };設計 da402 §4.2〈DA〉4)
+            const rec = last.cooling?.['rest:rl503']
+            assert.ok(Number.isFinite(rec?.at) && rec?.n === 1 && rec?.reason === 'detect', '限流之冷卻寫回持久層')
             assert.deepEqual([last.cursors?.['rest:half'], last.extra], [1, 'kept'], '既有內容保留(不整份取代)')
             await ad.callJson('q', check, { spec: { use: 'rest:ok' } })
             assert.equal(ps.reads(), 1, '其後之呼叫用同一物件,不重讀')
@@ -729,6 +732,18 @@ describe('unit-ai-adapter-ext', function() {
             assert.deepEqual(after.tries, [OC_MUSE], '成交後恢復:照鏈序先打')
         })
 
+        it('最後手段:用盡之條目降至鏈尾,前面之條目全敗後仍試到它並成交;成交後停寫冷卻、下一次照鏈序先打(設計 §5.2〈CA〉CA-5;外審 terra T02)', async () => {
+            const log = `${TMP}/oc-last.log`
+            fs.writeFileSync(log, lineQuota(nowIn()) + '\n')
+            const st = { cursors: {}, cooling: {} }
+            const ai = mkPool({ oc: { log } }, { persistStore: { get: () => st, set: () => {} } })
+            const a = await tryOrder(ai, { use: OC_MUSE, fallback: ['rest:plain'] })
+            assert.deepEqual([a.r.ok, a.r.providerId, a.tries], [true, OC_MUSE, ['rest:plain', OC_MUSE]], '前家(非 JSON)失敗後試到降序之條目')
+            assert.equal(st.cooling[OC_MUSE], undefined, '成交即刪冷卻紀錄(遞補層)')
+            const b = await tryOrder(ai, { use: OC_MUSE, fallback: ['rest:plain'] })
+            assert.deepEqual([b.tries, st.cooling[OC_MUSE]], [[OC_MUSE], undefined], '本行程見其成交後不再寫冷卻、照鏈序先打')
+        })
+
         it('日誌不存在、字樣屬前一週期、字樣為瞬間限流(brief wait) → 不降序、onPool 不作用;同一日誌而未給 ai.pools 亦不降序(對照)', async () => {
             const prev = new Date(resetStartMs(Date.now()) - 3600e3).toISOString()
             for (const [name, content, pools] of [['不存在', null, true], ['前一週期', lineQuota(prev), true], ['瞬間限流', lineBrief(nowIn()), true], ['未給 ai.pools', lineQuota(nowIn()), false]]) {
@@ -752,7 +767,7 @@ describe('unit-ai-adapter-ext', function() {
 
     describe('供應商健康降序(規則⑥)', function() {
 
-        /** 記憶體之狀態 store(與 w-dispatch-ai createFileStore 同契約 {get,set};get 回副本,以驗健康層之重新斷言;非集合之 memStore) */
+        /** 記憶體之狀態 store(與 w-dispatch-ai createFileStore 同契約 {get,set};get 回副本,以驗健康層不寫入;非集合之 memStore) */
         const stateStore = (init = {}) => {
             let st = { ...init }
             return {
@@ -774,165 +789,81 @@ describe('unit-ai-adapter-ext', function() {
         const nk = (providerId, keyIndex, errorType = 'http', extra = {}) => ({ type: 'next-key', providerId, keyIndex, keyId: `${providerId}#${keyIndex}`, errorType, error: `${errorType} err`, ...extra })
         const okEv = (providerId, keyIndex = 0) => ({ type: 'ok', providerId, keyIndex, keyId: `${providerId}#${keyIndex}`, durationMs: 1 })
 
-        it('連續 3 次呼叫失敗(每次一個組盡事件)→ 寫入冷卻表(降序);成功即歸零;未達門檻不冷卻;冷卻中再失敗重新斷言而不重複回呼', () => {
+        // ── 健康層只觀察(設計 da402 §4.2〈CA〉5;規則帳本 AI-03):連敗之計數與冷卻之寫入屬遞補層(w-dispatch-ai 之 coolAfterFails;其規則之逐案測試
+        //    在 w-dispatch-ai),本層之單元案只驗:不寫 store、onCool 由 cooled(reason 'streak')驅動、失敗型別與 mismatch 之統計、snapshot 讀持久連敗 ──
+        const streakEv = (providerId, k, extra = {}) => ({ type: 'cooled', providerId, keyIndex: null, keyId: providerId, error: `${extra.errorType || 'validation'} err`, cooldownMs: 900_000, n: 1, reason: 'streak', streak: k, errorType: 'validation', keys: 0, attempted: 1, ...extra })
+
+        it('只觀察:組盡事件不寫 store、不回呼(連敗之判斷屬遞補層);onCool 只由 cooled(reason streak) 驅動,同一段只回呼一次;成功記 ok、失敗型別次數由逐次失敗事件計', () => {
             const store = stateStore({ cursors: {}, cooling: {} })
             const cooled = []
-            const t = 1_000_000
+            let t = 1_000_000
             const h = createProviderHealth({ store, threshold: 3, windowMs: 900_000, now: () => t, onCool: (ev) => cooled.push(ev) })
-            failCall(h, 'g', 'validation')
-            failCall(h, 'g', 'validation')
-            assert.equal(store._raw().cooling.g, undefined, '兩次未達門檻不冷卻——單次驗證失敗是常態')
+            for (let i = 0; i < 5; i++) failCall(h, 'g', 'validation')
+            assert.deepEqual([store._raw().cooling, cooled.length], [{}, 0], '組盡事件不寫冷卻、不回呼')
             h.onEvent(okEv('g'))
-            failCall(h, 'g', 'validation')
-            failCall(h, 'g', 'validation')
-            assert.equal(store._raw().cooling.g, undefined, '成功歸零後重新計數')
-            failCall(h, 'g', 'exec')
-            assert.equal(store._raw().cooling.g, t, '第 3 次(混合 validation／exec)即寫入 cooling')
-            assert.equal(cooled.length, 1)
-            assert.deepEqual([cooled[0].providerId, cooled[0].streak, cooled[0].errorType], ['g', 3, 'exec'])
-            store.set({ cursors: {}, cooling: {} }) // 模擬被上游整份寫回蓋掉
-            failCall(h, 'g', 'validation')
-            assert.equal(store._raw().cooling.g, t, '被蓋掉後於下一次失敗重新斷言')
-            assert.equal(cooled.length, 1, '同一段 streak 只回呼一次')
+            h.onEvent(streakEv('g', 3, { errorType: 'exec' }))
+            assert.deepEqual([cooled.length, cooled[0].providerId, cooled[0].streak, cooled[0].errorType], [1, 'g', 3, 'exec'])
+            t += 1
+            h.onEvent(streakEv('g', 4))
+            assert.equal(cooled.length, 1, '同一段(視窗內之重申)只回呼一次')
+            assert.deepEqual(store._raw().cooling, {}, '自始不寫 store')
             const s = h.snapshot()
             assert.equal(s.counts.g.cooled, 1)
             assert.equal(s.counts.g.fail.validation, 5, '失敗型別次數由逐次失敗事件計(組盡事件不重複記)')
             assert.equal(s.counts.g.ok, 1)
         })
 
-        it('params(席位與能力不相容,如 prompt 超過 CLI 長度上限)不計 streak,另計 mismatch 並進摘要', () => {
-            const store = stateStore({ cooling: {} })
-            const h = createProviderHealth({ store, threshold: 2 })
+        it('params(席位與能力不相容,如 prompt 超過 CLI 長度上限)另計 mismatch 並進摘要;全為 params 之組不更新 lastType', () => {
+            const state = { cooling: {}, failStreak: { agy: { k: 2, at: 1 } } }
+            const h = createProviderHealth({ store: { get: () => state, set: () => {} }, threshold: 2 })
             for (let i = 0; i < 6; i++) failCall(h, 'agy', 'params', { error: 'prompt too long (41000 chars > 30000)' })
-            assert.equal(store._raw().cooling.agy, undefined, 'params 不冷卻:冷卻改善不了設定不相容')
             assert.equal(h.snapshot().counts.agy.mismatch, 6)
-            assert.equal(h.snapshot().streak.agy, undefined)
+            assert.deepEqual(h.snapshot().streak.agy, { n: 2, lastType: '', lastError: '' }, '持久連敗照讀;全為 params 之組不更新 lastType')
             assert.match(h.summary(), /席位不相容 agy\(params\)×6/)
             assert.doesNotMatch(h.summary(), /健康降序/)
         })
 
-        it('逐次失敗(next-key／skip-group)只記失敗次數、不動 streak;連續失敗以組盡事件計,無金鑰／單把／多把同一規則', () => {
-            const store = stateStore({ cooling: {} })
-            const h = createProviderHealth({ store, threshold: 2 })
+        it('逐次失敗(next-key／skip-group)只記失敗次數;一死一活並行(6 次換鑰失敗後 6 次成功)、組內預算用盡皆不回呼、不計降序', () => {
+            const cooled = []
+            const h = createProviderHealth({ store: stateStore({ cooling: {} }), threshold: 2, onCool: (ev) => cooled.push(ev) })
             for (let i = 0; i < 4; i++) h.onEvent({ type: 'next-key', providerId: 'agnes', keyIndex: i % 2, keyId: `agnes#${i % 2}`, errorType: 'http', error: 'quota' })
             for (let i = 0; i < 3; i++) h.onEvent(fail('agnes', 'validation'))
-            assert.equal(h.snapshot().streak.agnes, undefined, '沒有組盡事件就不計:一把失敗而他把成交之呼叫,上游不發組盡事件')
             assert.deepEqual(h.snapshot().counts.agnes.fail, { http: 4, validation: 3 })
-            assert.equal(store._raw().cooling.agnes, undefined)
-            for (const keys of [0, 1, 3]) {
-                const pid = `k${keys}`
-                for (let i = 0; i < 2; i++) h.onEvent(exhausted(pid, Array(Math.max(1, keys)).fill('exec'), { keys, by: 'all-keys' }))
-                assert.ok(Number.isFinite(store._raw().cooling[pid]), `keys ${keys}:每收到一次組盡事件計一次`)
-            }
-        })
-
-        it('排除清單:incomplete、tool-unsupported、invalid-response 與未知新型別皆計入;無金鑰 REST 之 fetch 計入;params 只記 mismatch;混合者以最後一個計入型別計;缺 errorTypes 者計為 exec', () => {
-            const store = stateStore({ cooling: {} })
-            const h = createProviderHealth({ store, threshold: 2 })
-            for (const t of ['incomplete', 'tool-unsupported', 'invalid-response', 'future-x']) {
-                failCall(h, `p-${t}`, t)
-                failCall(h, `p-${t}`, t)
-                assert.ok(Number.isFinite(store._raw().cooling[`p-${t}`]), `${t} 連續 2 次須冷卻`)
-            }
-            for (let i = 0; i < 2; i++) {
-                h.onEvent({ type: 'next-key', providerId: 'rest-nokey', keyIndex: null, keyId: 'rest-nokey', errorType: 'fetch', error: 'FETCH_ERROR' })
-                h.onEvent(exhausted('rest-nokey', ['fetch'], { by: 'all-keys' }))
-            }
-            assert.ok(Number.isFinite(store._raw().cooling['rest-nokey']), '無金鑰 REST 之網路層失敗計入')
-            for (let i = 0; i < 4; i++) failCall(h, 'agy', 'params')
-            assert.equal(store._raw().cooling.agy, undefined, 'params 不冷卻')
-            assert.equal(h.snapshot().counts.agy.mismatch, 4)
-            h.onEvent(exhausted('mix', ['http', 'params'], { keys: 2, by: 'all-keys' }))
-            assert.deepEqual([h.snapshot().streak.mix.n, h.snapshot().streak.mix.lastType], [1, 'http'], '混合者計入,型別取最後一個計入型別')
-            h.onEvent({ type: 'group-exhausted', providerId: 'none', keyIndex: null, keyId: 'none', keys: 0, attempted: 1, by: 'all-keys', error: 'x' })
-            assert.equal(h.snapshot().streak.none.lastType, 'exec', '缺 errorTypes 者仍計入(計為 exec)')
-        })
-
-        it('兩把皆敗:每次呼叫一個組盡事件計一次,達門檻冷卻;onCool 帶 keys 2', () => {
-            const store = stateStore({ cooling: {} })
-            const cooled = []
-            const h = createProviderHealth({ store, threshold: 2, onCool: (ev) => cooled.push(ev) })
-            const call = () => {
-                h.onEvent(nk('p', 0))
-                h.onEvent(nk('p', 1))
-                h.onEvent(exhausted('p', ['http', 'http'], { keys: 2, by: 'all-keys' }))
-            }
-            call()
-            assert.equal(h.snapshot().streak.p.n, 1, '一次呼叫計 1(兩個換鑰失敗事件不重複計)')
-            assert.equal(store._raw().cooling.p, undefined)
-            call()
-            assert.ok(Number.isFinite(store._raw().cooling.p), '第二次呼叫達門檻冷卻')
-            assert.equal(cooled.length, 1)
-            assert.deepEqual([cooled[0].keys, cooled[0].errorType, cooled[0].streak], [2, 'http', 2], '訊息可註明「每次 2 把金鑰皆敗」')
-        })
-
-        it('一死一活並行(游標只在成功時推進,並行呼叫皆從死金鑰起跑):6 次換鑰失敗後 6 次成功,無組盡事件,不得冷卻', () => {
-            const store = stateStore({ cooling: {} })
-            const h = createProviderHealth({ store, threshold: 2 })
             for (let i = 0; i < 6; i++) h.onEvent(nk('p', 0))
             for (let i = 0; i < 6; i++) h.onEvent(okEv('p', 1))
-            assert.equal(store._raw().cooling.p, undefined, '以失敗事件數計會把同一把死金鑰誤算成整組皆敗')
-            assert.deepEqual([h.snapshot().counts.p.cooled, h.snapshot().counts.p.fail.http], [0, 6])
-        })
-
-        it('組內預算用盡(後段金鑰從未被試):上游不發組盡事件,不得計入', () => {
-            const store = stateStore({ cooling: {} })
-            const h = createProviderHealth({ store, threshold: 2 })
+            assert.deepEqual([h.snapshot().counts.p.cooled, h.snapshot().counts.p.fail.http, h.snapshot().counts.p.ok], [0, 6, 6])
             for (let i = 0; i < 6; i++) {
-                h.onEvent(nk('p', 0))
-                h.onEvent({ type: 'budget-out', providerId: 'p', keyIndex: 1, keyId: 'p#1', remainingMs: 1 })
+                h.onEvent(nk('b', 0))
+                h.onEvent({ type: 'budget-out', providerId: 'b', keyIndex: 1, keyId: 'b#1', remainingMs: 1 })
             }
-            assert.equal(store._raw().cooling.p, undefined)
-            assert.equal(h.snapshot().streak.p, undefined)
+            assert.deepEqual([cooled.length, h.snapshot().streak], [0, {}])
         })
 
-        it('不重複計:換鑰失敗後以整組跳過收尾之呼叫只計一次(整組跳過事件本身不計)', () => {
-            const store = stateStore({ cooling: {} })
-            const h = createProviderHealth({ store, threshold: 10 })
-            for (let i = 0; i < 3; i++) {
-                h.onEvent(nk('p', 0, 'http'))
-                h.onEvent({ type: 'skip-group', providerId: 'p', keyIndex: 1, keyId: 'p#1', errorType: 'timeout', error: 'TIMEOUT' })
-                h.onEvent(exhausted('p', ['http', 'timeout'], { keys: 2, by: 'skip-group' }))
-            }
-            assert.equal(h.snapshot().streak.p.n, 3, '3 個呼叫各計一次')
-            assert.deepEqual(h.snapshot().counts.p.fail, { http: 3, timeout: 3 })
+        it('lastType 之取法(snapshot 之 streak 附註):混合者取最後一個計入型別(params 除外);缺 errorTypes 者為 exec;incomplete 等未知新型別照取', () => {
+            const state = { failStreak: { mix: { k: 1, at: 1 }, none: { k: 1, at: 1 }, fx: { k: 2, at: 1 } } }
+            const h = createProviderHealth({ store: { get: () => state, set: () => {} }, threshold: 2 })
+            h.onEvent(exhausted('mix', ['http', 'params'], { keys: 2, by: 'all-keys' }))
+            h.onEvent({ type: 'group-exhausted', providerId: 'none', keyIndex: null, keyId: 'none', keys: 0, attempted: 1, by: 'all-keys', error: 'x' })
+            h.onEvent(exhausted('fx', ['incomplete', 'future-x']))
+            const s = h.snapshot().streak
+            assert.deepEqual([s.mix.n, s.mix.lastType, s.none.lastType, s.fx.lastType, s.fx.n], [1, 'http', 'exec', 'future-x', 2])
         })
 
-        it('單把金鑰、首把即整組跳過亦每次計一次;onCool 之 keys 只在多金鑰且每把皆試過時附上;成功歸零後重新起算', () => {
-            const store = stateStore({ cooling: {} })
+        it('onCool 之 keys 只在多金鑰且每把皆試過(keys ≥ 2 且 attempted＝keys)時附上;先有他因之冷卻(窗內)時連敗之冷卻不新計、不回呼;成功後重新起算', () => {
+            let t = 5_000
             const cooled = []
-            const h = createProviderHealth({ store, threshold: 2, onCool: (ev) => cooled.push(ev) })
-            for (let i = 0; i < 2; i++) h.onEvent(exhausted('one', ['http'], { keys: 1, by: 'all-keys' }))
-            for (let i = 0; i < 2; i++) h.onEvent(exhausted('first', ['timeout'], { keys: 2, attempted: 1, by: 'skip-group' }))
-            assert.ok(Number.isFinite(store._raw().cooling.one), '只有 1 把者每次呼叫皆敗即計')
-            assert.ok(Number.isFinite(store._raw().cooling.first), '首把即整組跳過(與金鑰無關)亦計')
-            assert.deepEqual(cooled.map((e) => [e.providerId, 'keys' in e]), [['one', false], ['first', false]], '後段金鑰未試者不可寫成「每次 N 把金鑰皆敗」')
-            const h2 = createProviderHealth({ store: stateStore({ cooling: {} }), threshold: 3 })
-            h2.onEvent(exhausted('p', ['http', 'http'], { keys: 2, by: 'all-keys' }))
-            h2.onEvent(okEv('p', 1))
-            h2.onEvent(exhausted('p', ['http', 'http'], { keys: 2, by: 'all-keys' }))
-            assert.equal(h2.snapshot().streak.p.n, 1, '成功歸零後重新起算')
-        })
-
-        it('上游已冷卻(窗內)時達門檻:只對齊時刻,不新冷卻、不回呼;全為 params 之組只記 mismatch', () => {
-            const t = 5_000
-            const store = stateStore({ cooling: { p: 4_000 } })
-            const cooled = []
-            const h = createProviderHealth({ store, threshold: 2, windowMs: 900_000, now: () => t, onCool: (ev) => cooled.push(ev) })
-            for (let i = 0; i < 2; i++) {
-                h.onEvent(nk('p', 0, 'http'))
-                h.onEvent(nk('p', 1, 'http'))
-                h.onEvent(exhausted('p', ['http', 'http'], { keys: 2, by: 'all-keys' }))
-            }
-            assert.equal(store._raw().cooling.p, 4_000, '冷卻時戳不變')
-            assert.deepEqual([h.snapshot().counts.p.cooled, cooled.length], [0, 0])
-            for (let i = 0; i < 2; i++) {
-                h.onEvent(nk('q', 0, 'params'))
-                h.onEvent(nk('q', 1, 'params'))
-                h.onEvent(exhausted('q', ['params', 'params'], { keys: 2, by: 'all-keys' }))
-            }
-            assert.equal(h.snapshot().counts.q.mismatch, 4)
-            assert.equal(h.snapshot().streak.q, undefined)
+            const h = createProviderHealth({ threshold: 2, windowMs: 900_000, now: () => t, onCool: (ev) => cooled.push(ev) })
+            h.onEvent(streakEv('p2', 2, { keys: 2, attempted: 2, errorType: 'http' }))
+            h.onEvent(streakEv('one', 2, { keys: 1, attempted: 1, errorType: 'http' }))
+            h.onEvent(streakEv('first', 2, { keys: 2, attempted: 1, errorType: 'timeout' }))
+            assert.deepEqual(cooled.map((e) => [e.providerId, e.keys]), [['p2', 2], ['one', undefined], ['first', undefined]], '後段金鑰未試者不可寫成「每次 N 把金鑰皆敗」')
+            h.onEvent({ type: 'cooled', providerId: 'q', error: 'HTTP 429', cooldownMs: 900_000, n: 1, reason: 'rate-limit' })
+            t += 10
+            h.onEvent(streakEv('q', 2))
+            assert.deepEqual([cooled.length, h.snapshot().counts.q?.cooled ?? 0], [3, 0], '他因之冷卻在窗內:不新計、不回呼')
+            h.onEvent(okEv('q'))
+            h.onEvent(streakEv('q', 2))
+            assert.deepEqual([cooled.length, cooled[3].providerId], [4, 'q'], '成交後(遞補層刪紀錄)再觸發即新計')
         })
 
         it('截斷放行與 prompt 逾長另計:noteTruncated／noteOversize 進 counts 與摘要(非失敗、不動 streak)', () => {
@@ -946,35 +877,41 @@ describe('unit-ai-adapter-ext', function() {
             assert.equal(h.summary(), 'prompt 逾長跳過 q×1；截斷放行 p×2')
         })
 
-        it('冷卻中且未逾窗不重寫時間戳;逾窗後再達門檻才重寫', () => {
-            const store = stateStore({ cooling: {} })
+        it('視窗之判斷:冷卻事件之有效視窗(cooldownMs;未帶則用 windowMs)內之 streak 冷卻為重申(不計、不回呼),逾窗即新計;金鑰層之冷卻(scope key)不算', () => {
             let t = 100
-            const h = createProviderHealth({ store, threshold: 1, windowMs: 1000, now: () => t })
-            failCall(h, 'p', 'validation')
-            assert.equal(store._raw().cooling.p, 100)
+            const cooled = []
+            const h = createProviderHealth({ threshold: 1, windowMs: 1000, now: () => t, onCool: (ev) => cooled.push(ev) })
+            h.onEvent(streakEv('p', 1, { cooldownMs: undefined }))
             t = 500
-            failCall(h, 'p', 'validation')
-            assert.equal(store._raw().cooling.p, 100, '未逾窗不重寫(否則冷卻永不結束)')
-            t = 1200
-            failCall(h, 'p', 'validation')
-            assert.equal(store._raw().cooling.p, 1200, '逾窗後重寫')
+            h.onEvent(streakEv('p', 2, { cooldownMs: undefined }))
+            assert.equal(cooled.length, 1, '未逾窗(windowMs 1000)不新計')
+            t = 1600
+            h.onEvent(streakEv('p', 3, { cooldownMs: 4000 }))
+            t = 5000
+            h.onEvent(streakEv('p', 4))
+            assert.equal(cooled.length, 2, '逾窗後新計;其後以事件之有效視窗(4000)判重申')
+            h.onEvent({ type: 'cooled', scope: 'key', providerId: 'k', error: 'no credit', cooldownMs: 900_000, failureKind: 'no-credit' })
+            h.onEvent(streakEv('k', 2))
+            assert.equal(cooled.length, 3, '金鑰層之冷卻不使條目層之連敗冷卻變成重申')
             assert.equal(h.snapshot().counts.p.cooled, 2)
         })
 
-        it('無 store 時只統計不冷卻;非失敗事件(try／aborted／budget-out／cooled)與逐次失敗事件皆不影響 streak;snapshot(true) 取走歸零而 streak 保留', () => {
+        it('無 store 時只統計;非失敗事件(try／aborted／budget-out／非 streak 之 cooled)與逐次失敗事件皆不計降序;snapshot(true) 取走歸零而持久連敗照讀', () => {
+            const state = { failStreak: { x: { k: 1, at: 1 } } }
             const h = createProviderHealth({ threshold: 1 })
             h.onEvent({ type: 'try', providerId: 'x' })
             h.onEvent({ type: 'aborted', providerId: 'x' })
             h.onEvent({ type: 'budget-out', providerId: 'x' })
-            h.onEvent({ type: 'cooled', providerId: 'x' })
+            h.onEvent({ type: 'cooled', providerId: 'x', reason: 'timeout' })
             h.onEvent(fail('x', 'validation'))
-            assert.deepEqual(h.snapshot().streak, {})
             h.onEvent(exhausted('x', ['validation']))
-            assert.equal(h.snapshot().streak.x.n, 1)
-            assert.equal(h.snapshot().counts.x.cooled, 0, '無 store 不冷卻')
+            assert.deepEqual(h.snapshot().streak, {}, '無 store 無持久連敗')
+            assert.equal(h.snapshot().counts.x.cooled, 0)
             assert.equal(h.summary(), '')
-            assert.equal(h.snapshot(true).counts.x.fail.validation, 1)
-            assert.deepEqual([h.snapshot().counts, h.snapshot().streak.x.n], [{}, 1])
+            const h2 = createProviderHealth({ store: { get: () => state, set: () => {} }, threshold: 1 })
+            h2.onEvent(fail('x', 'validation'))
+            assert.equal(h2.snapshot(true).counts.x.fail.validation, 1)
+            assert.deepEqual([h2.snapshot().counts, h2.snapshot().streak.x.n], [{}, 1])
         })
 
         it('opt 非物件 → {},仍以預設值正常建構(門檻 3、冷卻視窗 900000、事件入口可用;不拋錯);有效物件之 threshold／windowMs 生效', () => {
@@ -1110,11 +1047,11 @@ describe('unit-ai-adapter-ext', function() {
             assert.equal(sum.ai.callStats, '成交 p:x×2；遞補略過 rest:plain#0(validation)×1；截斷放行 p:x×1')
         })
 
-        it('調度層:ai.cooldownMs 為 0 時健康層照常計數與回呼,但無降序效果(上游不依冷卻重排;檔頭所載之限制)', async () => {
+        it('調度層:ai.cooldownMs 為 0 時遞補層不計連敗、不冷卻——無回呼、無降序(連敗之計數屬遞補層,只在 cooldownMs>0 時計;檔頭所載之限制)', async () => {
             const seen = []
             const ai = mk({ onHealth: (ev) => seen.push(ev) }, { healthStreak: 2, cooldownMs: 0 })
             for (let i = 0; i < 2; i++) await ai.callJson('q', check, { spec: { use: 'rest:plain' } })
-            assert.equal(seen.length, 1)
+            assert.deepEqual([seen.length, ai.health.snapshot().counts['rest:plain'].fail.validation], [0, 2], '失敗次數照記;無連敗冷卻')
             const { tries } = await tryOrder(ai, { use: 'rest:plain', fallback: ['rest:ok'] })
             assert.deepEqual(tries, ['rest:plain', 'rest:ok'])
         })

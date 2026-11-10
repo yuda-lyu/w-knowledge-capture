@@ -11,7 +11,8 @@
 //     末家開工時之剩餘才不致因開銷而略低於門檻——callJson 同一規則);
 //     席位形狀與 id 不合即拋(同 validateSeats)
 //   ⑤斷網不計:callAi 整鏈皆敗(已送出、無成交、非預算用盡或中止)、未逢整輪截止且 isNetDown 回 true → { ...原結果, ok:false, skipped:true, netDown:true };
-//     runFanout 失敗(各席皆敗,或整合已呼叫而敗)時詢問一次,不通即標 netDown:true,其中整鏈皆敗之結果各標 skipped／netDown
+//     runFanout 失敗(各席皆敗,或整合已呼叫而敗)時詢問一次,不通即標 netDown:true,其中整鏈皆敗之結果各標 skipped／netDown;
+//     isNetDown 另轉交遞補層為 envDown(整鏈皆敗之名額各問一次,決定 n 與連敗是否落定;設計 da402 §4.2〈CA〉4),故詢問次數含遞補層者
 // 執行:自套件根 npx mocha test/unit-ai-adapter-workflow.test.mjs(暫存 test/_tmp/ai-adapter-wkf-<pid>,測完即刪;埠 8832 為假 REST、8830 為無人監聽之死埠)
 
 import assert from 'node:assert/strict'
@@ -409,18 +410,20 @@ describe('unit-ai-adapter-workflow', function() {
             return box
         }
 
-        it('callAi:整鏈皆敗且 isNetDown 回 true → { ...原結果, ok:false, skipped:true, netDown:true }(詢問一次);回 false／拋錯／非 true → 原失敗結果', async () => {
+        // 詢問次數:isNetDown 另轉交遞補層為 envDown(設計 da402 §4.2〈CA〉4)——遞補層於每個整鏈皆敗(有實際嘗試)之名額詢問一次以決定 n 與連敗是否落定;
+        //   工作流之單棒結果不帶 envDown 欄,本入口另於失敗時詢問一次以標記。故整鏈皆敗之 callAi 共詢問 2 次(遞補層 1、本入口 1)
+        it('callAi:整鏈皆敗且 isNetDown 回 true → { ...原結果, ok:false, skipped:true, netDown:true }(本入口詢問一次＋遞補層一次);回 false／拋錯／非 true → 原失敗結果', async () => {
             const spec = { use: 'w:dead', fallback: ['w:plain'] }
             const down = askCounter(true)
             const ad = mk({ workflow: true, isNetDown: down.fn })
             const { r } = await callTry(ad, spec)
-            assert.deepEqual([r.ok, r.skipped, r.netDown, down.n], [false, true, true, 1])
+            assert.deepEqual([r.ok, r.skipped, r.netDown, down.n], [false, true, true, 2])
             assert.equal(r.tried.length, 2, '兩家皆已實際送出(原結果之欄位保留)')
             assert.equal(r.tried[0].errorType, 'fetch', '死埠連線被拒')
             for (const answer of [false, 'yes', new Error('判斷失敗')]) {
                 const box = askCounter(answer)
                 const { r: r2 } = await callTry(mk({ workflow: true, isNetDown: box.fn }), spec)
-                assert.equal(box.n, 1, `${String(answer)}:有詢問`)
+                assert.equal(box.n, 2, `${String(answer)}:有詢問(遞補層與本入口各一次)`)
                 assert.deepEqual([r2.ok, 'skipped' in r2, 'netDown' in r2], [false, false, false], `${String(answer)}:原失敗結果`)
                 assert.equal(r2.error, r.error, '錯誤訊息不改')
             }
@@ -428,7 +431,7 @@ describe('unit-ai-adapter-workflow', function() {
             assert.deepEqual(['skipped' in noAsk.r, 'netDown' in noAsk.r], [false, false], '未給 isNetDown 不判斷')
         })
 
-        it('callAi:成功、未送出即失敗(名稱不合)、時間預算用盡、中止、整輪截止切斷最後一家 → 不詢問網路、不標記', async () => {
+        it('callAi:成功、未送出即失敗(名稱不合)、時間預算用盡、中止 → 不詢問網路、不標記;整輪截止切斷最後一家 → 本入口不詢問、不標記(遞補層之 envDown 照問一次)', async () => {
             const box = askCounter(true)
             const ad = mk({ workflow: true, isNetDown: box.fn, ai: { cooldownMs: 0 } })
             const ok = await callTry(ad, { use: 'w:ops' })
@@ -439,13 +442,14 @@ describe('unit-ai-adapter-workflow', function() {
             assert.deepEqual([budget.r.ok, budget.r.errorType], [false, 'budget'])
             const aborted = await callTry(ad, { use: 'w:dead' }, { shouldStop: () => true })
             assert.deepEqual([aborted.r.ok, aborted.r.errorType], [false, 'aborted'])
+            assert.equal(box.n, 0, '以上皆不詢問(遞補層亦不問:無實際嘗試或非整鏈皆敗)')
             let stop = false
             setTimeout(() => {
                 stop = true
             }, 60)
             const cut = await callTry(ad, { use: 'w:slow' }, { timeoutMs: 200, minAttemptMs: 10, shouldStop: () => stop })
             assert.deepEqual([cut.r.ok, cut.r.errorType], [false, 'timeout'], '被整輪截止切斷之最後一家:上游回逾時')
-            assert.equal(box.n, 0, '以上皆不詢問')
+            assert.equal(box.n, 1, '本入口不問(整輪已截止);遞補層於整鏈皆敗時以 envDown 問一次(決定 n 與連敗是否落定)')
             for (const x of [ok, unknown, budget, aborted, cut]) assert.equal('netDown' in x.r, false)
         })
 
@@ -456,14 +460,14 @@ describe('unit-ai-adapter-workflow', function() {
             const r = await ad.getWkf().runFanout({ ...task, agents: [{ use: 'w:dead' }, { use: 'w:plain' }, { use: 'w:dead', budgetMs: 1 }] })
             assert.equal(r.ok, false)
             assert.equal(r.netDown, true)
-            assert.equal(down.n, 1, '詢問一次')
+            assert.equal(down.n, 3, '本入口詢問一次;遞補層於整鏈皆敗之兩席各問一次(預算用盡之席無實際嘗試,不問)')
             assert.deepEqual(r.agents.map((a) => [a.ok, a.skipped === true, a.netDown === true, a.errorType]), [[false, true, true, 'fetch'], [false, true, true, 'validation'], [false, false, false, 'budget']])
             const up = askCounter(false)
             const r2 = await mk({ workflow: true, isNetDown: up.fn }).getWkf().runFanout({ ...task, agents: [{ use: 'w:dead' }, { use: 'w:plain' }] })
-            assert.deepEqual([r2.ok, 'netDown' in r2, r2.agents.some((a) => 'netDown' in a), up.n], [false, false, false, 1])
+            assert.deepEqual([r2.ok, 'netDown' in r2, r2.agents.some((a) => 'netDown' in a), up.n], [false, false, false, 3])
             const part = askCounter(true)
             const r3 = await mk({ workflow: true, isNetDown: part.fn }).getWkf().runFanout({ ...task, agents: [{ use: 'w:ops' }, { use: 'w:dead' }] })
-            assert.deepEqual([r3.ok, 'netDown' in r3, part.n], [true, false, 0], '有一席成交:成果可用,不問網路')
+            assert.deepEqual([r3.ok, 'netDown' in r3, part.n], [true, false, 1], '有一席成交:成果可用,本入口不問網路、不標記(整鏈皆敗之席由遞補層問一次)')
             const stopped = askCounter(true)
             const r4 = await mk({ workflow: true, isNetDown: stopped.fn }).getWkf().runFanout({ ...task, agents: [{ use: 'w:dead' }], callOpt: { shouldStop: () => true } })
             assert.deepEqual([r4.ok, 'netDown' in r4, stopped.n], [false, false, 0], '整輪截止(callOpt.shouldStop):不問網路')
@@ -474,7 +478,7 @@ describe('unit-ai-adapter-workflow', function() {
             const ad = mk({ workflow: true, isNetDown: down.fn })
             const agents = [{ use: 'w:ops' }, { use: 'w:ops2' }]
             const r = await ad.getWkf().runFanout({ task: 'q', check: opsCheck, agents, integrate: { use: 'w:dead' } })
-            assert.deepEqual([r.ok, r.netDown, r.integrateDetail.skipped, r.integrateDetail.netDown, down.n], [false, true, true, true, 1])
+            assert.deepEqual([r.ok, r.netDown, r.integrateDetail.skipped, r.integrateDetail.netDown, down.n], [false, true, true, true, 2], '本入口一次＋遞補層於整合之整鏈皆敗一次')
             assert.deepEqual(r.agents.map((a) => [a.ok, 'netDown' in a]), [[true, false], [true, false]], '已成交之席位不標')
             const cfg = askCounter(true)
             const r2 = await mk({ workflow: true, isNetDown: cfg.fn }).getWkf().runFanout({ task: 'q', check: opsCheck, agents })
@@ -501,6 +505,12 @@ describe('unit-ai-adapter-workflow', function() {
         it('未送出(放不下／席位未設)、截止與斷網、預算用盡、中止:skipped 或明示之錯誤字樣;調度層之 skipped(斷網)照收', () => {
             assert.match(callJsonShapeOf({ ok: false, oversize: true, error: 'oversize' }).error, /提示詞超過受測條目之上限/)
             assert.match(callJsonShapeOf({ ok: false, unset: true, error: '席位未設' }).error, /席位未設/)
+            // 工作流結果之斷網旗標與新結局(外審 terra F10／T08):netDown 保留;budget-cut／context-too-long 計入嘗試、被封頂者標 budget-cut
+            const wn = callJsonShapeOf({ ok: false, error: 'TIMEOUT after 1s', errorType: 'timeout', skipped: true, netDown: true, tried: [{ providerId: 'a', outcome: 'skip-group', errorType: 'timeout', durationMs: 1000 }] })
+            assert.deepEqual([wn.skipped, wn.netDown, wn.attempts], [true, true, 1])
+            assert.equal('netDown' in callJsonShapeOf({ ok: false, error: 'x', tried: [] }), false, '非斷網不帶 netDown')
+            const cut = callJsonShapeOf({ ok: false, error: 'budget exhausted', errorType: 'budget', tried: [{ providerId: 'a', outcome: 'skip-group', errorType: 'validation', durationMs: 500 }, { providerId: 'b', outcome: 'budget-cut', errorType: 'timeout', durationMs: 1200 }, { providerId: 'c', outcome: 'context-too-long', errorType: 'http', durationMs: 100 }] }, ['回覆不合'])
+            assert.deepEqual([cut.skipped, cut.attempts, cut.errors], [true, 3, ['a:validation(0.5s)：回覆不合', 'b:budget-cut(1.2s)', 'c:http(0.1s)']])
             const nd = callJsonShapeOf({ ok: false, error: 'stopped', stopped: true, netDown: true, cause: 'fetch failed' })
             assert.deepEqual([nd.skipped, nd.error], [true, '中止（本機網路不通：fetch failed）'])
             assert.equal(callJsonShapeOf({ ok: false, error: 'stopped', stopped: true }).error, '中止（截止或預算用盡）')

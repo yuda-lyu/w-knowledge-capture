@@ -376,7 +376,7 @@ describe('unit-bench-kit', function() {
         it('事件交失敗歸類(onEvent 收冷卻事件 → 限流即停);call 拋錯同調度層拋錯(該頁各案記呼叫失敗,評分不中斷)', async () => {
             const cooled = variant({
                 call: async (adapter, prompt, ctx) => {
-                    ctx.onEvent({ type: 'cooled', providerId: 'm', error: 'HTTP 429', cooldownMs: 1 })
+                    ctx.onEvent({ type: 'cooled', providerId: 'm', error: 'HTTP 429', cooldownMs: 1, n: 1, reason: 'rate-limit' })
                     return { ok: false, data: null, error: 'HTTP 429', providerId: '', attempts: 1, skipped: false, errors: [] }
                 },
             })
@@ -473,8 +473,10 @@ describe('unit-bench-kit', function() {
 
     it('失敗歸類與停測(以頁為單位):限流即停、整頁各案記呼叫失敗、其後各頁記未呼叫;連續服務面失敗依呼叫計;回覆不合 check(reply)不計入連續失敗且歸零;他模型照跑', async () => {
         assert.equal(benchFailOf({ error: 'FreeUsageLimitError: Rate limit exceeded' }).kind, 'limit')
-        assert.equal(benchFailOf({ error: 'Exit code 1' }, [{ type: 'cooled', error: 'Exit code 1' }]).kind, 'limit', '非逾時所致之冷卻')
-        assert.equal(benchFailOf({ error: 'TIMEOUT after 300s' }, [{ type: 'cooled', error: 'TIMEOUT after 300s' }]).kind, 'timeout', '逾時所致之冷卻不算限流')
+        // 冷卻事件之 reason(w-dispatch-ai 1.0.85 起;設計 da402 §4.2〈CA〉6):限流只認 rate-limit／detect
+        assert.equal(benchFailOf({ error: 'Exit code 1' }, [{ type: 'cooled', error: 'Exit code 1', reason: 'detect' }]).kind, 'limit', '限流字樣偵測所致之冷卻')
+        assert.equal(benchFailOf({ error: 'Exit code 1' }, [{ type: 'cooled', error: 'Exit code 1', reason: 'streak' }]).kind, 'error', '連敗所致之冷卻不算限流')
+        assert.equal(benchFailOf({ error: 'TIMEOUT after 300s' }, [{ type: 'cooled', error: 'TIMEOUT after 300s', reason: 'timeout' }]).kind, 'timeout', '逾時所致之冷卻不算限流')
         assert.equal(benchFailOf({ error: 'x', errors: ['m:timeout(3.0s)'] }).kind, 'timeout')
         assert.deepEqual(benchFailOf({ error: 'OUTPUT_VALIDATION_FAILED', errors: ['m:validation(1.0s)：須為 JSON 陣列'] }, [{ type: 'skip-group', errorType: 'validation', stdout: '不是陣列' }]),
             { kind: 'reply', error: 'OUTPUT_VALIDATION_FAILED｜m:validation(1.0s)：須為 JSON 陣列', reply: '不是陣列' })

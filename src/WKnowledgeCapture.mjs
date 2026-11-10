@@ -20,6 +20,7 @@ import * as poolQuotaNs from './core/ai/poolQuota.mjs'
 import * as providerHealthNs from './core/ai/providerHealth.mjs'
 import * as capabilityNs from './core/ai/capability.mjs'
 import * as jsonReplyNs from './core/ai/jsonReply.mjs'
+import * as reservedCallNs from './core/ai/reservedCall.mjs'
 // ── 子階段工廠與 mw 積木 ──
 import * as hygieneStageNs from './stages/hygieneStage.mjs'
 import * as seedSyncStageNs from './stages/seedSyncStage.mjs'
@@ -112,6 +113,7 @@ export * from './core/ai/poolQuota.mjs'
 export * from './core/ai/providerHealth.mjs'
 export * from './core/ai/capability.mjs'
 export * from './core/ai/jsonReply.mjs'
+export * from './core/ai/reservedCall.mjs'
 export * from './stages/hygieneStage.mjs'
 export * from './stages/seedSyncStage.mjs'
 export * from './stages/listFetchStage.mjs'
@@ -191,7 +193,7 @@ export * from './core/util/entry.mjs'
  */
 const NAMESPACES = [
     createKnowledgeCaptureNs, captureObjectNs, captureRuntimeNs,
-    settingsDefaultNs, aiAdapterNs, poolQuotaNs, providerHealthNs, capabilityNs, jsonReplyNs,
+    settingsDefaultNs, aiAdapterNs, poolQuotaNs, providerHealthNs, capabilityNs, jsonReplyNs, reservedCallNs,
     hygieneStageNs, seedSyncStageNs, listFetchStageNs, detailFetchStageNs, docMaintainStageNs, expandStageNs, areaStageNs, collectHelpersNs,
     areaDomainNs,
     sourcePolicyNs, areaPolicyNs, contentGateNs, healthRecheckNs, contentIndexNs, fetchPolicyNs, ingestGateNs,

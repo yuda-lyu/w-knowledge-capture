@@ -116,25 +116,35 @@ export function fetchStepMsOf(fetcher, fallbackTimeoutMs) {
 /**
  * 一次 AI 呼叫之時間估計(開工門檻):該席位鏈首家之單次逾時——席位 timeoutMs → ai.providerTimeouts[席位 use] → ai.extraProviders 中該條目自帶之
  *   timeoutMs → ai.timeoutMs → 300000(調度層「席位逾時覆寫鏈內各條目、逐 id 逾時次之、條目自帶次之、再次為 ai.timeoutMs」之同一順序;不另設設定鍵)。
- *   調度層內建條目表自帶之逾時(未列於上述設定者)此處看不到,以 ai.timeoutMs 計——要精準請於 ai.providerTimeouts 明列
+ *   給席位陣列者(判定小組等多席並行之段)各席依同一順序取值後取最大——段之開工須夠最慢之一席。
+ *   調度層內建條目表自帶之逾時(未列於上述設定者)此處看不到,以 ai.timeoutMs 計——要精準請於 ai.providerTimeouts 明列。
+ *   已知限制:同 id 之 ai.extraProviders 此處取第一筆(調度層之目錄展開取最後一筆);冷卻重排使實際首家可能不是席位之 use
  *
  * @param {Object} settings 輸入已解析之設定(取 ai；可缺)
- * @param {Object} [seat] 輸入席位 { use, fallback?, timeoutMs? }(非物件者略過，以 ai.timeoutMs → 300000 計)
+ * @param {Object|Array} [seatOrSeats] 輸入席位 { use, fallback?, timeoutMs? } 或席位陣列(非物件之元素略過;非物件、空陣列者以 ai.timeoutMs → 300000 計)
  * @returns {Number} 回傳毫秒數(正有限數)
  * @example
  * const ai = { timeoutMs: 120000, providerTimeouts: { 'x:a': 45000 }, extraProviders: [{ id: 'x:c', timeoutMs: 80000 }] }
  * console.log(captureCallMsOf({ ai }, { use: 'x:a' }), captureCallMsOf({ ai }, { use: 'x:a', timeoutMs: 9000 }), captureCallMsOf({ ai }, { use: 'x:c' }), captureCallMsOf({ ai }, { use: 'x:b' }), captureCallMsOf({}, null))
  * // => 45000 9000 80000 120000 300000
+ *
+ * console.log(captureCallMsOf({ ai }, [{ use: 'x:a' }, { use: 'x:c' }]), captureCallMsOf({ ai }, [{ use: 'x:c', timeoutMs: 9000 }, { use: 'x:a' }]), captureCallMsOf({ ai }, []))
+ * // => 80000 45000 120000
  */
-export function captureCallMsOf(settings, seat) {
+export function captureCallMsOf(settings, seatOrSeats) {
     const ai = isobj(settings?.ai) ? settings.ai : {}
     const pos = (v) => {
         const n = Number(v)
         return Number.isFinite(n) && n > 0 ? n : 0
     }
-    const s = isobj(seat) ? seat : {}
-    const own = typeof s.use === 'string' && Array.isArray(ai.extraProviders) ? ai.extraProviders.find((e) => isobj(e) && e.id === s.use) : null
-    return pos(s.timeoutMs) || pos(ai.providerTimeouts?.[s.use]) || pos(own?.timeoutMs) || pos(ai.timeoutMs) || CALL_TIMEOUT_FALLBACK_MS
+    const one = (seat) => {
+        const s = isobj(seat) ? seat : {}
+        const own = typeof s.use === 'string' && Array.isArray(ai.extraProviders) ? ai.extraProviders.find((e) => isobj(e) && e.id === s.use) : null
+        return pos(s.timeoutMs) || pos(ai.providerTimeouts?.[s.use]) || pos(own?.timeoutMs) || pos(ai.timeoutMs) || CALL_TIMEOUT_FALLBACK_MS
+    }
+    if (!Array.isArray(seatOrSeats)) return one(seatOrSeats)
+    const list = seatOrSeats.filter(isobj)
+    return list.length ? Math.max(...list.map(one)) : one(null)
 }
 
 /**

@@ -614,8 +614,12 @@ export function loadBenchCases(role, file) {
 /** 呼叫失敗之類別說明(報表與未通過原因共用;鍵與 report.mjs 之 BENCH_FAIL_COLUMNS 同一組) */
 export const BENCH_FAIL_KINDS = Object.freeze({ timeout: '逾時', limit: '額度用盡或限流', reply: '回覆非 JSON', error: '執行錯誤', skipped: '略過（預算、中止或斷網）' })
 
+/** 判為限流之冷卻原因(調度層 cooled 事件之 reason;streak〔連敗〕、budget〔鏈首被封頂〕、quota〔整組沒額度〕、timeout 不算限流) */
+const LIMIT_COOL_REASONS = new Set(['rate-limit', 'detect'])
+
 /**
- * 呼叫失敗之歸類:限流(調度層冷卻事件非逾時所致,或錯誤訊息命中 LIMIT_TEXT_RE)→ 逾時 → 回覆非 JSON(或不合 check)→ 略過 → 執行錯誤
+ * 呼叫失敗之歸類:限流(調度層冷卻事件之 reason 為 rate-limit／detect,或錯誤訊息命中 LIMIT_TEXT_RE)→ 截止(嘗試被期限封頂之 budget-cut,歸略過)
+ *   → 逾時 → 回覆非 JSON(或不合 check)→ 略過 → 執行錯誤
  *
  * @param {Object} r 輸入 callJson 之失敗結果(取 error、errors、skipped)
  * @param {Array} [events=[]] 輸入本次呼叫之調度事件(callOpt.onEvent 所收;置換之調度層可能無)
@@ -623,6 +627,9 @@ export const BENCH_FAIL_KINDS = Object.freeze({ timeout: '逾時', limit: '額�
  * @example
  * console.log(benchFailOf({ error: 'FreeUsageLimitError: Rate limit exceeded' }).kind, benchFailOf({ error: 'TIMEOUT after 300s' }).kind)
  * // => limit timeout
+ *
+ * console.log(benchFailOf({ error: 'budget exhausted', errors: ['a:budget-cut(120.0s)'], skipped: true }, [{ type: 'cooled', reason: 'streak' }]).kind)
+ * // => skipped
  */
 export function benchFailOf(r, events = []) {
     const evs = isarr(events) ? events : []
@@ -633,7 +640,8 @@ export function benchFailOf(r, events = []) {
     const errorType = String(last?.errorType || '')
     const text = [err, ...errs].join(' ')
     let kind = 'error'
-    if (evs.some((ev) => ev?.type === 'cooled' && !/^TIMEOUT/.test(String(ev.error || ''))) || LIMIT_TEXT_RE.test(text)) kind = 'limit'
+    if (evs.some((ev) => ev?.type === 'cooled' && LIMIT_COOL_REASONS.has(ev.reason)) || LIMIT_TEXT_RE.test(text)) kind = 'limit'
+    else if (evs.some((ev) => ev?.type === 'budget-cut') || /:budget-cut(?![\w-])/.test(text)) kind = 'skipped'
     else if (errorType === 'timeout' || /^TIMEOUT/.test(err) || /:timeout\(/.test(text)) kind = 'timeout'
     else if (errorType === 'validation' || /:validation\(/.test(text)) kind = 'reply'
     else if (r?.skipped === true) kind = 'skipped'

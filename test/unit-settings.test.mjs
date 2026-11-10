@@ -100,6 +100,8 @@ const SAMPLES = {
     pint: { valid: [7, 8], invalid: [0, -1, 1.5, '5', NaN, null, Infinity] },
     p0int: { valid: [7, 8], invalid: [-1, 1.5, '5', NaN, null] },
     p0num: { valid: [0.5, 2.5], invalid: [-0.1, '1', NaN, Infinity, null] },
+    // 冷卻加長倍率(ai.cooldownGrowth;w-dispatch-ai 之 cooldownGrowth):≥ 1 之有限數(1＝不加長);小於 1、數字字串、非有限數不合
+    growth: { valid: [1.5, 4], invalid: [0.5, 0, -1, '4', NaN, Infinity, null] },
     ratio: { valid: [0.5, 0.3], invalid: [1.5, -0.1, '0.5', NaN, null] },
     bool: { valid: [true, false], invalid: ['true', 1, 0, null] },
     str: { valid: ['custom', 'custom2'], invalid: [1, null, ['x']] },
@@ -151,7 +153,8 @@ describe('unit-settings', function() {
         it('capture 依抓取三要點分組:sources／articles／browser／network(要點 1)、areas(要點 2)、expand／discover(要點 3)、services(共用)、standards(檢定標準)', () => {
             assert.deepEqual(Object.keys(CAPTURE_DEFAULT), ['sources', 'articles', 'browser', 'network', 'areas', 'expand', 'discover', 'services', 'standards'])
             assert.deepEqual(Object.keys(CAPTURE_SCHEMA), Object.keys(CAPTURE_DEFAULT))
-            assert.deepEqual(Object.keys(AI_DEFAULT).sort(), ['cooldownMs', 'extraProviders', 'healthStreak', 'maxRetries', 'pools', 'providerLimits', 'providerTimeouts', 'timeoutMs'])
+            // ai 段之鍵集(cooldownGrowth／cooldownMaxMs:冷卻加長,設計 da402 §4.2〈CA〉4,預設 1／24 小時)
+            assert.deepEqual(Object.keys(AI_DEFAULT).sort(), ['cooldownGrowth', 'cooldownMaxMs', 'cooldownMs', 'extraProviders', 'healthStreak', 'maxRetries', 'pools', 'providerLimits', 'providerTimeouts', 'timeoutMs'])
         })
 
         it('預設與 schema 之鍵集逐組一致,且每個預設值本身通過所屬型別之判準(否則安裝方原樣回填預設值即被拒)', () => {

@@ -725,17 +725,20 @@ describe('unit-ai-adapter', function() {
             assert.deepEqual(hits.map((h) => h.scene), ['plain'])
         })
 
-        it('被整輪截止切斷之最後一家:上游回該家之逾時而非 aborted(無下一家可中止),仍以 shouldStop 判為 skipped', async () => {
-            const cat = [rest('t:last', 'ok~600', { timeoutMs: 200 })]
+        // 歸類依遞補層之結果(設計 da402 §4.2〈CA〉3;規則帳本 AI-05):被截止切斷之末家須以 budgetMs 交遞補層(被期限封頂 → budget-cut → budget),
+        //   不再以呼叫端此刻之 shouldStop 回頭猜——只給 shouldStop 而末家等滿自己之逾時者,照計失敗
+        it('被整輪截止切斷之最後一家:以 budgetMs 給剩餘時間 → 遞補層判被期限封頂(budget-cut)→ skipped;只給 shouldStop 而末家等滿自己之逾時 → 照計失敗(修前以 shouldStop 回頭猜為 skipped)', async () => {
+            const cat = [rest('t:last', 'ok~600', { timeoutMs: 400 })]
             const ad = createAiAdapter({ ai: { ...AI_DEFAULT }, workspace: `${TMP}/ws-last`, env: {}, catalogue: cat })
+            const cut = await ad.callJson('q', arrCheck, { spec: { use: 't:last' }, budgetMs: 150, minAttemptMs: 50 })
+            assert.deepEqual([cut.ok, cut.skipped, cut.attempts], [false, true, 1])
+            assert.match(cut.errors[0], /^t:last:budget-cut\(/, '被期限封頂之嘗試記為 budget-cut')
             let stop = false
-            setTimeout(() => {
-                stop = true
-            }, 60)
-            const r = await ad.callJson('q', arrCheck, { spec: { use: 't:last' }, minAttemptMs: 10, shouldStop: () => stop })
+            // minAttemptMs 100:鏈預算＝條目逾時,開工之毫秒級開銷使實給逾時略小於條目逾時,差額 < 100 即視為條目已得足額(遞補層 R-COOL-1 邊界政策)
+            const r = await ad.callJson('q', arrCheck, { spec: { use: 't:last' }, minAttemptMs: 100, shouldStop: () => stop, onEvent: (ev) => (ev.type === 'try' ? (stop = true) : null) })
             assert.equal(r.ok, false)
             assert.match(r.error, /^TIMEOUT/)
-            assert.equal(r.skipped, true, '逾時發生時整輪已截止:不是該家之失敗')
+            assert.equal(r.skipped, false, '各家皆試過(末家等滿自己之逾時)而失敗:照計失敗')
         })
     })
 

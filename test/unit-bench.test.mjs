@@ -210,11 +210,11 @@ describe('unit-bench', function() {
         assert.deepEqual(modelOf(r, 'good').score, { pass: 4, total: 4, rate: 1 })
     })
 
-    it('限流即停:冷卻事件(非逾時所致)或限流字樣 → 停測該模型,其後各回記未呼叫;逾時所致之冷卻不算限流;其他模型照跑', async () => {
+    it('限流即停:冷卻事件(reason 為 rate-limit／detect)或限流字樣 → 停測該模型,其後各回記未呼叫;逾時所致之冷卻不算限流;其他模型照跑', async () => {
         const ai = benchStubAi({
-            cooled: (label) => (label === '海洋酸化' ? { fail: { error: 'Exit code 1', events: [{ type: 'cooled', error: 'Exit code 1' }] } } : right(label)),
+            cooled: (label) => (label === '海洋酸化' ? { fail: { error: 'Exit code 1', events: [{ type: 'cooled', error: 'Exit code 1', reason: 'detect' }] } } : right(label)),
             worded: (label) => (label === '快速排序' ? { fail: { error: 'FreeUsageLimitError: Rate limit exceeded' } } : right(label)),
-            slowcool: (label) => (label === '快速排序' ? { fail: { error: 'TIMEOUT after 300s', events: [{ type: 'cooled', error: 'TIMEOUT after 300s' }] } } : right(label)),
+            slowcool: (label) => (label === '快速排序' ? { fail: { error: 'TIMEOUT after 300s', events: [{ type: 'cooled', error: 'TIMEOUT after 300s', reason: 'timeout' }] } } : right(label)),
             good: right,
         })
         const r = await runAreaBench({ models: ['cooled', 'worded', 'slowcool', 'good'], cases: MINI, aiAdapter: ai })

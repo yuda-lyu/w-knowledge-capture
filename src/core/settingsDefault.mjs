@@ -47,6 +47,10 @@ export const AI_DEFAULT = {
     timeoutMs: 300_000,
     maxRetries: 0, // 同家不重試,韌性由換家提供(重試只是把逾時乘次數)
     cooldownMs: 900_000, // 限流／逾時之冷卻:移到鏈尾不移除,任一次成功即解除(0＝不冷卻;免費池額度與健康降序亦經此機制,0 時兩者無降序效果)
+    // 冷卻加長(w-dispatch-ai 之 cooldownGrowth／cooldownMaxMs):條目於冷卻視窗外再觸發時 n+1,有效視窗＝min(cooldownMs × cooldownGrowth^(n−1), cooldownMaxMs);
+    //   成交即刪紀錄(n 歸零);免費池額度(quota)與鏈首被封頂(budget)為固定視窗。1＝視窗恆為 cooldownMs(不加長);每小時一輪之呼叫端可設 4／4 小時
+    cooldownGrowth: 1,
+    cooldownMaxMs: 86_400_000,
     providerTimeouts: {}, // 逐條目 id 之單次逾時 { 條目 id: 毫秒 }
     // 安裝方自帶條目(格式同 w-dispatch-ai 之 providers.mjs:{ id, model, kind, envVar?, baseURL?, body?, exe?, … }):
     //   新 id 追加、同 id 者逐欄覆蓋內建條目(可就地改 exe 路徑、baseURL 而不必等套件發版)
@@ -54,7 +58,8 @@ export const AI_DEFAULT = {
     // 免費池當日額度(core/ai/poolQuota):{ oc: { log:'auto'|日誌路徑, resetUtcHour:0～23 } } 即開——opencode 日誌回報當日額度用盡之條目
     //   降至鏈尾至每日重置('auto'＝opencode 預設日誌位置);{}＝不開
     pools: {},
-    // 供應商健康降序(core/ai/providerHealth):連續幾次「整組皆敗」即降至鏈尾;0＝不開
+    // 供應商健康降序:連續幾次「整組皆敗」即降至鏈尾;0＝不開。連敗由 w-dispatch-ai 持久計數(coolAfterFails,存於調度層之 store,跨行程累計;
+    //   成交歸零);core/ai/providerHealth 只觀察其事件(onHealth 回呼、執行摘要)
     healthStreak: 0,
     // prompt 長度上限之逐條目覆寫 { 條目 id: 字元數 }(core/ai/capability):列出者於呼叫前依實際長度剔除放不下者;0＝解除該條目之固有上限;
     //   {}＝不剔除。條目固有之上限(條目自帶 maxPromptChars;kind 之硬上限表目前留空)另由調度層之建構選項 capability 開啟
@@ -261,6 +266,7 @@ export const SETTING_TYPES = Object.freeze({
     pint: { test: (v) => Number.isInteger(v) && v > 0, desc: '正整數' },
     p0int: { test: (v) => Number.isInteger(v) && v >= 0, desc: '非負整數' },
     p0num: { test: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0, desc: '非負數' },
+    growth: { test: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 1, desc: '≥ 1 之數' },
     ratio: { test: (v) => typeof v === 'number' && v >= 0 && v <= 1, desc: '0～1 之數' },
     bool: { test: (v) => typeof v === 'boolean', desc: '布林值' },
     str: { test: (v) => typeof v === 'string', desc: '字串' },
@@ -285,10 +291,12 @@ export const SETTING_TYPES = Object.freeze({
     detectorsOrNull: { test: (v) => v === null || gateDetectorProblems(v).length === 0, desc: '健全閘偵測器陣列（[{ id, kind, test, module?, export?, sig?, adapter? }]）或 null（內建）', why: (v) => (v === null ? '' : gateDetectorProblems(v).join('；')) },
 })
 
-/** ai 段之 schema(調度層對直接給定之 ai 物件亦以此驗 pools／healthStreak／providerLimits) */
+/** ai 段之 schema(調度層對直接給定之 ai 物件亦以此驗 pools／healthStreak／providerLimits／cooldownGrowth／cooldownMaxMs) */
 export const AI_SCHEMA = {
     timeoutMs: 'pint', maxRetries: 'p0int', cooldownMs: 'p0int', providerTimeouts: 'timeouts', extraProviders: 'objArr',
     pools: 'pools', healthStreak: 'p0int', providerLimits: 'limits',
+    cooldownGrowth: 'growth',
+    cooldownMaxMs: 'pint',
 }
 
 /** capture 段之 schema(與 CAPTURE_DEFAULT 同形) */

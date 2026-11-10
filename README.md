@@ -433,12 +433,15 @@ createKnowledgeCapture({
   | 截斷放行與部分接受 | 建構選項 `acceptTruncated: true`;逐次 `callOpt.acceptTruncated` 布林值優先 | REST 截斷(finish_reason=length)交驗證裁決,未閉合之尾段搶救前段完整項目(`salvageTruncatedArray`)而為最後一段,成功帶 `truncated: true`;外包物件之截斷會被救成內層陣列,全有全無之輸出請逐次關閉 |
   | 避開 | `callOpt.avoid: [條目 id]` | 本次不打所列條目;避開後無條目則不避 |
   | 失敗預覽 | 建構選項 `preview: true` | 失敗形狀另帶 `preview`(最後一次失敗嘗試之 stdout 前 120 字;未送出者為 `''`) |
-  | 免費池當日額度 | `ai.pools.oc` | opencode 日誌回報當日額度用盡之 opencode 條目降至鏈尾(不移除)至每日重置;本行程見其成交即恢復;`onPool` 每條目一次 |
-  | 供應商健康降序 | `ai.healthStreak` 正整數 | 連續 N 次整組皆敗即降至鏈尾、`onHealth` 回呼;回傳另帶 `health`,`drainStats` 與 run.json(`ai.health`)附健康摘要。本套件預設 0＝不開(高頻呼叫之下游總組裝於其 ai 段預設另給) |
+  | 免費池當日額度 | `ai.pools.oc` | opencode 日誌回報當日額度用盡之 opencode 條目降至鏈尾(不移除)至每日重置(經 w-dispatch-ai 之 `coolEntry` 以 reason `quota` 寫冷卻:固定視窗、不動 n);本行程見其成交即恢復;`onPool` 每條目一次 |
+  | 供應商健康降序 | `ai.healthStreak` 正整數 | 連續 N 次整組皆敗即降至鏈尾、`onHealth` 回呼;回傳另帶 `health`,`drainStats` 與 run.json(`ai.health`)附健康摘要。連敗由 w-dispatch-ai 以 `coolAfterFails`(＝`ai.healthStreak`)持久計於 `persistStore`(**跨行程累計**:每輪一個新行程之呼叫端也累計得到門檻;成交歸零;觸發後不歸零)、只計實際送出且非全 `params`、非整組沒額度之組盡;本層只觀察(`onHealth` 由 `cooled` 之 reason `streak` 驅動,視窗內之重申不重複回呼;`health.snapshot().streak` 讀 `streakOf`)。`ai.cooldownMs` 為 0 時不計。本套件預設 0＝不開(高頻呼叫之下游總組裝於其 ai 段預設另給) |
+  | 冷卻加長 | `ai.cooldownGrowth`(≥ 1,預設 1)、`ai.cooldownMaxMs`(正整數,預設 24 小時) | 條目於冷卻視窗外再觸發時 n+1,有效視窗＝min(`cooldownMs` × `cooldownGrowth`^(n−1), `cooldownMaxMs`);成交刪紀錄;額度用盡(`quota`)與鏈首被封頂(`budget`)為固定視窗。每小時一輪之呼叫端可設 4／4 小時(`callJson` 與工作流入口皆轉傳) |
   | prompt 長度能力預篩 | `ai.providerLimits`(逐條目上限,恆生效);建構選項 `capability: true` 另計條目固有上限(條目自帶 `maxPromptChars`;kind 之固有上限表目前留空——antigravity 自 w-dispatch-ai 1.0.80 起超長 prompt 改自 stdin 傳送〔需 agy ≥ 1.1.15〕,不再剔除) | 呼叫前剔除放不下之條目(鏈序不變;全部放不下即失敗不送出);`onOversize` 每條目一次;`validateSeats` 對全鏈皆有上限之席位回警告 |
   | 多棒工作流之呼叫入口 | 建構選項 `workflow: true` | 另回 `getWkf()`(w-dispatch-ai 工作流之 `callAi`／`runFanout`,快取;與 `callJson` 共用游標、冷卻、健康、用量與工作目錄之確保;定義表去掉條目逾時;呼叫端之 `onEvent` 串在本層之後、不取代;整鏈皆敗且本機網路不通者回 `skipped:true, netDown:true`)與 `seatSpec(seat, promptLen)`(依長度預篩遞補鏈〔判準與計帳同 `callJson`〕、全放不下回 `null`;帶席位之 `timeoutMs`〔未給取留存條目之最大〕、`budgetMs`〔未給＝逾時×留存數〕、`minAttemptMs`〔未給者取 min(20 秒, 逾時之一半),同 `callJson`——預算不足 20 秒之席位否則一次都不送出〕) |
 - 上表之免費池額度、健康降序、能力預篩開啟時,總組裝把事件各以 WARN 一行寫入當輪日誌(字樣「供應商額度：」「供應商健康：」「供應商能力：」;未開即無;並發時寫入最近開始且仍在執行之輪;注入 `cfg.aiAdapter` 時不接)。前兩者屬常態(已列日誌契約 `CAPTURE_LOG_KNOWN`),逾長剔除須看見故不列。
-- 未開免費池額度時:opencode 免費額度用盡,該次呼叫會等滿逾時,之後在同一行程內移到鏈尾(`cooldownMs`)。
+- 未開免費池額度時:opencode 免費額度用盡,該次呼叫會等滿逾時,之後移到鏈尾(`cooldownMs`)。
+- **`callJson` 之 `skipped` 依遞補層之結果**:`errorType` 為 `budget`(含嘗試被本次期限封頂而整鏈已用盡之 `budget-cut`)／`aborted`,或本機網路不通(建構之 `isNetDown` 轉交遞補層為 `envDown`;為真時另帶 `netDown: true`,且本次之冷卻 n 與連敗遞增不落定)。`callOpt.shouldStop` 只在嘗試之間中止,不再於事後把「各家皆試過而失敗」改判為 `skipped`——要讓被整輪截止切斷之嘗試不計失敗,請以 `callOpt.budgetMs` 給剩餘時間(`castBudgetMs`:≤0＝已無時間、不送出)。`attempts` 計入被封頂(`budget-cut`)與脈絡過長(`context-too-long`)之嘗試;`errors` 與 `drainStats` 之被封頂者記為 `budget-cut`。
+- **扣保留之 AI 呼叫之唯一包裝**(下游套件之選配段用):`reservedAiCallOf(call, gate, { firstMs })` → `(prompt, check, callOpt) =>` `call` 之回傳(**不是 async**:同步拋出照同步拋出)。進門:`gate.shouldStop(本次進門門檻)` 為真即不送出、回 `{ ok:false, data:null, error:'ABORTED', providerId:'', attempts:0, skipped:true, errors:[] }`;本次進門門檻＝`callOpt.startMs`(正數;不轉交 `call`)與 `firstMs` 取小,未給即 `firstMs`(`firstMs` 0＝未保留,只看整輪逾期)。鏈內:交 `call` 之 `shouldStop`＝呼叫端之 `shouldStop() === true` 或 `gate.shouldStop(aiChainStepMsOf(本次進門門檻, callOpt.spec))`(＝min(進門門檻, 席位 `minAttemptMs` 否則 60 秒))。預算:`budgetMs`＝min(`castBudgetMs(callOpt.budgetMs)` ?? ∞, `gate.remainingMs()`)。不加 `minAttemptMs`(席位之值照舊由 `spec` 交調度層)。`gate` 只需 `shouldStop(ms)`／`remainingMs()`(w-data-pipeline 之 `reserveOf`、本套件之 `stageReserveGateOf` 皆合)。段之開工門檻以 `captureCallMsOf(settings, 席位或席位陣列)` 估(陣列取各席之最大;席位 `timeoutMs` 優先)。
 - **CLI 讀取哪些檔由 CLI 決定,本層不干預**:CLI 型條目本即開放讀寫(`aiWorkspace` 只把寫入隔離在工作目錄)。例如 opencode 會自工作目錄往上讀 AGENTS.md(無則 CLAUDE.md),並讀 `~/.claude/CLAUDE.md`——工作目錄在某專案底下時,模型會帶著那個專案的規則與主題作答(實測)。要量不受其影響之能力(例如通用題組之評分),把 `aiWorkspace`／評分之 `--out` 放在沒有這些檔之目錄樹,或用 REST 條目。條目自帶之 `env`(`ai.extraProviders` 同 id 覆寫)原樣傳給 CLI。
 
 ---
@@ -642,6 +645,19 @@ const flow = createKnowledgeCapture({
 const report = await flow.run()
 const newIds = report.stages[0].result.detail.listFetch.detail.newIds   //本輪新入庫之文件 id(停用之子階段 report 為 { detail:{ disabled:true } })
 ```
+
+---
+
+## Breaking changes
+
+- **須搭配 w-dispatch-ai 含冷卻紀錄新格式之版本(1.0.85 之後之發布)同一次升版**(共用同一 `persistStore` 之全部套件亦同):冷卻紀錄由時間戳數字改為 `{ at, n, reason }`、另有持久連敗 `failStreak`;舊版遞補層讀到新格式即當過期刪除,舊版健康層讀到新格式恆判未冷卻而寫回數字——混用即互相覆寫。升版前之數字紀錄讀入視為 n 1(資料遷移)。
+- **健康降序改由遞補層持久計數、本層只觀察**(`ai.healthStreak` → w-dispatch-ai `coolAfterFails`):①連敗跨行程累計(修前以行程為界);②`createProviderHealth` 不再寫 store,`onCool`／`onHealth` 由遞補層之 `cooled`(reason `streak`)驅動(欄位同前:`providerId`、`streak`、`errorType`、`error`〔120 字〕、`keys`〔多金鑰且每把皆試過〕);③`health.snapshot().streak[id].n` 為遞補層之持久連敗(只列本行程觀察過且 > 0 者);④`ai.cooldownMs` 為 0 時不計連敗、無回呼(修前照常計數與回呼);⑤零嘗試之組盡(全部額度略過)不再計為 `exec` 連敗;⑥已在冷卻視窗內之條目再觸發只更新時刻(所有寫者一律如此)。
+- **`callJson` 之歸類**:①不再以呼叫端此刻之 `shouldStop` 回頭把末家之真失敗改判 `skipped`(修前為 `skipped:true`,今照計失敗;請以 `budgetMs` 給剩餘時間,被封頂者經遞補層判 `budget`);②逐次 `budgetMs` 為 0 或負數即「已無時間」(不送出、`skipped`;修前改用鏈預算照送),數字字串照用、小數取整;③本機網路不通改經遞補層之 `envDown` 判定,結果另帶 `netDown: true`(遞補層之等待上限 5 秒且以剩餘預算封頂,逾時視同通);④`attempts` 計入 `budget-cut`／`context-too-long`;⑤`errors`／`drainStats` 之被封頂者記 `budget-cut`(修前記 `timeout`);⑥席位 `budgetMs`(設定值)非正整數(如 0.5、1500.7)視為未給(`callJson` 與 `seatSpec`;修前照用);⑦`callJsonShapeOf` 之失敗形狀於輸入帶 `netDown: true` 時另帶 `netDown: true`。
+- **免費池額度之冷卻**經 `coolEntry` 寫 `{ at, n, reason:'quota' }`(固定視窗、不動 n);`ai.cooldownMs` 為 0 時不寫。
+- **評比之失敗分類**(`benchFailOf`):限流只認 `cooled` 之 reason `rate-limit`／`detect`(修前凡非逾時字樣之冷卻皆判限流——連敗、額度用盡、鏈首被封頂之冷卻今不判限流);被期限封頂(`budget-cut`)歸「略過」,不歸逾時。
+- **工作流入口**:`isNetDown` 另轉交遞補層為 `envDown`,整鏈皆敗之名額由遞補層各問一次(本入口之標記照舊另問一次;`isNetDown` 之呼叫次數因此增加)。
+- **新設定鍵** `ai.cooldownGrowth`(≥ 1 之數,預設 1)、`ai.cooldownMaxMs`(正整數,預設 86400000);直接給 `createAiAdapter` 之 `ai` 亦檢核,不合即拋。
+- **`captureCallMsOf(settings, seatOrSeats)`** 收席位陣列(各席取值後取最大)。新匯出 `reservedAiCallOf`、`aiChainStepMsOf`、`AI_CHAIN_STEP_MS`(`src/core/ai/reservedCall.mjs`)。
 
 ---
 
