@@ -1,11 +1,11 @@
 {
   "name": "w-knowledge-capture",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "main": "dist/w-knowledge-capture.umd.js",
   "dependencies": {
     "opencc-js": "^1.4.2",
     "w-data-pipeline": "^1.0.33",
-    "w-dispatch-ai": "^1.0.86",
+    "w-dispatch-ai": "^1.0.87",
     "w-dwdata-hub": "^1.0.33",
     "w-fetch-web": "^1.0.39",
     "w-orm-lmdb": "^1.0.59",
