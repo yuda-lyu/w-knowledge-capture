@@ -1,18 +1,18 @@
 {
   "name": "w-knowledge-capture",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "main": "dist/w-knowledge-capture.umd.js",
   "dependencies": {
     "opencc-js": "^1.4.2",
-    "w-data-pipeline": "^1.0.35",
-    "w-dispatch-ai": "^1.0.89",
-    "w-dwdata-hub": "^1.0.35",
-    "w-fetch-web": "^1.0.41",
-    "w-orm-lmdb": "^1.0.61",
-    "wsemi": "^1.9.57"
+    "w-data-pipeline": "^1.0.36",
+    "w-dispatch-ai": "^1.0.90",
+    "w-dwdata-hub": "^1.0.36",
+    "w-fetch-web": "^1.0.42",
+    "w-orm-lmdb": "^1.0.62",
+    "wsemi": "^1.9.58"
   },
   "devDependencies": {
-    "w-package-tools": "^1.1.27"
+    "w-package-tools": "^1.1.28"
   },
   "scripts": {
     "test": "mocha --parallel \"test/*.test.mjs\" --timeout 180000",
