@@ -1061,6 +1061,11 @@ describe('unit-package', function() {
         const TEST_RUNNER = 'mocha'
         /** 編譯與文件工具套件(toolg/ 以 w-package-tools 之 src 深層路徑取用;同自有套件之 devDependencies) */
         const BUILD_TOOLS = 'w-package-tools'
+        /**
+         * 列於 dependencies 而 src/ 不直接 import 者:dist(UMD)打包了自有套件 w-fetch-web 之原始碼,其啟動 Chromium 系瀏覽器之呼叫在執行期 require 它,
+         * 故為 toolg/gDistRollup.mjs 之 external 與 globals(由 w-fetch-web 一併安裝,於此明列使 dist 之執行期依賴不靠提升)
+         */
+        const DIST_EXTERNAL_ONLY = ['w-playwright']
         /** 檔案所屬群組:src/ 為套件原始碼(lib)、test/ 為測試、其餘(g.mjs、toolg/)為範例與編譯工具(tool) */
         const groupOf = (file) => (file.startsWith('test/') ? 'test' : file.startsWith('src/') ? 'lib' : 'tool')
 
@@ -1096,7 +1101,9 @@ describe('unit-package', function() {
             const libMissing = [...used.lib].filter((p) => !deps.has(p) && !byWsemi.has(p))
             const devMissing = [...used.test, ...used.tool].filter((p) => !deps.has(p) && !dev.has(p) && !byWsemi.has(p))
             assert.deepEqual([libMissing, devMissing], [[], []], '被 import 之套件須列於 package.json')
-            assert.deepEqual([...deps].filter((p) => !used.lib.has(p)), [], 'dependencies 不得有 src/ 未使用者')
+            assert.deepEqual([...deps].filter((p) => !used.lib.has(p) && !DIST_EXTERNAL_ONLY.includes(p)), [], 'dependencies 不得有 src/ 未使用者(DIST_EXTERNAL_ONLY 所列之 dist 執行期外部件除外)')
+            assert.deepEqual(DIST_EXTERNAL_ONLY.filter((p) => !deps.has(p)), [], 'DIST_EXTERNAL_ONLY 所列者須在 dependencies')
+            assert.deepEqual(DIST_EXTERNAL_ONLY.filter((p) => used.lib.has(p)), [], 'src/ 已直接 import 者不得再列於 DIST_EXTERNAL_ONLY')
             // 測試執行器 mocha 由 scripts.test 呼叫、不被 import:隨編譯工具套件安裝(同自有套件),不在 import 對帳之內,但須可解析
             assert.ok(dev.has(BUILD_TOOLS) && used.tool.has(BUILD_TOOLS), `編譯工具套件 ${BUILD_TOOLS} 須列於 devDependencies 且被 toolg/ 使用`)
             assert.doesNotThrow(() => import.meta.resolve(TEST_RUNNER), `測試執行器 ${TEST_RUNNER} 須已安裝`)
@@ -1104,6 +1111,60 @@ describe('unit-package', function() {
             assert.deepEqual([...dev].filter((p) => used.lib.has(p)), [], 'src/ 使用者須列於 dependencies')
             // 掃描非空洞:套件之主要外部依賴確實被掃到
             for (const p of ['wsemi', 'w-data-pipeline', 'w-fetch-web', 'w-dwdata-hub', 'w-orm-lmdb', 'w-dispatch-ai', 'opencc-js']) assert.ok(used.lib.has(p), `應掃到對 ${p} 之引用`)
+        })
+
+        it('Chromium 系瀏覽器只經 w-playwright(CAPX-13／R-PW-ONLY):掃描器自檢抓得到對 playwright／playwright-core 之各種 import；src／test／toolg／g.mjs 無此 import；package.json 不宣告之', () => {
+            // 規則(w-playwright 規格 R-PW-ONLY):使用端不得直接匯入(靜態、export from、動態)或宣告 playwright／playwright-core,啟動一律經 w-playwright
+            // 夾具以變數組字:本檔原始碼不得含 `from '<playwright>'` 之連續字樣(盤點指令為純文字比對,不分字串或程式碼,命中數須為 0)
+            const Q = "'"
+            const fixture = [
+                `import { chromium } from ${Q}${'play'}wright${Q}`,
+                `export * from ${Q}${'play'}wright-core${Q}`,
+                `const m = await ${'imp'}${`ort(${Q}${'play'}wright-core/lib/x.js${Q})`}`,
+                `import w from ${Q}w-${'play'}wright${Q}`,
+                `// import { chromium } from ${Q}${'play'}wright${Q}`,
+                `const s = ${Q}import { chromium } from "${'play'}wright"${Q}`,
+            ].join('\n')
+            const hit = (spec) => ['playwright', 'playwright-core'].includes(classify('src/x.mjs', spec).pkg)
+            assert.deepEqual(specifiersOf(fixture).filter(hit).sort(), ['playwright', 'playwright-core', 'playwright-core/lib/x.js'])
+            assert.equal(hit('w-playwright'), false, 'w-playwright 不是 playwright')
+            const scan = scanAll()
+            assert.ok(scan.files.some((f) => f.startsWith('src/')) && scan.files.some((f) => f.startsWith('test/')) && scan.files.some((f) => f.startsWith('toolg/')), '前提：掃描範圍含 src／test／toolg')
+            const bad = scan.rows.filter((r) => hit(r.spec)).map((r) => `${r.file} → ${r.spec}`)
+            assert.deepEqual(bad, [], '不得直接 import playwright／playwright-core(改經 w-playwright)')
+            // 另以純文字比對(w-playwright 規格之盤點正則,不分字串或程式碼;註解與字串內之字樣亦計)復核:命中數須為 0;夾具須命中(防空集合)
+            const RE = /(from\s+|import\(\s*|require\(\s*)['"`]playwright(-core)?['"`/]/
+            assert.equal(fixture.split('\n').filter((l) => RE.test(l)).length, 5, '盤點正則須命中夾具中之五行(含註解與字串內者;w-playwright 之 import 不命中)')
+            assert.deepEqual(scan.files.filter((f) => RE.test(readText(f) || '')), [], '盤點正則於 src／test／toolg／g.mjs 之命中數須為 0')
+            for (const k of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+                assert.deepEqual(['playwright', 'playwright-core'].filter((p) => Object.hasOwn(pkg[k] || {}, p)), [], `package.json ${k} 不得宣告 playwright／playwright-core`)
+            }
+        })
+
+        it('w-playwright 列於 dependencies(^1.0.1 起)、為 toolg/gDistRollup.mjs 之 external 與 globals 且無 playwright／playwright-core;已安裝之 w-fetch-web、w-dwdata-hub 為依 w-playwright 之版本(不再依 playwright)', () => {
+            // 規則:dist 打包 w-fetch-web 原始碼而其啟動呼叫於執行期 require w-playwright,須外部化(不可刪、不可誤留 playwright);啟動點所在之自有套件須已改經 w-playwright
+            const m = /^\^(\d+)\.(\d+)\.(\d+)$/.exec(pkg.dependencies['w-playwright'])
+            assert.ok(m && Number(m[1]) === 1 && (Number(m[2]) > 0 || Number(m[3]) >= 1), `w-playwright 範圍須為 ^1.0.1 起：${pkg.dependencies['w-playwright']}`)
+            const rollup = readText('toolg/gDistRollup.mjs')
+            const listOf = (re) => {
+                const body = (re.exec(rollup) || [])[1]
+                assert.ok(body, `gDistRollup.mjs 須有 ${re}`)
+                return [...body.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n').matchAll(/'([^']+)'/g)].map((x) => x[1])
+            }
+            const globalNames = listOf(/\n {4}globals: \{([\s\S]*?)\n {4}\},/).filter((_, i) => i % 2 === 0) // 'name': 'alias' 成對,取鍵
+            const externalNames = listOf(/\n {4}external: \[([\s\S]*?)\n {4}\],/)
+            for (const [label, names] of [['globals', globalNames], ['external', externalNames]]) {
+                assert.ok(names.includes('w-playwright'), `${label} 須含 w-playwright：${names.join(',')}`)
+                assert.deepEqual(names.filter((n) => n === 'playwright' || n === 'playwright-core'), [], `${label} 不得留 playwright／playwright-core`)
+            }
+            const installedPkgOf = (p) => JSON.parse(fs.readFileSync(fileURLToPath(import.meta.resolve(`${p}/package.json`)), 'utf8'))
+            const wpwInstalled = installedPkgOf('w-playwright')
+            assert.equal(wpwInstalled.dependencies['playwright-core'], '1.64.1', 'w-playwright 精確釘 playwright-core')
+            for (const p of ['w-fetch-web', 'w-dwdata-hub']) {
+                const j = installedPkgOf(p)
+                assert.ok(j.dependencies?.['w-playwright'], `${p}@${j.version} 須依 w-playwright`)
+                assert.deepEqual(['playwright', 'playwright-core'].filter((x) => Object.hasOwn(j.dependencies || {}, x)), [], `${p}@${j.version} 不得再依 playwright／playwright-core`)
+            }
         })
 
         it('依賴為 semver 範圍,不指向本機路徑(file:／link:／絕對路徑);執行秩序件來源三套件之安裝版合於所列範圍(新函數須有之最低版)', () => {

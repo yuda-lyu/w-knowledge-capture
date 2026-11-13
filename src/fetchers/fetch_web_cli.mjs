@@ -11,6 +11,10 @@
 //   ①外層逾時只是「不再等」(w-data-pipeline attemptFetch 為合作式取消,fetchWeb 不收 signal),背景瀏覽器繼續跑、與下一篇重疊,
 //     Camofox 固定埠自撞;②主行程被強制終止(排程 ExecutionTimeLimit／StopExisting、崩潰)時瀏覽器整棵孤兒化。
 //   子行程由 wsemi execCli 控管逾時並以 taskkill /T 樹狀殺。
+// 【Chromium 系瀏覽器之啟動只經 w-playwright】Playwright 階由 w-fetch-web 呼叫自有套件 w-playwright 啟動(本套件不直接依賴 playwright／playwright-core);
+//   w-playwright 於每次啟動之命令列恰給一串 --disable-features(Playwright 預設清單＋守門功能 AutofillAiWalletPrivatePasses＋呼叫端自給者),
+//   使 Windows 上 Chromium 153 起每啟動一個新根行程即以無效密碼呼叫一次 LogonUser 之行為不再發生(避免帳號被本機原則鎖定);原因與細節見 README §2。
+//   守門之接線由 test/unit-capture-launch-wiring 斷言(以預載件 test/tools/wpwFakeLaunch 在本 CLI 的子行程內接住啟動)。
 // 【PATH 前置 node 目錄】Camofox server 以 spawn('node', …) 啟動且無 error 監聽(w-fetch-web runCamofoxAttempt),
 //   排程環境之 PATH 未必含 node(以絕對路徑啟動 node 之排程即屬此類):前置本行程之 node 目錄。
 

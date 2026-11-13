@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import merge from 'lodash-es/merge.js'
+import wpw from 'w-playwright'
 import W from 'w-data-pipeline/src/WDataPipeline.mjs'
 import { memStore } from './tools/memStore.mjs'
 import { deepMerge } from './tools/captureTestKit.mjs'
@@ -113,6 +114,57 @@ describe('unit-capture-browser', function() {
             assert.equal(isEnvFailure({ reason: 'camofox-error', message: 'camofox server failed to start within 30s' }), true)
             assert.equal(isEnvFailure({ reason: 'playwright-error', message: 'page.goto: net::ERR_NAME_NOT_RESOLVED' }), false)
             assert.equal(isEnvFailure({ reason: 'http-error', message: 'HTTP 403' }), false)
+        })
+
+        it('isEnvFailure:w-playwright 之固定詞彙錯誤(啟動失敗、啟動逾時、受管瀏覽器缺檔、不支援之環境、版本不符、登入守門拒絕)皆為環境失敗(方法本輪斷路、文件不計 tries);頁面導航逾時、HTTP 仍非環境', async () => {
+            // 規則(CAP-08、CAPX-13):Chromium 系啟動經 w-playwright 後,啟動失敗之訊息為其固定詞彙(不含 Playwright 原訊息);
+            //   環境失敗之判定須認得這些詞彙,否則啟動被拒(含登入守門)會被記在文件頭上、三次即判死
+            const rejectOf = async (fake, env) => {
+                const restore = wpw.setBrowserTypeForTest(fake)
+                const saved = {}
+                for (const [k, v] of Object.entries(env || {})) {
+                    saved[k] = process.env[k]
+                    process.env[k] = v
+                }
+                try {
+                    await wpw.launchChromium({ headless: true })
+                    assert.fail('替身應使啟動 reject')
+                }
+                catch (e) {
+                    return e
+                }
+                finally {
+                    for (const [k, v] of Object.entries(saved)) {
+                        if (v === undefined) delete process.env[k]
+                        else process.env[k] = v
+                    }
+                    restore()
+                }
+            }
+            const launchOnce = (err) => ({
+                launch: async () => {
+                    throw err
+                },
+            })
+            const timeoutErr = Object.assign(new Error('browserType.launch: Timeout 30000ms exceeded.'), { name: 'TimeoutError' })
+            const cases = [
+                ['E_LAUNCH', await rejectOf(launchOnce(new Error("browserType.launch: Chromium distribution 'chrome' is not found at C:\\x")))],
+                ['E_LAUNCH_TIMEOUT', await rejectOf(launchOnce(timeoutErr))],
+                ['E_BROWSER_MISSING', await rejectOf(launchOnce(new Error("browserType.launch: Executable doesn't exist at C:\\x")))],
+                ['E_ENV', await rejectOf(launchOnce(new Error('unused')), { PWDEBUG: '1' })],
+            ]
+            for (const [code, e] of cases) {
+                assert.equal(e.code, code, `前提：取得 ${code} 之真實 reject：${e.code} ${e.message}`)
+                assert.equal(isEnvFailure({ reason: 'playwright-error', message: e.message }), true, `${code} 之訊息「${e.message}」須判環境失敗`)
+            }
+            // 版本不符、登入守門拒絕無法在不啟動瀏覽器下觸發真實 reject:取 w-playwright 原始碼中之固定詞彙(_launchCore.mjs、_logonGuard.mjs)
+            for (const m of ['playwright-core version 1.65.0 does not match the bundled defaults table 1.64.1', 'logon guard: bad password attempts not zero, launch refused', 'logon guard: bad password attempts unreadable, launch refused']) {
+                assert.equal(isEnvFailure({ reason: 'playwright-error', message: m }), true, m)
+            }
+            // 非環境:頁面導航逾時、網路錯、HTTP
+            for (const m of ['page.goto: Timeout 20000ms exceeded.', 'page.goto: net::ERR_CONNECTION_RESET', 'Navigation failed because page was closed!']) {
+                assert.equal(isEnvFailure({ reason: 'playwright-error', message: m }), false, m)
+            }
         })
 
         it('瀏覽器佇列之路由(唯一寫法):browserQueueOn 依 capture.browser.perRun > 0;browserQueueFields 進佇列記進佇列時刻,已在佇列者(status new 且 fetcher browser)保留原時刻', () => {

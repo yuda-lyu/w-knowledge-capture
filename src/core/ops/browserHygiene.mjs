@@ -7,8 +7,8 @@
 // 【判準:歸屬＋父死,絕不用年齡】常駐瀏覽器可合法存活很久,年齡判準會誤殺健康者。歸屬以命令列辨識——
 //   ①本套件之瀏覽器 CLI(fetch_web_cli.mjs)②Camofox server(@askjo/camofox-browser 之 server.js;路徑為原生反斜線,比對不分 / \)
 //   ③camoufox.exe(Camofox 之 Firefox,含內容行程;其 ExecutablePath 於受限權杖下 CIM 讀不到,實測為空,故用命令列)
-//   ④Playwright 啟動之 Chrome(w-fetch-web 用 channel:'chrome'＝系統 Chrome,與使用者自己的 Chrome 同一執行檔——
-//   只認命令列含 playwright_chromiumdev_profile- 者,使用者之 Chrome 不帶此標記)。
+//   ④Playwright 啟動之 Chrome(w-fetch-web 經 w-playwright 用 channel:'chrome'＝系統 Chrome,與使用者自己的 Chrome 同一執行檔——
+//   只認命令列含 playwright_chromiumdev_profile- 者,使用者之 Chrome 不帶此標記;w-playwright 呼叫的仍是 Playwright 的 chromium.launch,暫存 profile 前綴不變)。
 // 【父死之判定含 PID 重用】Windows 會回收 PID:父 PID 若已被晚於子行程建立之新行程占用,亦視為父死。
 // 【只殺根】孤兒之子孫(其父仍在)由 taskkill /T 一併收掉,不重複殺;殺後重列行程回驗(kill 不保證成功)。
 // 【孤兒 Chrome 之暫存 profile】Playwright 以 mkdtemp(<os.tmpdir()>/playwright_chromiumdev_profile-XXXX)建 profile、正常關閉時刪除;

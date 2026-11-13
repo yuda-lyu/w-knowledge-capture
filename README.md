@@ -225,18 +225,29 @@ let fixed = makeProduced({ stamp: ctx.stamp ?? null, stage: 'note-fix', seat: nu
 npm i w-knowledge-capture
 ```
 
-依賴套件(`dependencies`,隨本套件一併安裝):opencc-js、w-data-pipeline、w-dispatch-ai、w-dwdata-hub、w-fetch-web、w-orm-lmdb、wsemi。
+依賴套件(`dependencies`,隨本套件一併安裝):opencc-js、w-data-pipeline、w-dispatch-ai、w-dwdata-hub、w-fetch-web、w-orm-lmdb、w-playwright、wsemi。
 
 執行秩序件(執行鎖 `acquireLock`／`inspectLock`、時間預算 `budgetOf`／`reserveOf`／`reserveMsOf`、截止公式 `deadlineMsOf`、落檔日誌 `createLogger`／`createRunLogger`、單行化 `oneline`——w-data-pipeline;AI 目錄展開 `resolveCatalogue`——w-dispatch-ai;時鐘 `genClockTZ`、子行程之 JSON 執行 `execCliJsonFile`、CLI 失敗摘要 `execCliFailDetail`——wsemi)只經 `core/runnerPackage.mjs` 以深層路徑取用,並由本套件主入口以原名轉出——下游套件經本套件取得之件即來源模組之件(同一實體;執行鎖之行程內登記表只有一份,兩份實作會互判殘留而接管)。本套件自身之檔案小工具 `readJson`、`writeFileAtomic`(wsemi `fsWriteTextAtomic` 之拋錯包裝)、`queueAge` 在 `core/util/{fileIo,queueAge}.mjs`,亦由主入口轉出。
 
 | 外部程式 | 用途 | 沒有時 |
 |---|---|---|
 | curl | 全文補抓之第一層 | 必備 |
-| 系統 Chrome | 瀏覽器階梯(Playwright 經 w-fetch-web) | 該方法本輪斷路,可救件延後(不計失敗次數) |
+| 系統 Chrome(Google Chrome) | 瀏覽器階梯(w-fetch-web 經 w-playwright 以 `channel: 'chrome'` 啟動;見下節) | 該方法本輪斷路,可救件延後(不計失敗次數) |
 | Camofox(反偵測 Firefox) | 瀏覽器階梯之後段(`capture.browser.camofox.enabled`) | 同上 |
 | opencode CLI | 預設 AI 席位(免費模型,免金鑰) | 領域發現失敗,3 小時後再試(不作廢當日窗口);其餘子階段不受影響 |
 
 金鑰(付費或 REST 供應商)放 `<workDir>/.env`(或 `cfg.envFile`),不寫在設定裡。
+
+### 瀏覽器之啟動(經 w-playwright)
+
+瀏覽器階梯在子行程內由 w-fetch-web 啟動 Chromium 系瀏覽器(Playwright 階),**一律經自有套件 w-playwright**;本套件不直接依賴 `playwright`／`playwright-core`,使用端也不需、不應另裝(安裝本套件即經 w-playwright 帶入 playwright-core 精確 1.64.1)。Camofox(Firefox 系)不屬 Chromium,不經 w-playwright。
+
+1. **須安裝 Google Chrome**:Playwright 階以 `channel: 'chrome'` 啟動系統 Chrome,沒有時該方法本輪斷路、可救件延後(不計失敗次數)。要事先確認可用 `import wpw from 'w-playwright'; wpw.findSystemChrome()`(只以檔案存在判定位置,不啟動瀏覽器、不代表一定能啟動)。
+2. **受管瀏覽器**(headless shell、完整 Chromium)本套件不使用;同一部機器上其他工作需要時,以 w-playwright 之 `await wpw.ensureChromium()`(完整 Chromium 為 `ensureChromium({ kind: 'chromium' })`)取得,**不要用 `npx playwright install`**(依賴樹中他版被提升時會下載到不同版本之瀏覽器)。離線機器:於可連網之機器以同版 w-playwright 取得後,把 Playwright 之瀏覽器資料夾複製過去,並以環境變數 `PLAYWRIGHT_BROWSERS_PATH` 指向它(須在載入本套件前設定)。
+3. **守門參數與原因**:Windows 上 Chromium 153 起,每啟動一個新的瀏覽器根行程,即以無效密碼替目前使用者呼叫一次 `LogonUser`(安全性紀錄 4625、錯誤密碼次數加 1);本機原則若為 10 分鐘內 10 次即鎖定帳號,而本套件的瀏覽器階梯每次啟動各是一個新根行程。w-playwright 因此於**每次啟動**之命令列恰給一串 `--disable-features=<Playwright 預設清單>,AutofillAiWalletPrivatePasses,<呼叫端自給者>`(停用該 Chromium 功能後不再發生),並以 `ignoreDefaultArgs` 去掉 Playwright 自帶的那一串(Chromium 對多串只取最後一串);不提供停用此守門之選項。守門之效果依 w-playwright 之說明所載,已於 Google Chrome 157、Microsoft Edge 157、Playwright 1.64.1 之完整 Chromium(皆無頭)驗證錯誤密碼次數增量為 0;其餘瀏覽器版本與有頭模式未驗證,Chrome 自動更新後請先依 w-playwright 之說明確認,再連續執行會啟動 Chrome 之工作。
+4. **不支援之環境變數**:`PWDEBUG`(inspector 模式之值)與 `SELENIUM_REMOTE_URL` 會使守門失效,w-playwright 一律拒絕啟動;子行程繼承行程環境,故執行本套件的行程不得設定它們。
+5. **執行期登入守門(選用)**:環境變數 `W_PLAYWRIGHT_LOGON_GUARD` 設為非空且非 `0`／`false` 時,w-playwright 於每次啟動真 Chrome／Edge／完整 Chromium 之前讀目前使用者之錯誤密碼次數,≥1 即拒絕啟動(只應在 Windows 開啟;細節見 w-playwright 之說明)。
+6. **啟動被拒或失敗之處置**:w-playwright 之錯誤訊息為固定詞彙(`browser launch failed`、`browser launch timed out`、`unsupported environment`、`logon guard` 等,不含 Playwright 原錯誤之命令列與路徑);瀏覽器階梯將之判為**環境失敗**——該方法本輪斷路、可救件延後、不計失敗次數,與 Chrome 未安裝同一處置(判定在 `isEnvFailure`)。
 
 ### OpenAlex API 金鑰與 429
 
@@ -577,7 +588,7 @@ node <mocha 路徑>/bin/mocha.js --timeout 180000 test/<檔名>      # 單檔
 | 設定與組裝 | `unit-settings`、`unit-assembly`、`unit-assembly-kit`、`unit-entry`、`unit-package`、`unit-domain-terms` | 每個設定鍵逐鍵覆寫與拒收、`cfg` 各鍵檢核、總組裝共用件、入口匯出、**套件邊界(不 import 套件外)、發布面(不設 `exports`／`files` 使深層路徑可取用、無 `.npmignore` 而發布範圍依 `.gitignore`、`npm pack --dry-run` 清單含 `sgud/` 與 `test/tools/` 而不含 `CLAUDE*.md`、根目錄範本檔、`LICENSE`)與發布內容不帶宿主之痕跡(磁碟機絕對路徑、使用者目錄)、預設領域中立(詞表 `test/tools/domainTerms` 為四套件同一份,下游之測試經其 `captureForTest` 取用;自檢 `unit-domain-terms`)、舊名、沿革與面向使用者之字樣(判準 `test/tools/historyMarks`,四套件同一份;不以名指下游之工作)、下游筆記欄位只經 `core/stores/noteFields` 讀、覆寫生效** |
 | 待判與存量帳 | `unit-holds`、`unit-stock-ledger`、`unit-cs12fix` | 待判之登錄、期限、重試判定與存量待判件;存量處置帳之讀寫協定(壞行即拒、回退列、逐件錯誤列);CS12 之預演／套用／斷言／回退 |
 | AI 調度 | `unit-ai-adapter`、`unit-ai-adapter-ext` | 遞補、驗證、限流冷卻、逾時三層、金鑰來源、斷網不計(本機假 REST);CLI 子行程之環境本層不干預(node 假 CLI);高頻呼叫之機制(截斷放行、避開、預覽、免費池、健康降序、能力預篩)與預設關閉 |
-| 抓取器與政策 | `unit-fetchers`、`unit-siteAdapters`、`unit-capture-fetch-checks`、`unit-capture-policies`、`unit-capture-browser`、`unit-capture-netguard` | 抓取器契約、站台 adapter、健全閘、分流、瀏覽器階梯、本機網路判斷 |
+| 抓取器與政策 | `unit-fetchers`、`unit-siteAdapters`、`unit-capture-fetch-checks`、`unit-capture-policies`、`unit-capture-browser`、`unit-capture-launch-wiring`、`unit-capture-netguard` | 抓取器契約、站台 adapter、健全閘、分流、瀏覽器階梯(含啟動失敗之環境判定)、本機網路判斷;啟動點接線(子行程內以 w-playwright 之測試替身接住啟動,斷言選項含守門,不啟動瀏覽器) |
 | 子階段 | `unit-capture-stages`、`unit-capture-object`、`unit-capture-ops`、`unit-capture-areas`、`unit-capture-refetch`、`unit-capture-fix`、`unit-capture-reserve`、`unit-capture-reserve-gate`、`unit-capture-reserve-guard` | 扣保留給後段之時間(五個耗時段:開工前與每次取件前之門檻、少做而未處理者留佇列、保留未給行為不變、邊界與不誤報;共用守門閘與估計;守護子階段不直接問整輪預算)、七個子階段與動作鏈、領域發現(提示詞覆寫、筆記可缺、席位)、原文回溯、存量處置 |
 | 標準與剔除 | `unit-capture-standards`、`unit-cs10fix`、`unit-rejects` | 各標準之判定、存量掃描(唯讀)、CS10 預演／套用／斷言／回退、剔除清單 |
 | 評分 | `unit-bench`、`unit-bench-kit` | 評分器之判準、停測、報表、題組驗證、免費名單與目錄之漂移;角色化核心(分頁、多角色評比表、`--vocab`) |
@@ -587,7 +598,7 @@ node <mocha 路徑>/bin/mocha.js --timeout 180000 test/<檔名>      # 單檔
 
 - **固定埠**(≥8000、不隨機):8821、8824～8828、8831 為本機假伺服器,8830 為無人監聽之死埠,19437 為實網測試之 Camofox。
 - **暫存**:各測試自建 `test/_tmp/<名>-<pid>`,測完刪除(`test/_tmp/` 已列 .gitignore)。
-- **整合測試需要系統 Chrome**;沒有時相關案明確失敗並說明,不靜默略過。
+- **整合測試需要系統 Chrome**;沒有時相關案明確失敗並說明,不靜默略過。`unit-flow-capture` 之瀏覽器案(約 7～8 次,各在獨立子行程,無法共用瀏覽器)會**真的啟動 Chrome**,一律經 w-playwright;Windows 上跑之前與之後請各讀一次目前使用者之錯誤密碼次數(`w-playwright/test/tools/readBadPassword.mjs`),增加即停止;建議跑測試的行程設 `W_PLAYWRIGHT_LOGON_GUARD=1`(見上〈瀏覽器之啟動〉)。其餘測試皆不啟動瀏覽器。
 - **已知缺陷**以 `it.skip('[已知缺陷] …')` 保留其應然斷言(修正後解除即成回歸測試)。
 
 ---

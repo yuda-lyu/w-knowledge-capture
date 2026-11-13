@@ -10,7 +10,7 @@
 | `rulebook_general.md` | GEN-01～04、06、07、09、10、16、18、19（工作英文名、機制在套件領域在使用端、設定三層驗證、只放新格式、模組邊界、hook 錨點全集、測試之匯入根、抓取之行為與知識只在本套件、評分命令列與評分小件、匯入指定詞、跨套件共用件之歸屬與只一份）＋ §2 使用端與下游須知 |
 | `rulebook_core.md` | GEN-20～22（泛用套件與語言設定、共用件歸最低使用者、測試件之共用與守門）、CORE-01～05、07、08、10、11（時間預算、執行期生效值、執行鎖、掛載 fail-loud、例外分帳、身分雜湊、記錄不刪、直接寫檔之範圍、產出鏈共用件與輪次 stamp）、AI-01～14（AI 調度層只一份：席位檢核、能力預篩、健康〔只觀察〕、免費池額度、截止歸類〔依遞補層結果〕、截斷、事件、額度字樣、席位鍵、取最後一段合格之 JSON、開工門檻、扣保留之 AI 呼叫之唯一包裝、冷卻／連敗／環境歸因屬遞補層而本層轉傳、評比之失敗分類） |
 | `rulebook_capture.md` | CAP-01～17（單一入庫閘門、文件狀態機、標題預篩、失敗分流與 dead、feed 退路、來源計帳、線索、瀏覽器分流、內容健全閘、孤兒瀏覽器、領域清單、本機網路判斷、剔除清單與回收、種子與網格主題形狀、同一內容與錯頁判定、OpenAlex 金鑰與 429、耗時子階段扣保留給後段之時間） |
-| `rulebook_package.md` | CAPX-01～12（套件邊界、預設領域中立、設定與資料錯誤建構期拋錯、CLI 不隔離、提示詞可覆寫、筆記可缺、評分判準、時區、偵測器陣列注入、CS5 全掃、PDF 暫不做） |
+| `rulebook_package.md` | CAPX-01～13（套件邊界、預設領域中立、設定與資料錯誤建構期拋錯、CLI 不隔離、提示詞可覆寫、筆記可缺、評分判準、時區、偵測器陣列注入、CS5 全掃、PDF 暫不做、Chromium 系瀏覽器只經 w-playwright） |
 | `rulebook_standards.md` | STD-00、01、03、04、07、09、10、14、22、24～26、29（檢定標準框架之抓取段與共用件：正體單一實作、原文另存、待判登錄、抓取納入閘、存量處置工具與回退＝撤銷、持久檔語意、已不再違反之結案）＋ 使用端須知 |
 
 ### 已移出（宿主專屬或屬下游套件；編號保留不重編）
@@ -32,24 +32,25 @@
 7. **只放新格式**（GEN-04）：無遷移、相容、舊名退路；舊資料由使用端另寫一次性工具處理。
 8. **先記後寫、回退＝撤銷**（STD-22／25／26）：CS10／CS12 之存量處置先記帳列再寫；回退只還原該次處置改過之單位，現值已非該次結果者報衝突；JSON 帳逐帳驗結構、隔離失敗不假稱成功、預演純讀。
 9. **發布面與結構**（依自有套件範本 w-knowledge-extract）：原始碼全在 `src/`（主入口 `src/WKnowledgeCapture.mjs`）；`package.json` 之 `main` 指 `dist/w-knowledge-capture.umd.js`（Node 專用 UMD，發布流程產製），**不設 `exports` 與 `files`**——下游以「套件名/src/…」與「套件名/test/tools/…」深層路徑取用，設了即擋掉；發布範圍依 `.gitignore`（**不提供 `.npmignore`**：npm 包＝git 版控之內容；`sgud/`、`test/`〔含下游取用之 `test/tools`〕、`docs/` 皆隨包，`CLAUDE*.md` 與暫存由 `.gitignore` 排除；只有外部執行檔與單一資料夾 ≥10MB 之非程式碼資料才需 `.npmignore`，本套件兩者皆無），`CLAUDE*.md` 不入 git；scripts 為 `test` 與 `deploy`；`devDependencies` 為 `w-package-tools`（mocha 隨之安裝）；套件根有 `.editorconfig`／`.eslintignore`／`.eslintrc.js`／`.jsdoc`／`babel.config.js`／`SECURITY.md`／`g.mjs`／`toolg/`。守門：`unit-package` ⑤（無 `.npmignore`；`.gitignore` 須列 `CLAUDE*.md` 與暫存、不得排除 `sgud`／`test/tools`；`npm pack --dry-run` 清單含 `sgud/` 與 `test/tools/` 全部檔、不含 `CLAUDE*.md`／`AGENTS*.md`／暫存）。`sgud/` 隨包公開，須維持無金鑰、無內網位址、無宿主專名。
-10. **編譯清單與 JSDoc**：`toolg/gDistRollup.mjs` 之 `external`／`globals` 自 `src/WKnowledgeCapture.mjs` 靜態追蹤 import 圖（含自有套件 `src` 深層引用）盤點，原則見其檔頭（新增依賴或新引用自有套件之其他深層路徑後須重盤）；`opencc-js/dict/*` 打包不剔除。`src/` 每個匯出之函數須有 JSDoc（說明、`@param`、`@returns`、`@example`），匯出之常數須有說明。
+10. **編譯清單與 JSDoc**：`toolg/gDistRollup.mjs` 之 `external`／`globals` 自 `src/WKnowledgeCapture.mjs` 靜態追蹤 import 圖（含自有套件 `src` 深層引用）盤點，原則見其檔頭（新增依賴或新引用自有套件之其他深層路徑後須重盤）；`opencc-js/dict/*` 打包不剔除；w-fetch-web 原始碼之 Chromium 啟動外部件為 `w-playwright`（不得留 `playwright`，CAPX-13）。`src/` 每個匯出之函數須有 JSDoc（說明、`@param`、`@returns`、`@example`），匯出之常數須有說明。
 
 ## 盤點指令與判準
 
 | 項 | 指令 | 判準 |
 |---|---|---|
-| 全套測試 | 自套件根 `npm test`（即 `mocha --parallel "test/*.test.mjs" --timeout 180000`） | 0 失敗；pending 只有真 AI／實網之案（`WK_LIVE_AI`／`WK_LIVE_NET` 未設）與已知缺陷案（`unit-ai-adapter-cooling`「已知缺陷:isNetDown 需數十毫秒…」——遞補層之 envDown 等待以剩餘預算封頂,修正後自動轉為斷言,見 AI-13） |
+| 全套測試 | 自套件根 `npm test`（即 `mocha --parallel "test/*.test.mjs" --timeout 180000`） | 0 失敗；pending 只有真 AI／實網之案（`WK_LIVE_AI`／`WK_LIVE_NET` 未設，共 5 案）。`unit-ai-adapter-cooling`「已知缺陷:isNetDown 需數十毫秒…」案（遞補層之 envDown 等待以剩餘預算封頂，見 AI-13）在 w-dispatch-ai 1.0.91 下已自動轉為斷言並通過（2026-11-13 全套核對），不再 pending |
 | 結構與守門 | `unit-package`（邊界①、中立②、package.json 與發布面⑤、舊名與沿革⑥、資料契約⑦）、`unit-core-layers`（core 分層）、`unit-entry`（入口名單）、`unit-domain-terms`（詞表自檢）、`unit-log-contract` | 皆綠 |
 | 下游回歸 | 下游套件（摘要、關聯、提煉）之全套 | 皆 0 失敗 |
 | 免費 AI 能力評分 | `node src/bench/cli.mjs --help`；長跑見 `../proc/process.md` | 用法印出 exit 0 |
 | 編譯 | `node toolg/gDistRollup.mjs`，再 `require('./dist/w-knowledge-capture.umd.js')` | 編譯 exit 0；載入不拋、匯出鍵含 `createKnowledgeCapture` 等（與主入口具名匯出同組） |
 | 文件 | `node node_modules/jsdoc/jsdoc.js -c .jsdoc`、`node toolg/gDocsExams.mjs` | exit 0、無警告 |
+| Chromium 系只經 w-playwright（CAPX-13） | `git grep -nE "(from\s+|import\(\s*|require\(\s*)['\"\`]playwright(-core)?['\"\`/]" -- src test toolg g.mjs`、`git grep -nE "\"playwright(-core)?\"\s*:" -- package.json`；測試 `unit-capture-launch-wiring`、`unit-package` ⑤ | 兩條 grep 皆 0 命中；接線測試與 ⑤ 綠；真 Chrome 只在 `unit-flow-capture` 之瀏覽器案，跑前後讀錯誤密碼次數 |
 | 按需引入 | `git grep -nE "from 'lodash-es'" -- src toolg g.mjs`、`git grep -nE "from 'wsemi'" -- src toolg g.mjs`、`git grep -nE "from 'node:" -- src toolg g.mjs`（各自分別跑） | 皆無命中（lodash-es 只許 `lodash-es/<函數>.js`、wsemi 只許 `wsemi/src/<函數>.mjs`、內建模組無前綴） |
 
 ## 測試清單（`test/`；檔名前綴＝層級：`unit-` 單元、`api-` 需外部資源）
 
 - 核心：`unit-core`、`unit-core-text`、`unit-core-locale`、`unit-core-shared`、`unit-core-layers`、`unit-assembly`、`unit-assembly-kit`、`unit-provenance`、`unit-holds`、`unit-stock-ledger`、`unit-jsonl`、`unit-settings`、`unit-entry`、`unit-package`、`unit-domain-terms`、`unit-log-contract`
 - AI 調度：`unit-ai-adapter`、`unit-ai-adapter-ext`、`unit-ai-adapter-workflow`、`unit-ai-adapter-cooling`（與遞補層之冷卻／連敗／預算對接，AI-03～05、13、14）、`unit-ai-reserved-call`（扣保留之 AI 呼叫之包裝，AI-12）、`unit-ai-json-reply`
-- 抓取：`unit-capture-stages`、`unit-capture-object`、`unit-capture-policies`、`unit-capture-standards`、`unit-capture-fetch-checks`、`unit-capture-browser`、`unit-capture-areas`、`unit-capture-netguard`、`unit-capture-refetch`、`unit-capture-openalex`、`unit-capture-reserve`、`unit-capture-reserve-gate`、`unit-capture-reserve-guard`、`unit-capture-fix`、`unit-capture-ops`、`unit-cs10fix`、`unit-cs12fix`、`unit-fetchers`、`unit-siteAdapters`、`unit-rejects`、`unit-flow-capture`、`unit-flow-areas`
+- 抓取：`unit-capture-stages`、`unit-capture-object`、`unit-capture-policies`、`unit-capture-standards`、`unit-capture-fetch-checks`、`unit-capture-browser`、`unit-capture-launch-wiring`（瀏覽器啟動點接線，CAPX-13）、`unit-capture-areas`、`unit-capture-netguard`、`unit-capture-refetch`、`unit-capture-openalex`、`unit-capture-reserve`、`unit-capture-reserve-gate`、`unit-capture-reserve-guard`、`unit-capture-fix`、`unit-capture-ops`、`unit-cs10fix`、`unit-cs12fix`、`unit-fetchers`、`unit-siteAdapters`、`unit-rejects`、`unit-flow-capture`、`unit-flow-areas`
 - 評分：`unit-bench`、`unit-bench-kit`、`unit-bench-roles`、`unit-prompt-fp`
 - 需外部資源（未設旗標即略過）：`api-capture-live`（實網）、`api-area-ai`（真 AI）

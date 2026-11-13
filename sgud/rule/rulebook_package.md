@@ -3,7 +3,7 @@
 > 本檔記本套件作為獨立套件之邊界與契約:依賴邊界、領域中立、設定與資料之形狀、CLI 不隔離、提示詞與輸出契約、評分判準、時區、偵測器注入等。抓取管線自身之行為規則見 `rulebook_capture.md`(CAP-*);現況見 `../state/state.md`。
 > 盤點指令皆在套件根執行,以 `git grep`(只搜 git 追蹤檔);測試檔皆在 `test/`(自套件根以 `npm test` 或 mocha 單檔執行)。編號之「X」字樣沿用,表示本套件獨有之規則。
 
-## 套件邊界與契約 CAPX-01～CAPX-12
+## 套件邊界與契約 CAPX-01～CAPX-13
 
 - **CAPX-01 邊界**:只 import 套件內之檔案與 `package.json` 所列套件(＋node 內建);不得引用使用端(宿主專案)之程式、測試與資料,亦不得引用下游套件。**執行秩序件只經單一匯入點 `src/core/runnerPackage.mjs`**:取自 w-data-pipeline `src/{lock,budget,log}/`、`src/util/oneline.mjs`、w-dispatch-ai `src/resolveCatalogue.mjs`、wsemi `src/{genClockTZ,execCliJsonFile,execCliFailDetail}.mjs` 之深層路徑;匯入點明列所取之名、並由主入口原名轉出(下游經本套件之埠取用);其他檔不得直接引用該等路徑。`src/core/` 只引 `src/core/`(分層)。
   - 為何:套件須能整份移植,不依賴使用端任何既有程式;執行秩序件(執行鎖之行程內登記表為模組級)只能有一份實作,自帶副本會與來源互判殘留。
@@ -54,3 +54,8 @@
   - 測試:`test/unit-capture-policies.test.mjs`(`sourceStopReasonOf` 各條件與 0＝永不、與 `recordSourceOutcome` 同一判定;`sourceRecordProblems` 各欄)、`test/unit-capture-standards.test.mjs` CS5(連敗／連空仍啟用、記錄形狀、停用者不適用、門檻取自設定)。
 - **CAPX-12 PDF 正文抽取暫不做(使用者裁示)**:等更適合解析 PDF(含排版解析)之套件成熟、可免 AI 解讀與判斷結構後再做;CS14 維持已知限制(PDF 網址一輪即 dead,`isPdfUrl`),不以 AI 或臨時抽取器補。
   - 測試:`test/unit-capture-browser.test.mjs`〔fetchPolicy(CS3 失敗分流;CS14 PDF)〕。
+- **CAPX-13 Chromium 系瀏覽器只經 w-playwright 啟動(守門)**:Windows 上 Chromium 153 起每啟動一個新根行程即以無效密碼為目前使用者呼叫一次 `LogonUser`(10 分鐘內 10 次即鎖帳號);w-playwright 於每次啟動之命令列恰給一串含 `AutofillAiWalletPrivatePasses` 之 `--disable-features`。本套件不直接啟動瀏覽器(階梯在子行程 CLI `src/fetchers/fetch_web_cli.mjs` 內經 w-fetch-web 啟動),也**不得 import 或宣告 `playwright`／`playwright-core`**(`src/`、`test/`、`toolg/`、`g.mjs`、`package.json` 皆然);w-fetch-web ≥1.0.44、w-dwdata-hub ≥1.0.38 起其啟動一律經 w-playwright。
+  - 落地:①`package.json` 的 `dependencies` 列 `w-playwright`(`src/` 不直接 import,屬 dist 於執行期 require 之外部件,`unit-package` ⑤ 以 `DIST_EXTERNAL_ONLY` 明列為對帳例外;其餘 `dependencies` 仍須被 `src/` 使用);②`toolg/gDistRollup.mjs` 的 `globals` 與 `external` 為 `'w-playwright'`(不可刪——dist 打包了 w-fetch-web 原始碼,其啟動呼叫在執行期 require 它;不可留 `'playwright'`);③`fetchPolicy.isEnvFailure` 認得 w-playwright 之固定詞彙(`browser launch failed|timed out`、`unsupported environment`、`does not match the bundled defaults`、`logon guard`、`managed browser … is not installed`),使啟動被拒(含登入守門)記為環境失敗(方法本輪斷路、文件延後不計 tries),不記在文件頭上;④`test/tools/captureTestKit.mjs` 的 `findSystemChrome` 委派 `w-playwright` 的同名函數(共用件只一份)。
+  - 為何:w-playwright 的對外錯誤只含固定詞彙、不附 Playwright 原錯誤,而 w-fetch-web 只把 `err.message` 回給呼叫端(不帶 `code`),本套件只能依訊息詞彙判環境失敗;不認得即把啟動被拒當頁面失敗計次,三次判死。
+  - 盤點(皆須 0 命中):`git grep -nE "(from\s+|import\(\s*|require\(\s*)['\"\`]playwright(-core)?['\"\`/]" -- src test toolg g.mjs`;`git grep -nE "\"playwright(-core)?\"\s*:" -- package.json`。`dist/`、`docs/` 為產物不計。
+  - 測試:`test/unit-capture-launch-wiring.test.mjs`(子行程 CLI 內以預載件 `test/tools/wpwFakeLaunch.mjs` 呼叫 `setBrowserTypeForTest` 接住啟動:每個 playwright 階〔`playwright`、`playwright-redirect`〕送出之選項含守門〔`args` 最後一個元素為恰一串之 `--disable-features`,含守門功能與 Playwright 預設,`ignoreDefaultArgs` 含 Playwright 預設串〕、替身次數 >0、對照空階 0 次、啟動被拒即階梯判環境失敗並斷路;`assertGuarded` 自檢);`test/unit-package.test.mjs` ⑤(掃描器自檢、`src/test/toolg` 無對 playwright 之 import、`package.json` 不宣告、`gDistRollup` 之 `globals`／`external`、已安裝之 w-fetch-web／w-dwdata-hub 依 w-playwright 而非 playwright);`test/unit-capture-browser.test.mjs` 的 `isEnvFailure` 案(以 w-playwright 的真實 reject 訊息為據)。真 Chrome 只在 `test/unit-flow-capture.test.mjs` 的瀏覽器案(約 7～8 次,各在獨立子行程,無法同檔共用),跑前後讀目前使用者之錯誤密碼次數,增加即停。

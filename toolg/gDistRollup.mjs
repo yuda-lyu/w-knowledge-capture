@@ -17,8 +17,10 @@ let fdTar = './dist'
 //   詞庫無法使用(實測載入dist即拋split非函數), 故須打包(約1.1MB, 其中STPhrases占大宗)
 //4. dayjs已由wsemi剔除, 其外掛以子路徑引用(dayjs/plugin/utc.js由w-dwdata-hub引用), 須逐一列入, 否則外掛被打包而核心外部化
 //5. globals右側為引入後的名稱, 不能包含小數點「.」
-//6. runin須為nodejs: 本套件僅能於nodejs執行(lmdb、playwright、child_process), 未給時rollupFiles預設browser,
+//6. runin須為nodejs: 本套件僅能於nodejs執行(lmdb、w-playwright、child_process), 未給時rollupFiles預設browser,
 //   會以browser欄位解析被打包之相依(uuid、crypto-js等取瀏覽器版)並警告依賴node內建模組
+//7. Chromium系瀏覽器一律經w-playwright啟動(不直接依賴playwright／playwright-core): 打包進來的w-fetch-web原始碼於執行期require w-playwright, 故須剔除且列於package.json之dependencies;
+//   此處不可誤留playwright(unit-package守此項)
 //盤點方式: 自src/WKnowledgeCapture.mjs靜態追蹤import圖(含自有套件src深層引用)取得全部裸import, 再與各套件剔除清單取聯集;
 //   圖中被打包而不剔除者為lodash-es/*、crypto-js/*、uuid、eventemitter3(wsemi所引用, 體積小且各自有單函數路徑, 與自有套件之打包一致)與opencc-js/dict/*(見第3點)
 
@@ -65,7 +67,7 @@ rollupFiles({
         //w-fetch-web、w-dwdata-hub剔除清單
         '@mozilla/readability': '@mozilla/readability',
         'jsdom': 'jsdom',
-        'playwright': 'playwright',
+        'w-playwright': 'w-playwright',
         'cheerio': 'cheerio',
         'rss-parser': 'rss-parser',
 
@@ -110,7 +112,7 @@ rollupFiles({
         //w-fetch-web、w-dwdata-hub剔除清單
         '@mozilla/readability',
         'jsdom',
-        'playwright',
+        'w-playwright',
         'cheerio',
         'rss-parser',
 

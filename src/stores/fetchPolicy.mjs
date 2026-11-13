@@ -268,7 +268,10 @@ export function isEnvFailure(s) {
     const reason = String(s?.reason || '')
     const msg = String(s?.message || '')
     if (reason === 'camofox-not-found' || reason === 'browser-env') return true
-    if (reason === 'playwright-error') return /Executable doesn't exist|is not found|not installed|Failed to launch|browserType\.launch|distribution|ENOENT|EACCES|spawn /i.test(msg)
+    // Chromium 系啟動經 w-playwright:其啟動失敗之訊息為固定詞彙(browser launch failed／timed out、unsupported environment、
+    //   playwright-core version … does not match、logon guard: …、managed browser … is not installed),不含 Playwright 原訊息;
+    //   正則前段為 Playwright 原訊息與作業系統層錯誤字樣,後段(browser launch … 起)為 w-playwright 之固定詞彙。登入守門之拒絕亦屬環境(不得記在文件頭上)
+    if (reason === 'playwright-error') return /Executable doesn't exist|is not found|not installed|Failed to launch|browserType\.launch|distribution|ENOENT|EACCES|spawn |browser launch (failed|timed out)|unsupported environment|does not match the bundled defaults|logon guard/i.test(msg)
     if (reason === 'camofox-error') return /failed to start within|ENOENT|EADDRINUSE|EACCES/i.test(msg)
     return false
 }

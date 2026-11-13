@@ -51,3 +51,12 @@
 - **加一個回傳欄位會打到十幾處「鍵集恰為」之斷言**:`locale` 進入 runtime 回傳、每輪依賴、`info()`、domain 成員,本套件與下游共五套件全套跑出 18 個失敗,全是 `deepEqual(Object.keys(...))`——這類斷言是刻意之契約守門(漏列即失敗)。改契約時先 Grep 期望清單再跑,比逐一等失敗省一輪全套:`git grep -nE "Object\.keys\(" -- test`(本套件 21 檔 119 處)。下游讀新鍵時,所有把整份 cfg 交下去之使用端都要補鍵。
 - **「字形標準不適用」要列為 NA、不能變 0**:正體標準於非繁體中文時若直接不判,掃描總量歸 0 與「全部合格」在報表上無法區分;逐件列不適用(受檢總量不變、違反 0、合格 0)才看得出是語言設定關掉的。不適用字樣只一份(`SCRIPT_NA_DETAIL`,`src/core/locale.mjs`;`src/standards/audit.mjs` 之 CS12 引用)。
 - **語言設定要在最底層解析一次、以物件傳遞,不在各處重解析字串**:`resolveLocale` 回凍結物件 `{ code, label, han, script, slug }`,執行期件解析後放 `deps.locale`,純函數經 `scriptOf(opt.locale)` 取字形政策(未給即預設正體)——既避免各呼叫點各自判語言,也讓測試能以字形政策物件直接注入。`Intl.getCanonicalLocales` 驗代碼、`Intl.DisplayNames` 取表外語言之稱呼,不手列全部語言。
+
+## 37. Chromium 系啟動改經 w-playwright 之遷移經驗(CAPX-13)
+
+- **依上游錯誤「訊息文字」分類者,上游改用固定詞彙後會靜默退化**:`fetchPolicy.isEnvFailure` 以 Playwright 原訊息(`Executable doesn't exist`、`browserType.launch`…)判環境失敗;w-playwright 的對外錯誤只含固定詞彙(`browser launch failed`…)且 w-fetch-web 只回 `err.message`、不帶 `code`,原正則一個都不命中——啟動被拒(含登入守門拒絕)會被當頁面失敗計在文件頭上、三次判死。遷移時要列「哪些地方依訊息文字判斷」並逐一重新取證;測試的訊息**取自 w-playwright 的真實 reject**(`setBrowserTypeForTest` 的替身拋錯 → `launchChromium` reject),不手抄字串,能抓到對方日後改詞彙(版本不符、登入守門無法在不啟動下觸發者才抄原始碼字樣並註明出處)。
+- **接線測試走真子行程**:本套件的啟動點在子行程 CLI 內,而 `setBrowserTypeForTest` 只作用於同一行程。作法:`runBrowserCli` 的 `runCli` 注入縫自己 `spawnSync(node, ['--import', 預載件, CLI, …])`,預載件(`test/tools/wpwFakeLaunch.mjs`)在子行程內裝替身、把收到的合併後選項追加到記錄檔再拋錯拒絕啟動——真 CLI、真暫存檔協定、真 w-fetch-web → w-playwright,只有最底層的 BrowserType 是替身。必附對照案(空階 → 替身 0 次)與斷言自檢(`assertGuarded` 對壞物件須拋),否則「替身被呼叫」可能空過。
+- **替身一拒絕,階梯行為就變**:預載件拋錯 → 啟動失敗 → (修正 `isEnvFailure` 後)判環境失敗 → `playwright` 方法斷路,同一階梯第二個 playwright 階不再啟動。「兩階各啟動一次」的斷言在修正前為綠、修正後為紅——那正是修正生效的證據;改斷言為斷路語意(`envBroken`、第二階 `skipped: 'env-broken'`),每個階的啟動點改各自一案。
+- **修前不得跑真瀏覽器,修前紅要換法**:舊版 w-fetch-web 直接以 playwright 啟動真 Chrome,修前對照不可跑。修前紅取:接線測試因 `w-playwright` 未安裝而載入失敗(`ERR_MODULE_NOT_FOUND`,不啟動任何東西)、`isEnvFailure` 案對舊正則紅(純函數)、`unit-package` ⑤ 對舊 `package.json` 紅。修前基線只跑不啟動真瀏覽器的檔(排除 `unit-flow-capture`)。
+- **`dependencies` 對帳規則要有明列例外**:`unit-package` ⑤ 原規定 `dependencies` 皆須被 `src/` import;`w-playwright` 是 dist 打包 w-fetch-web 原始碼後在執行期 require 的外部件(`gDistRollup` 的 `external`),`src/` 不 import。以 `DIST_EXTERNAL_ONLY` 明列(並斷言列者確在 `dependencies`、確不被 `src/` 使用),而不是放寬整條規則。
+- **同一依賴樹會有第二份 playwright-core**:Camofox(Firefox 系)自帶 `playwright-core@1.65.0`(頂層),w-playwright 精確釘的 1.64.1 在 `node_modules/w-playwright/node_modules/`;兩者並存屬正常——前者不啟動 Chromium、不受守門約束。盤點 R-PW-ONLY 時只看本套件自己的 import 與宣告,不看 `node_modules` 內的 playwright-core 份數。

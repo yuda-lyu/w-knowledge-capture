@@ -11,8 +11,7 @@
 // 【位置無關之共用件在 testKit】日誌之替身、暫存根、概念折疊之還原、子階段 report 與其斷言、集合之開關、AI 調度層之替身、設定覆寫之深層合併等取
 //   ./testKit.mjs(各套件同一份),本檔轉出之;本檔只放抓取之整合測試專屬者。
 
-import fs from 'node:fs'
-import path from 'node:path'
+import wpw from 'w-playwright'
 import { createKnowledgeCapture } from '../../src/createKnowledgeCapture.mjs'
 import { resolveSettings } from '../../src/core/settingsDefault.mjs'
 import { expandDirs } from '../../src/core/dirs.mjs'
@@ -115,18 +114,13 @@ export async function byUrl(stores) {
 export const docAtOf = (base) => (p) => async (stores) => (await byUrl(stores))[normalizeUrl(`${base}${p}`)]
 
 /**
- * 系統 Google Chrome 之路徑(w-fetch-web 之 Playwright 階以 channel:'chrome' 啟動系統 Chrome;與其搜尋位置一致)
+ * 系統 Google Chrome 之路徑(w-fetch-web 之 Playwright 階經 w-playwright 以 channel:'chrome' 啟動系統 Chrome;判定取 w-playwright 之 findSystemChrome,
+ * 與其啟動所找之位置同一份實作:只以檔案存在判定,不啟動瀏覽器)
  *
  * @returns {String} 回傳路徑,找不到回空字串
  */
 export function findSystemChrome() {
-    const env = process.env
-    const cands = process.platform === 'win32'
-        ? [env.LOCALAPPDATA, env.PROGRAMFILES, env['PROGRAMFILES(X86)']].filter(Boolean).map((b) => path.join(b, 'Google', 'Chrome', 'Application', 'chrome.exe'))
-        : process.platform === 'darwin'
-            ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
-            : ['/opt/google/chrome/chrome', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable']
-    return cands.find((p) => fs.existsSync(p)) || ''
+    return wpw.findSystemChrome({ channel: 'chrome' })
 }
 
 /**
