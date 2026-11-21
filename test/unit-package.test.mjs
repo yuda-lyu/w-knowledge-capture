@@ -1159,7 +1159,8 @@ describe('unit-package', function() {
             }
             const installedPkgOf = (p) => JSON.parse(fs.readFileSync(fileURLToPath(import.meta.resolve(`${p}/package.json`)), 'utf8'))
             const wpwInstalled = installedPkgOf('w-playwright')
-            assert.equal(wpwInstalled.dependencies['playwright-core'], '1.64.1', 'w-playwright 精確釘 playwright-core')
+            // 版本所有權在 w-playwright:只驗其以精確版號釘選,不寫死哪一版(寫死 1.64.1 於 2026-11-21 升 1.65.1 時失效)
+            assert.match(wpwInstalled.dependencies['playwright-core'], /^\d+\.\d+\.\d+$/, 'w-playwright 精確釘 playwright-core')
             for (const p of ['w-fetch-web', 'w-dwdata-hub']) {
                 const j = installedPkgOf(p)
                 assert.ok(j.dependencies?.['w-playwright'], `${p}@${j.version} 須依 w-playwright`)
